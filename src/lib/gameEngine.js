@@ -371,9 +371,11 @@ export function updateGame(state, dt) {
     return state;
   }
 
-  // Update clocks
-  state.gameClock -= effectiveDt / 1000;
-  state.shotClock -= effectiveDt / 1000;
+  // Clocks run at real-time rate regardless of simulation speed — the 48-minute
+  // game always takes the same wall-clock duration. Slower simulation speed means
+  // each possession consumes more game clock, yielding fewer possessions per game.
+  state.gameClock -= dt / 1000;
+  state.shotClock -= dt / 1000;
 
   if (state.gameClock <= 0) {
     state.gameClock = 0;
