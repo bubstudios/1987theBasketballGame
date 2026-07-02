@@ -76,22 +76,22 @@ export default function CoachControls({ gameState, opponent, onCallTimeout }) {
           >
             <ChevronLeft size={12} /> Back
           </button>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             {PLAY_CALLS.map(play => (
               <button
                 key={play.id}
                 disabled={!canCall}
                 onClick={() => { onCallTimeout('lakers', 'full', 'call_play', play.id); setPlayMode(false); }}
-                className="rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed p-2 text-left transition-colors border border-neutral-700"
+                className="rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed p-1.5 text-left transition-colors border border-neutral-700"
               >
-                <div className="text-xs font-bold text-white">{play.label}</div>
-                <div className="text-[9px] text-neutral-500 leading-tight mt-0.5">{play.desc}</div>
+                <div className="text-[11px] font-bold text-white">{play.label}</div>
+                <div className="text-[8px] text-neutral-500 leading-tight mt-0.5">{play.desc}</div>
               </button>
             ))}
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           {TIMEOUT_PURPOSES.map(p => {
             const Icon = PURPOSE_ICONS[p.id];
             return (
@@ -102,11 +102,11 @@ export default function CoachControls({ gameState, opponent, onCallTimeout }) {
                   if (p.id === 'call_play') { setPlayMode(true); return; }
                   onCallTimeout('lakers', p.type, p.id);
                 }}
-                className="rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed p-2 text-left transition-colors border border-neutral-700"
+                className="rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed p-1.5 text-left transition-colors border border-neutral-700"
               >
-                <Icon size={14} className="text-amber-400 mb-1" />
-                <div className="text-xs font-bold text-white leading-tight">{p.label}</div>
-                <div className="text-[9px] text-neutral-500 leading-tight mt-0.5">{p.desc}</div>
+                <Icon size={12} className="text-amber-400 mb-0.5" />
+                <div className="text-[11px] font-bold text-white leading-tight">{p.label}</div>
+                <div className="text-[8px] text-neutral-500 leading-tight">{p.desc}</div>
               </button>
             );
           })}

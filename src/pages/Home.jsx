@@ -173,11 +173,6 @@ export default function Home() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 pb-8">
-        {/* Scoreboard */}
-        <div className="mb-4">
-          <Scoreboard gameState={gameState} />
-        </div>
-
         {/* Controls */}
         <div className="mb-4">
           <GameControls
@@ -188,11 +183,6 @@ export default function Home() {
             soundMuted={muted}
             onToggleSound={toggleMute}
           />
-        </div>
-
-        {/* Coach timeout controls */}
-        <div className="mb-4">
-          <CoachControls gameState={gameState} opponent={opponent} onCallTimeout={handleCallTimeout} />
         </div>
 
         {/* Game Over */}
@@ -209,20 +199,11 @@ export default function Home() {
           </div>
         )}
 
-        {/* Main layout */}
+        {/* Zoomed court + compact control sidebar (score/time, play calls, timeouts) */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* Left roster */}
-          <div className="hidden lg:block">
-            <RosterPanel roster={LAKERS_ROSTER} bench={LAKERS_BENCH} teamKey="lakers" gameState={gameState} />
-          </div>
-
-          {/* Court */}
-          <div className="lg:col-span-2">
-            <div className="mb-3">
-              <PlayCallBar gameState={gameState} onCallPlay={handleCallPlay} />
-            </div>
+          <div className="lg:col-span-3">
             <CourtCanvas gameState={gameState} />
-            <div className="mt-3 flex items-center justify-center gap-6 text-[10px] text-neutral-500">
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[10px] text-neutral-500">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#552583', border: '1.5px solid #FDB927' }} />
                 Lakers (Offense)
@@ -238,10 +219,17 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right roster */}
-          <div className="hidden lg:block">
-            <RosterPanel roster={opponentRoster} bench={oppBench} teamKey={opponent} gameState={gameState} />
+          <div className="lg:col-span-1 space-y-3">
+            <Scoreboard gameState={gameState} />
+            <PlayCallBar gameState={gameState} onCallPlay={handleCallPlay} />
+            <CoachControls gameState={gameState} opponent={opponent} onCallTimeout={handleCallTimeout} />
           </div>
+        </div>
+
+        {/* Rosters */}
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <RosterPanel roster={LAKERS_ROSTER} bench={LAKERS_BENCH} teamKey="lakers" gameState={gameState} />
+          <RosterPanel roster={opponentRoster} bench={oppBench} teamKey={opponent} gameState={gameState} />
         </div>
 
         {/* Game Log */}
@@ -260,11 +248,7 @@ export default function Home() {
           <SubstitutionLog gameState={gameState} />
         </div>
 
-        {/* Mobile Rosters */}
-        <div className="lg:hidden mt-4 grid grid-cols-2 gap-3">
-          <RosterPanel roster={LAKERS_ROSTER} bench={LAKERS_BENCH} teamKey="lakers" gameState={gameState} />
-          <RosterPanel roster={opponentRoster} bench={oppBench} teamKey={opponent} gameState={gameState} />
-        </div>
+
       </div>
 
       {/* Sticky bottom momentum & pace tracker */}

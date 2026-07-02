@@ -44,7 +44,7 @@ export default function PlayCallBar({ gameState, onCallPlay }) {
         </span>
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-1.5">
         {plays.map(play => {
           const Icon = play.icon;
           const isActive = active && active.type === play.id && active.side === side;
@@ -54,15 +54,15 @@ export default function PlayCallBar({ gameState, onCallPlay }) {
               key={play.id}
               disabled={disabled}
               onClick={() => onCallPlay(play.id, side)}
-              className={`rounded-lg p-2 text-left transition-colors border ${
+              className={`rounded-lg p-1.5 text-left transition-colors border ${
                 isActive
                   ? 'bg-amber-500/20 border-amber-400'
                   : 'bg-neutral-800 border-neutral-700 hover:bg-neutral-700'
               } ${disabled && !isActive ? 'opacity-40 cursor-not-allowed' : ''}`}
             >
-              <Icon size={14} className={isActive ? 'text-amber-300' : 'text-amber-400/80'} />
-              <div className="text-xs font-bold text-white leading-tight mt-1">{play.label}</div>
-              <div className="text-[9px] text-neutral-500 leading-tight">{play.desc}</div>
+              <Icon size={12} className={isActive ? 'text-amber-300' : 'text-amber-400/80'} />
+              <div className="text-[11px] font-bold text-white leading-tight mt-0.5">{play.label}</div>
+              <div className="text-[8px] text-neutral-500 leading-tight">{play.desc}</div>
             </button>
           );
         })}
