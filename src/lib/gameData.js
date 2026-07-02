@@ -452,3 +452,29 @@ export const TEAM_FAST_BREAK = {
   celtics: 4,
   clippers: 7,
 };
+
+// Minutes per game (1986-87 regular season) — drives fatigue & stamina
+export const PLAYER_MPG = {
+  // Lakers
+  'Magic Johnson': 36.3, 'Byron Scott': 33.3, 'James Worthy': 34.4,
+  'A.C. Green': 28.4, 'Kareem Abdul-Jabbar': 31.3,
+  'Michael Cooper': 27.5, 'Mychal Thompson': 20.6, 'Kurt Rambis': 19.4,
+  'Billy Thompson': 12.9, 'Wes Matthews': 10.6,
+  // Celtics
+  'Dennis Johnson': 37.1, 'Danny Ainge': 35.2, 'Larry Bird': 40.6,
+  'Kevin McHale': 39.7, 'Robert Parish': 37.4,
+  'Jerry Sichting': 20.1, 'Bill Walton': 11.2, 'Fred Roberts': 14.8,
+  'Darren Daye': 11.9, 'Greg Kite': 10.1,
+  // Clippers
+  'Larry Drew': 26.1, 'Mike Woodson': 28.7, 'Rory White': 22.7,
+  'Michael Cage': 36.5, 'Benoit Benjamin': 31.0,
+  'Darnell Valentine': 27.1, 'Quintin Dailey': 18.9, 'Cedric Maxwell': 32.3,
+  'Earl Cureton': 24.8, 'Kenny Fields': 19.6,
+};
+
+// Franchise stars — tolerate more fatigue, stay on the floor longer
+export const STAR_PLAYERS = new Set([
+  'Magic Johnson', 'Kareem Abdul-Jabbar', 'James Worthy',
+  'Larry Bird', 'Kevin McHale', 'Robert Parish',
+  'Michael Cage',
+]);

@@ -101,6 +101,29 @@ function drawCourt(ctx, w, h) {
   ctx.fillRect(w - keyW, h / 2 - keyH / 2, keyW, keyH);
 }
 
+function drawBenchPlayer(ctx, player, w, h) {
+  const sx = w / COURT.width;
+  const x = player.x * sx;
+  const y = player.y * (h / COURT.height);
+  const r = 8 * sx;
+  const colors = TEAM_COLORS[player.team];
+
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = colors.primary;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = colors.secondary;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = colors.text;
+  ctx.font = `bold ${Math.max(7, r * 0.8)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(player.number, x, y);
+  ctx.globalAlpha = 1;
+}
+
 function drawPlayer(ctx, player, w, h, isBallCarrier) {
   const sx = w / COURT.width;
   const sy = h / COURT.height;
@@ -145,6 +168,15 @@ function drawPlayer(ctx, player, w, h, isBallCarrier) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(player.number, x, y);
+
+  // Fatigue ring — visible when a player is getting tired
+  if (player.fatigue > 45) {
+    ctx.strokeStyle = player.fatigue > 75 ? '#ef4444' : '#f59e0b';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(x, y, r + 4, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 
   // Name label
   ctx.fillStyle = '#000000';
@@ -304,9 +336,12 @@ export default function CourtCanvas({ gameState }) {
     // Draw court
     drawCourt(ctx, w, h);
 
-    // Draw players (defense first, then offense on top)
-    const defPlayers = gameState.players.filter(p => p.team !== gameState.possession);
-    const offPlayers = gameState.players.filter(p => p.team === gameState.possession);
+    // Draw bench players (faded, along sideline)
+    gameState.players.filter(p => !p.onCourt).forEach(p => drawBenchPlayer(ctx, p, w, h));
+
+    // Draw on-court players (defense first, then offense on top)
+    const defPlayers = gameState.players.filter(p => p.team !== gameState.possession && p.onCourt);
+    const offPlayers = gameState.players.filter(p => p.team === gameState.possession && p.onCourt);
 
     defPlayers.forEach(p => drawPlayer(ctx, p, w, h, false));
     offPlayers.forEach(p => drawPlayer(ctx, p, w, h, p.id === gameState.ball.carrier));

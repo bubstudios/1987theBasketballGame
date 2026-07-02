@@ -25,17 +25,27 @@ export default function RosterPanel({ roster, bench, teamKey, gameState }) {
     const live = livePlayers[i];
     const fouls = live?.fouls || 0;
     const fouledOut = live?.fouledOut;
+    const fatigue = live?.fatigue || 0;
+    const onCourt = live?.onCourt ?? false;
+    const isStar = live?.star || false;
+
     return (
-      <div key={i} className={`flex items-center gap-2 ${!live ? 'opacity-70' : ''}`}>
-        <div
-          className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${fouledOut ? 'opacity-40' : ''}`}
-          style={{ backgroundColor: colors.primary, color: colors.text }}
-        >
-          {p.number}
+      <div key={i} className={`flex items-center gap-2 ${!onCourt ? 'opacity-45' : ''}`}>
+        <div className="relative shrink-0">
+          <div
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold ${fouledOut ? 'opacity-40' : ''}`}
+            style={{ backgroundColor: colors.primary, color: colors.text }}
+          >
+            {p.number}
+          </div>
+          {onCourt && !fouledOut && (
+            <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border border-neutral-900" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-1.5">
             <span className="text-xs text-white font-medium truncate">{p.name}</span>
+            {isStar && <span className="text-[9px] text-amber-400 leading-none">★</span>}
             <span className="text-[10px] text-neutral-500">{p.position} · {heightToString(p.height)}</span>
             {fouls > 0 && (
               <span className={`text-[9px] font-bold ${fouledOut ? 'text-red-500' : 'text-amber-400'}`}>
@@ -69,6 +79,20 @@ export default function RosterPanel({ roster, bench, teamKey, gameState }) {
               <StatBar value={p.defensiveRebRate * 100} max={25} color={barColor} />
             </div>
           </div>
+          {onCourt && fatigue > 5 && (
+            <div className="mt-1 flex items-center gap-1">
+              <span className="text-[7px] text-neutral-600 w-5">FAT</span>
+              <div className="flex-1 h-1 bg-neutral-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${fatigue}%`,
+                    backgroundColor: fatigue > 75 ? '#ef4444' : fatigue > 50 ? '#f59e0b' : '#22c55e',
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

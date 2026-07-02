@@ -26,7 +26,8 @@ export default function Home() {
 
   const initGame = useCallback(() => {
     const oppRoster = opponent === 'celtics' ? CELTICS_ROSTER : CLIPPERS_ROSTER;
-    const state = createGameState(LAKERS_ROSTER, oppRoster, opponent);
+    const oppBench = opponent === 'celtics' ? CELTICS_BENCH : CLIPPERS_BENCH;
+    const state = createGameState([...LAKERS_ROSTER, ...LAKERS_BENCH], [...oppRoster, ...oppBench], opponent);
     gameRef.current = state;
     prevVelRef.current = {};
     setGameState({ ...state });

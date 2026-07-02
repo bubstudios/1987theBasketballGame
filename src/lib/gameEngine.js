@@ -1,4 +1,4 @@
-import { COURT, TEAM_FAST_BREAK } from './gameData';
+import { COURT, TEAM_FAST_BREAK, PLAYER_MPG, STAR_PLAYERS } from './gameData';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -124,7 +124,8 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
 
   // Lakers start on the right side (offense first)
   lakersRoster.forEach((p, i) => {
-    const spot = OFFENSE_SPOTS_RIGHT[i];
+    const isStarter = i < 5;
+    const spot = isStarter ? OFFENSE_SPOTS_RIGHT[i] : { x: 80 + i * 40, y: 475 };
     players.push({
       ...p,
       team: 'lakers',
@@ -135,7 +136,15 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
       targetY: spot.y,
       vx: 0,
       vy: 0,
-      hasBall: i === 0, // PG starts with ball
+      hasBall: isStarter && i === 0,
+      onCourt: isStarter,
+      courtIndex: isStarter ? i : null,
+      isStarter: isStarter,
+      fatigue: 0,
+      mpg: PLAYER_MPG[p.name] || 20,
+      star: STAR_PLAYERS.has(p.name),
+      benchSpotX: 80 + i * 40,
+      benchSpotY: 475,
       radius: PLAYER_BASE_RADIUS + (p.height - 75) * 0.3,
       maxSpeed: 1.5 + p.speed * 0.35,
       transitionSpeed: (1.5 + p.speed * 0.35) * (1.3 + p.speed * 0.04),
@@ -151,18 +160,28 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
 
   // Opponent on left side (defense first)
   opponentRoster.forEach((p, i) => {
-    const offSpot = OFFENSE_SPOTS_RIGHT[i]; // match up against laker
+    const isStarter = i < 5;
+    const offSpot = OFFENSE_SPOTS_RIGHT[i];
+    const spot = isStarter ? { x: offSpot.x + 30, y: offSpot.y } : { x: 860 - i * 40, y: 25 };
     players.push({
       ...p,
       team: opponentKey,
       id: `${opponentKey}_${i}`,
-      x: offSpot.x + 30, // slightly off their man
-      y: offSpot.y,
-      targetX: offSpot.x + 30,
-      targetY: offSpot.y,
+      x: spot.x,
+      y: spot.y,
+      targetX: spot.x,
+      targetY: spot.y,
       vx: 0,
       vy: 0,
       hasBall: false,
+      onCourt: isStarter,
+      courtIndex: isStarter ? i : null,
+      isStarter: isStarter,
+      fatigue: 0,
+      mpg: PLAYER_MPG[p.name] || 20,
+      star: STAR_PLAYERS.has(p.name),
+      benchSpotX: 860 - i * 40,
+      benchSpotY: 25,
       radius: PLAYER_BASE_RADIUS + (p.height - 75) * 0.3,
       maxSpeed: 1.5 + p.speed * 0.35,
       transitionSpeed: (1.5 + p.speed * 0.35) * (1.3 + p.speed * 0.04),
@@ -219,6 +238,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     pace: 5,
     momentumHistory: [{ clock: 720, quarter: 1, team1: 0, team2: 0, pace: 0, fastBreak: false }],
     momentumSampleTimer: 0,
+    subTimer: 3000,
   };
 }
 
@@ -316,13 +336,21 @@ export function updateGame(state, dt) {
     state.momentumSampleTimer = 5000;
   }
 
+  // Fatigue & substitutions
+  updateFatigue(state, effectiveDt);
+  state.subTimer -= effectiveDt;
+  if (state.subTimer <= 0 && !state.shotAnimating) {
+    checkSubstitutions(state);
+    state.subTimer = 3000;
+  }
+
   // Handle ball in flight (pass or shot)
   if (state.ball.inFlight) {
     updateBallFlight(state, effectiveDt);
     // Keep defense active during passes so defenders recover and anticipate closeouts
     if (!state.ball.isShot) {
-      const passOffense = state.players.filter(p => p.team === state.possession);
-      const passDefense = state.players.filter(p => p.team !== state.possession);
+      const passOffense = getOnCourtPlayers(state, state.possession);
+      const passDefense = getOnCourtPlayers(state, state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1);
       updateManToManDefense(state, passDefense, passOffense, effectiveDt);
     }
     updatePlayerMovement(state, effectiveDt);
@@ -334,8 +362,8 @@ export function updateGame(state, dt) {
   state.actionTimer -= effectiveDt;
   state.turnoverCooldown -= effectiveDt;
 
-  const offensePlayers = state.players.filter(p => p.team === state.possession);
-  const defensePlayers = state.players.filter(p => p.team !== state.possession);
+  const offensePlayers = getOnCourtPlayers(state, state.possession);
+  const defensePlayers = getOnCourtPlayers(state, state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1);
   const ballCarrier = state.players.find(p => p.id === state.ball.carrier);
 
   // --- Fast break or half-court offense ---
@@ -406,6 +434,7 @@ function updateBallFlight(state, dt) {
         let nearest = null;
         let nearDist = Infinity;
         state.players.forEach(p => {
+          if (!p.onCourt) return;
           const d = dist(p, state.ball);
           if (d < nearDist) { nearDist = d; nearest = p; }
         });
@@ -489,7 +518,8 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
     // Faster, more aware defenders close out quicker and can help more
     const defRating = defender.defense || 5;
     const spdRating = defender.speed || 5;
-    const recoveryFactor = (spdRating + defRating) / 20;
+    const defFatigue = 1 - (defender.fatigue || 0) / 100 * 0.2;
+    const recoveryFactor = ((spdRating + defRating) / 20) * defFatigue;
 
     let defX, defY;
 
@@ -710,6 +740,10 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     prob = Math.max(0.05, Math.min(prob, 0.6));
   }
 
+  // Fatigue reduces shooting accuracy (up to ~18% drop when exhausted)
+  const fatigueFactor = 1 - (shooter.fatigue || 0) / 100 * 0.18;
+  prob *= fatigueFactor;
+
   // Block detection: contested shots can be blocked, weighted by BLK% and distance
   let blockedBy = null;
   if (nearestDef && nearestDef.player && !fouledBy && nearestDef.dist < 30) {
@@ -812,6 +846,7 @@ function resolveShot(state) {
     let rebounder = null;
     let minD = Infinity;
     state.players.forEach(p => {
+      if (!p.onCourt) return;
       const d = dist(p, basket);
       const rate = p.team === state.possession
         ? (p.offensiveRebRate || 0.05)
@@ -971,8 +1006,8 @@ function switchPossession(state, fastBreakInitiator = null) {
 
 function resetPositions(state) {
   const offSpots = getOffenseSpots(state.attackingRight);
-  const offPlayers = state.players.filter(p => p.team === state.possession);
-  const defPlayers = state.players.filter(p => p.team !== state.possession);
+  const offPlayers = getOnCourtPlayers(state, state.possession);
+  const defPlayers = getOnCourtPlayers(state, state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1);
 
   offPlayers.forEach((p, i) => {
     const spot = offSpots[i % offSpots.length];
@@ -1032,7 +1067,8 @@ function checkTurnover(state, carrier, defenders) {
   defenders.forEach(d => {
     const dd = dist(carrier, d);
     if (dd < 20) {
-      const stealChance = (d.stealRate || 0.02) * 0.12 + (carrier.turnoverRate || 0.12) * 0.006;
+      const carrierFatigueMult = 1 + (carrier.fatigue || 0) / 100 * 0.5;
+      const stealChance = (d.stealRate || 0.02) * 0.12 + (carrier.turnoverRate || 0.12) * 0.006 * carrierFatigueMult;
       if (Math.random() < stealChance) {
         carrier.hasBall = false;
         d.hasBall = true;
@@ -1054,6 +1090,21 @@ function updatePlayerMovement(state, dt) {
   const isFastBreak = state.fastBreak && state.fastBreak.active;
 
   state.players.forEach(player => {
+    // Bench players drift slowly to their sideline seat and stay put
+    if (!player.onCourt) {
+      const bdx = player.targetX - player.x;
+      const bdy = player.targetY - player.y;
+      const bd = Math.sqrt(bdx * bdx + bdy * bdy);
+      if (bd > 2) {
+        const speed = player.maxSpeed * 0.4 * speedScale;
+        player.x += (bdx / bd) * Math.min(speed, bd);
+        player.y += (bdy / bd) * Math.min(speed, bd);
+      }
+      player.x = clamp(player.x, 15, COURT.width - 15);
+      player.y = clamp(player.y, 15, COURT.height - 15);
+      return;
+    }
+
     const dx = player.targetX - player.x;
     const dy = player.targetY - player.y;
     const d = Math.sqrt(dx * dx + dy * dy);
@@ -1061,7 +1112,9 @@ function updatePlayerMovement(state, dt) {
     if (d > 2) {
       // Transition speed: players sprint faster during fast breaks,
       // scaled by their speed rating (Worthy/Magic much quicker than Kareem)
-      const speed = (isFastBreak ? (player.transitionSpeed || player.maxSpeed * 1.5) : player.maxSpeed) * speedScale;
+      // Fatigue slows on-court players by up to 25% when exhausted
+      const fatigueFactor = 1 - (player.fatigue || 0) / 100 * 0.25;
+      const speed = (isFastBreak ? (player.transitionSpeed || player.maxSpeed * 1.5) : player.maxSpeed) * fatigueFactor * speedScale;
       const moveX = (dx / d) * Math.min(speed, d);
       const moveY = (dy / d) * Math.min(speed, d);
       player.x += moveX;
@@ -1072,9 +1125,9 @@ function updatePlayerMovement(state, dt) {
     player.x = clamp(player.x, 15, COURT.width - 15);
     player.y = clamp(player.y, 15, COURT.height - 15);
 
-    // Collision with other players
+    // Collision with other on-court players
     state.players.forEach(other => {
-      if (other.id === player.id) return;
+      if (other.id === player.id || !other.onCourt) return;
       const dd = dist(player, other);
       const minDist = player.radius + other.radius;
       if (dd < minDist && dd > 0) {
@@ -1085,5 +1138,125 @@ function updatePlayerMovement(state, dt) {
         player.y += ny * overlap * 0.5;
       }
     });
+  });
+}
+
+// --- Bench Management: Fatigue & Substitutions ---
+
+// Returns on-court players for a team, sorted by courtIndex (spot 0 = PG, etc.)
+function getOnCourtPlayers(state, team) {
+  return state.players
+    .filter(p => p.team === team && p.onCourt)
+    .sort((a, b) => a.courtIndex - b.courtIndex);
+}
+
+function updateFatigue(state, dt) {
+  const gameSeconds = dt / 1000;
+  const isFastBreak = state.fastBreak && state.fastBreak.active;
+
+  state.players.forEach(player => {
+    if (player.onCourt) {
+      // Stamina derived from minutes-per-game: high-MPG players tire slower
+      const stamina = clamp(player.mpg / 36, 0.6, 2.0);
+      const fatigueRate = 0.17 / stamina;
+      // Ball carriers and fast-break participants exert more energy
+      const isCarrier = player.id === state.ball.carrier;
+      const exertionMult = (isCarrier ? 1.3 : 1.0) * (isFastBreak ? 1.4 : 1.0);
+      player.fatigue = clamp(player.fatigue + fatigueRate * exertionMult * gameSeconds, 0, 100);
+    } else {
+      // Bench recovery (~3x faster than accumulation)
+      player.fatigue = clamp(player.fatigue - 0.35 * gameSeconds, 0, 100);
+    }
+  });
+}
+
+// Position groups for natural substitution matching
+const POSITION_GROUPS = {
+  PG: 'guard', SG: 'guard',
+  SF: 'wing',
+  PF: 'big', C: 'big',
+};
+
+function findSubstitute(outgoing, bench) {
+  const outGroup = POSITION_GROUPS[outgoing.position] || 'wing';
+  // Prefer same position group; fall back to any available bench player
+  const sameGroup = bench.filter(b => (POSITION_GROUPS[b.position] || 'wing') === outGroup);
+  const pool = sameGroup.length > 0 ? sameGroup : bench;
+  if (pool.length === 0) return null;
+  // Most rested player in the pool
+  let best = pool[0];
+  pool.forEach(b => { if (b.fatigue < best.fatigue) best = b; });
+  // Only sub in if the replacement is reasonably rested
+  return best.fatigue < 50 ? best : null;
+}
+
+function executeSubstitution(state, outgoing, incoming) {
+  // Incoming player takes the outgoing's court spot and index
+  incoming.onCourt = true;
+  incoming.courtIndex = outgoing.courtIndex;
+  incoming.x = outgoing.x;
+  incoming.y = outgoing.y;
+  incoming.targetX = outgoing.targetX;
+  incoming.targetY = outgoing.targetY;
+  incoming.isCutting = false;
+  incoming.cutTimer = 0;
+
+  outgoing.onCourt = false;
+  outgoing.courtIndex = null;
+  outgoing.isCutting = false;
+  // Send the outgoing player to the bench area
+  outgoing.targetX = outgoing.benchSpotX;
+  outgoing.targetY = outgoing.benchSpotY;
+
+  // Transfer ball if the outgoing player was the carrier
+  if (state.ball.carrier === outgoing.id) {
+    state.ball.carrier = incoming.id;
+    incoming.hasBall = true;
+    outgoing.hasBall = false;
+    state.ball.x = incoming.x;
+    state.ball.y = incoming.y;
+  }
+
+  state.gameLog.unshift(`🔄 ${incoming.name} checks in for ${outgoing.name}`);
+  if (state.gameLog.length > 15) state.gameLog.pop();
+}
+
+function checkSubstitutions(state) {
+  const teams = [state.teamKeys.team1, state.teamKeys.team2];
+
+  teams.forEach(team => {
+    const onCourt = state.players.filter(p => p.team === team && p.onCourt);
+    const bench = state.players.filter(p => p.team === team && !p.onCourt && !p.fouledOut);
+    if (bench.length === 0) return;
+
+    // 1) Sub OUT tired players — stars tolerate more fatigue before subbing
+    let mostTired = null;
+    onCourt.forEach(p => {
+      const threshold = p.star ? 85 : 72;
+      if (p.fatigue >= threshold && (!mostTired || p.fatigue > mostTired.fatigue)) {
+        mostTired = p;
+      }
+    });
+
+    if (mostTired) {
+      const sub = findSubstitute(mostTired, bench);
+      if (sub) {
+        executeSubstitution(state, mostTired, sub);
+        return; // one sub per team per check
+      }
+    }
+
+    // 2) Sub STARTERS back IN once they've recovered on the bench
+    const recoveredStarter = bench.find(p => p.isStarter && p.fatigue < 25);
+    if (recoveredStarter) {
+      const benchOnCourt = onCourt.filter(p => !p.isStarter);
+      if (benchOnCourt.length > 0) {
+        let target = benchOnCourt[0];
+        benchOnCourt.forEach(p => { if (p.fatigue > target.fatigue) target = p; });
+        if (target.fatigue > 40) {
+          executeSubstitution(state, target, recoveredStarter);
+        }
+      }
+    }
   });
 }
