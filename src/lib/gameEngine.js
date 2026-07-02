@@ -405,9 +405,11 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   let driveChance = 0;
 
   if (isVeryClose) {
-    shootChance = 0.3 + carrier.insideScoring * 0.06;
+    const freqFactor = Math.min(carrier.twoAttempts / 15, 1);
+    shootChance = 0.18 + carrier.insideScoring * 0.04 + freqFactor * 0.1;
   } else if (isClose && isOpen) {
-    shootChance = 0.15 + carrier.shooting * 0.04;
+    const freqFactor = Math.min(carrier.twoAttempts / 15, 1);
+    shootChance = 0.1 + carrier.shooting * 0.03 + freqFactor * 0.12;
   } else if (threeZone && isOpen) {
     // Use real 3-point attempt frequency and skill to drive tendency
     const freqFactor = Math.min(carrier.threeAttempts / 3, 1); // normalize ~3+ attempts to 1.0
@@ -510,7 +512,11 @@ function takeShot(state, shooter, isOpen) {
   let prob;
 
   if (d < 60) {
-    prob = 0.45 + shooter.insideScoring * 0.04; // layup/dunk
+    // Close shots: blend real 2P% with inside scoring for layup context
+    const realPct = shooter.twoPct || 0.45;
+    const insideAdj = (shooter.insideScoring - 6) * 0.03;
+    prob = realPct * 0.6 + insideAdj + (isOpen ? 0.08 : -0.05);
+    prob = Math.max(0.05, Math.min(prob, 0.7));
   } else if (threePtr) {
     // Use real 3P% as the base, blend with skill rating for context (open vs. contested)
     const realPct = shooter.threePct || 0;
@@ -518,7 +524,11 @@ function takeShot(state, shooter, isOpen) {
     prob = realPct * 0.75 + skillAdj + (isOpen ? 0.06 : -0.04);
     prob = Math.max(0.03, Math.min(prob, 0.55));
   } else {
-    prob = 0.25 + shooter.shooting * 0.04;
+    // Mid-range 2s: use real 2P% as base, blend with shooting skill
+    const realPct = shooter.twoPct || 0.45;
+    const skillAdj = (shooter.shooting - 6) * 0.02;
+    prob = realPct * 0.55 + skillAdj + (isOpen ? 0.06 : -0.05);
+    prob = Math.max(0.05, Math.min(prob, 0.6));
   }
 
   state.ball.shotResult = {
