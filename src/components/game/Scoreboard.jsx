@@ -13,20 +13,25 @@ export default function Scoreboard({ gameState }) {
   const teamFouls = (team) =>
     gameState.players.filter(p => p.team === team).reduce((sum, p) => sum + (p.fouls || 0), 0);
 
+  const t1 = gameState.teamKeys.team1;
+  const t2 = gameState.teamKeys.team2;
+  const c1 = TEAM_COLORS[t1];
+  const c2 = TEAM_COLORS[t2];
+
   return (
     <div className="flex items-center justify-between bg-neutral-900 text-white rounded-xl px-4 py-3 shadow-lg border border-neutral-700">
-      {/* Lakers */}
+      {/* Team 1 (Lakers) */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold"
-             style={{ backgroundColor: TEAM_COLORS.lakers.primary, color: TEAM_COLORS.lakers.secondary }}>
-          LAL
+             style={{ backgroundColor: c1.primary, color: c1.secondary }}>
+          {c1.abbr}
         </div>
         <div>
-          <div className="text-xs text-neutral-400 uppercase tracking-wider">Lakers</div>
-          <div className="text-2xl font-bold tabular-nums" style={{ color: TEAM_COLORS.lakers.secondary }}>
-            {gameState.score.lakers}
+          <div className="text-xs text-neutral-400 uppercase tracking-wider">{c1.name}</div>
+          <div className="text-2xl font-bold tabular-nums" style={{ color: c1.secondary }}>
+            {gameState.score[t1]}
           </div>
-          <div className="text-[9px] text-neutral-500">Team Fouls: {teamFouls('lakers')}</div>
+          <div className="text-[9px] text-neutral-500">Team Fouls: {teamFouls(t1)}</div>
         </div>
       </div>
 
@@ -44,18 +49,18 @@ export default function Scoreboard({ gameState }) {
         </div>
       </div>
 
-      {/* Celtics */}
+      {/* Team 2 (Opponent) */}
       <div className="flex items-center gap-3">
         <div>
-          <div className="text-xs text-neutral-400 uppercase tracking-wider text-right">Celtics</div>
-          <div className="text-2xl font-bold tabular-nums text-right" style={{ color: TEAM_COLORS.celtics.primary }}>
-            {gameState.score.celtics}
+          <div className="text-xs text-neutral-400 uppercase tracking-wider text-right">{c2.name}</div>
+          <div className="text-2xl font-bold tabular-nums text-right" style={{ color: c2.primary }}>
+            {gameState.score[t2]}
           </div>
-          <div className="text-[9px] text-neutral-500 text-right">Team Fouls: {teamFouls('celtics')}</div>
+          <div className="text-[9px] text-neutral-500 text-right">Team Fouls: {teamFouls(t2)}</div>
         </div>
         <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold"
-             style={{ backgroundColor: TEAM_COLORS.celtics.primary, color: TEAM_COLORS.celtics.secondary }}>
-          BOS
+             style={{ backgroundColor: c2.primary, color: c2.secondary }}>
+          {c2.abbr}
         </div>
       </div>
     </div>

@@ -57,7 +57,7 @@ const CUT_TARGETS_LEFT = [
   { x: 90, y: 350 },
 ];
 
-export function createGameState(lakersRoster, celticsRoster) {
+export function createGameState(lakersRoster, opponentRoster, opponentKey = 'celtics') {
   const players = [];
 
   // Lakers start on the right side (offense first)
@@ -85,13 +85,13 @@ export function createGameState(lakersRoster, celticsRoster) {
     });
   });
 
-  // Celtics on left side (defense first)
-  celticsRoster.forEach((p, i) => {
+  // Opponent on left side (defense first)
+  opponentRoster.forEach((p, i) => {
     const offSpot = OFFENSE_SPOTS_RIGHT[i]; // match up against laker
     players.push({
       ...p,
-      team: 'celtics',
-      id: `celtics_${i}`,
+      team: opponentKey,
+      id: `${opponentKey}_${i}`,
       x: offSpot.x + 30, // slightly off their man
       y: offSpot.y,
       targetX: offSpot.x + 30,
@@ -129,11 +129,12 @@ export function createGameState(lakersRoster, celticsRoster) {
       isDunk: false,
       shotResult: null,
     },
-    score: { lakers: 0, celtics: 0 },
+    score: { lakers: 0, [opponentKey]: 0 },
     gameClock: 720, // 12 min quarter in seconds
     shotClock: 24,
     quarter: 1,
     possession: 'lakers', // who has offense
+    teamKeys: { team1: 'lakers', team2: opponentKey },
     attackingRight: true, // lakers attack right basket
     lastUpdate: Date.now(),
     passTimer: 0,
@@ -198,8 +199,8 @@ export function updateGame(state, dt) {
       state.gameClock = 720;
       state.shotClock = 24;
       // Swap possession each quarter
-      state.possession = state.possession === 'lakers' ? 'celtics' : 'lakers';
-      state.attackingRight = state.possession === 'lakers';
+      state.possession = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
+      state.attackingRight = state.possession === state.teamKeys.team1;
       resetPositions(state);
     } else {
       state.isPaused = true;
@@ -757,8 +758,8 @@ function updateFreeThrows(state, dt) {
 }
 
 function switchPossession(state) {
-  state.possession = state.possession === 'lakers' ? 'celtics' : 'lakers';
-  state.attackingRight = state.possession === 'lakers';
+  state.possession = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
+  state.attackingRight = state.possession === state.teamKeys.team1;
   state.shotClock = 24;
   state.turnoverCooldown = 1000;
   resetPositions(state);

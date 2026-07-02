@@ -267,6 +267,140 @@ export const CELTICS_ROSTER = [
   },
 ];
 
+// 1986-87 Los Angeles Clippers roster — worst team in the NBA (12-70)
+export const CLIPPERS_ROSTER = [
+  {
+    name: "Larry Drew",
+    number: 2,
+    position: "PG",
+    height: 73, // 6'1"
+    speed: 7,
+    driveTendency: 5, // average slasher
+    dunkTendency: 1, // too short to dunk
+    shooting: 5,
+    passing: 7,
+    defense: 4,
+    rebounding: 3,
+    insideScoring: 5,
+    threePoint: 3,
+    threeAttempts: 1.2,   // 3PA per game (1986-87)
+    threePct: 0.167,     // 3P% (1986-87)
+    twoAttempts: 10.2,    // 2PA per game (1986-87)
+    twoPct: 0.463,       // 2P% (1986-87)
+    offensiveRebRate: 0.015,
+    defensiveRebRate: 0.060,
+    stealRate: 0.020,
+    turnoverRate: 0.150, // turnover-prone
+    ftAttempts: 2.5,
+    ftPct: 0.800,
+    blockRate: 0.002,
+  },
+  {
+    name: "Mike Woodson",
+    number: 42,
+    position: "SG",
+    height: 77, // 6'5"
+    speed: 6,
+    driveTendency: 4, // jump shooter first
+    dunkTendency: 2, // rare dunker
+    shooting: 7,
+    passing: 4,
+    defense: 3, // terrible defensive team (-11.0 SRS)
+    rebounding: 3,
+    insideScoring: 5,
+    threePoint: 5,
+    threeAttempts: 1.7,
+    threePct: 0.276,
+    twoAttempts: 13.6,
+    twoPct: 0.457,
+    offensiveRebRate: 0.015,
+    defensiveRebRate: 0.060,
+    stealRate: 0.018,
+    turnoverRate: 0.110,
+    ftAttempts: 2.75,
+    ftPct: 0.800,
+    blockRate: 0.003,
+  },
+  {
+    name: "Rory White",
+    number: 22,
+    position: "SF",
+    height: 80, // 6'8"
+    speed: 6,
+    driveTendency: 3, // role player, spot-up
+    dunkTendency: 2,
+    shooting: 5,
+    passing: 3,
+    defense: 4,
+    rebounding: 4,
+    insideScoring: 5,
+    threePoint: 4,
+    threeAttempts: 0.8,
+    threePct: 0.250,
+    twoAttempts: 7.7,
+    twoPct: 0.480,
+    offensiveRebRate: 0.025,
+    defensiveRebRate: 0.060,
+    stealRate: 0.015,
+    turnoverRate: 0.100,
+    ftAttempts: 1.3,
+    ftPct: 0.770,
+    blockRate: 0.005,
+  },
+  {
+    name: "Michael Cage",
+    number: 44,
+    position: "PF",
+    height: 81, // 6'9"
+    speed: 7,
+    driveTendency: 3, // inside player
+    dunkTendency: 6, // athletic, put-back dunks
+    shooting: 5,
+    passing: 3,
+    defense: 5,
+    rebounding: 9, // 11.5 RPG — elite rebounder
+    insideScoring: 7, // .521 FG% — efficient inside
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 12.1,
+    twoPct: 0.521,
+    offensiveRebRate: 0.090,
+    defensiveRebRate: 0.200,
+    stealRate: 0.012,
+    turnoverRate: 0.100,
+    ftAttempts: 4.5,
+    ftPct: 0.690, // poor FT shooter
+    blockRate: 0.015,
+  },
+  {
+    name: "Benoit Benjamin",
+    number: 0,
+    position: "C",
+    height: 84, // 7'0"
+    speed: 6,
+    driveTendency: 2, // post player
+    dunkTendency: 4, // some dunks
+    shooting: 5, // .449 FG% — below average for a center
+    passing: 3,
+    defense: 5, // decent shot blocker on a bad team
+    rebounding: 7, // 8.5 RPG
+    insideScoring: 6,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 9.9,
+    twoPct: 0.449,
+    offensiveRebRate: 0.061,
+    defensiveRebRate: 0.241,
+    stealRate: 0.010,
+    turnoverRate: 0.120,
+    ftAttempts: 3.65,
+    ftPct: 0.600, // poor FT shooter
+    blockRate: 0.040, // ~2.5 BPG
+  },
+];
+
 // Court dimensions (scaled for canvas)
 export const COURT = {
   width: 940,   // 94 feet * 10
@@ -288,11 +422,20 @@ export const TEAM_COLORS = {
     secondary: "#FDB927",
     text: "#FDB927",
     name: "Lakers",
+    abbr: "LAL",
   },
   celtics: {
     primary: "#007A33",
     secondary: "#FFFFFF",
     text: "#FFFFFF",
     name: "Celtics",
+    abbr: "BOS",
+  },
+  clippers: {
+    primary: "#006BB6",
+    secondary: "#F5222D",
+    text: "#FFFFFF",
+    name: "Clippers",
+    abbr: "LAC",
   },
 };

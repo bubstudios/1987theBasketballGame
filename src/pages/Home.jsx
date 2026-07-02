@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { LAKERS_ROSTER, CELTICS_ROSTER } from '@/lib/gameData';
+import { LAKERS_ROSTER, CELTICS_ROSTER, CLIPPERS_ROSTER, TEAM_COLORS } from '@/lib/gameData';
 import { createGameState, updateGame } from '@/lib/gameEngine';
 import { useCourtSound } from '@/hooks/useCourtSound';
 import CourtCanvas from '@/components/game/CourtCanvas';
@@ -11,19 +11,24 @@ import RosterPanel from '@/components/game/RosterPanel';
 
 export default function Home() {
   const [gameState, setGameState] = useState(null);
+  const [opponent, setOpponent] = useState('celtics');
   const gameRef = useRef(null);
   const rafRef = useRef(null);
   const lastTimeRef = useRef(null);
   const prevVelRef = useRef({});
   const { playSqueak, muted, toggleMute } = useCourtSound();
 
+  const opponentRoster = opponent === 'celtics' ? CELTICS_ROSTER : CLIPPERS_ROSTER;
+  const oppColors = TEAM_COLORS[opponent];
+
   const initGame = useCallback(() => {
-    const state = createGameState(LAKERS_ROSTER, CELTICS_ROSTER);
+    const oppRoster = opponent === 'celtics' ? CELTICS_ROSTER : CLIPPERS_ROSTER;
+    const state = createGameState(LAKERS_ROSTER, oppRoster, opponent);
     gameRef.current = state;
     prevVelRef.current = {};
     setGameState({ ...state });
     lastTimeRef.current = null;
-  }, []);
+  }, [opponent]);
 
   useEffect(() => {
     initGame();
@@ -106,9 +111,27 @@ export default function Home() {
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
           <span style={{ color: '#FDB927' }}>Lakers</span>
           <span className="text-neutral-500 mx-2">vs</span>
-          <span style={{ color: '#007A33' }}>Celtics</span>
+          <span style={{ color: oppColors.primary }}>{oppColors.name}</span>
         </h1>
         <p className="text-xs text-neutral-500 mt-1 uppercase tracking-widest">1986-87 Season · NBA Sim</p>
+        <div className="flex items-center justify-center gap-2 mt-3">
+          <button
+            onClick={() => setOpponent('celtics')}
+            className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+              opponent === 'celtics' ? 'bg-green-700 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
+            }`}
+          >
+            Celtics
+          </button>
+          <button
+            onClick={() => setOpponent('clippers')}
+            className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+              opponent === 'clippers' ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
+            }`}
+          >
+            Clippers
+          </button>
+        </div>
         <div className="flex items-center justify-center gap-3 mt-2">
           <Link
             to="/lakers-offense"
@@ -148,10 +171,10 @@ export default function Home() {
           <div className="text-center mb-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
             <div className="text-lg font-bold text-amber-400">Final Score</div>
             <div className="text-sm text-neutral-300">
-              {gameState.score.lakers > gameState.score.celtics
+              {gameState.score.lakers > gameState.score[opponent]
                 ? 'Lakers Win!'
-                : gameState.score.celtics > gameState.score.lakers
-                ? 'Celtics Win!'
+                : gameState.score[opponent] > gameState.score.lakers
+                ? `${oppColors.name} Win!`
                 : 'Tied Game!'}
             </div>
           </div>
@@ -173,8 +196,8 @@ export default function Home() {
                 Lakers (Offense)
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#007A33', border: '1.5px solid #FFFFFF' }} />
-                Celtics (Defense)
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: oppColors.primary, border: `1.5px solid ${oppColors.secondary}` }} />
+                {oppColors.name} (Defense)
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-full bg-orange-500" />
@@ -185,7 +208,7 @@ export default function Home() {
 
           {/* Right roster */}
           <div className="hidden lg:block">
-            <RosterPanel roster={CELTICS_ROSTER} teamKey="celtics" gameState={gameState} />
+            <RosterPanel roster={opponentRoster} teamKey={opponent} gameState={gameState} />
           </div>
         </div>
 
@@ -197,7 +220,7 @@ export default function Home() {
         {/* Mobile Rosters */}
         <div className="lg:hidden mt-4 grid grid-cols-2 gap-3">
           <RosterPanel roster={LAKERS_ROSTER} teamKey="lakers" gameState={gameState} />
-          <RosterPanel roster={CELTICS_ROSTER} teamKey="celtics" gameState={gameState} />
+          <RosterPanel roster={opponentRoster} teamKey={opponent} gameState={gameState} />
         </div>
       </div>
     </div>
