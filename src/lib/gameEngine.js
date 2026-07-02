@@ -25,19 +25,19 @@ function randomInRange(min, max) {
 
 // Motion offense positions (relative to basket, right side)
 const OFFENSE_SPOTS_RIGHT = [
-  { x: 780, y: 130 }, // wing top
-  { x: 780, y: 370 }, // wing bottom
-  { x: 870, y: 80 },  // corner top
-  { x: 870, y: 420 }, // corner bottom
-  { x: 830, y: 250 }, // high post
+  { x: 635, y: 250 }, // top of key 3-pointer (dist ~250)
+  { x: 780, y: 130 }, // wing top mid-range (dist ~159)
+  { x: 780, y: 370 }, // wing bottom mid-range (dist ~159)
+  { x: 635, y: 100 }, // wing 3 top (dist ~292)
+  { x: 830, y: 250 }, // high post (dist ~55)
 ];
 
 const OFFENSE_SPOTS_LEFT = [
-  { x: 160, y: 130 },
-  { x: 160, y: 370 },
-  { x: 70, y: 80 },
-  { x: 70, y: 420 },
-  { x: 110, y: 250 },
+  { x: 305, y: 250 }, // top of key 3-pointer (dist ~250)
+  { x: 160, y: 130 }, // wing top mid-range (dist ~159)
+  { x: 160, y: 370 }, // wing bottom mid-range (dist ~159)
+  { x: 305, y: 100 }, // wing 3 top (dist ~292)
+  { x: 110, y: 250 }, // high post (dist ~55)
 ];
 
 // Cutting lanes for motion offense
@@ -433,7 +433,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   } else if (threeZone && isOpen) {
     // Use real 3-point attempt frequency and skill to drive tendency
     const freqFactor = Math.min(carrier.threeAttempts / 3, 1); // normalize ~3+ attempts to 1.0
-    shootChance = 0.04 + carrier.threePoint * 0.025 + freqFactor * 0.12;
+    shootChance = 0.06 + carrier.threePoint * 0.03 + freqFactor * 0.14;
   }
 
   if (isOpen && !threeZone) {
