@@ -1,110 +1,128 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { COURT, TEAM_COLORS } from '@/lib/gameData';
 
-const SCALE = 1; // will be adjusted by canvas size
+// 2x zoom: only half the court width is visible at a time.
+// The camera smoothly pans horizontally to follow the ball.
+const ZOOM = 2;
+const VISIBLE_WIDTH = COURT.width / ZOOM; // half-court width visible
+const PAN_SMOOTH = 0.12; // camera follow easing per frame
 
 function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
-function drawCourt(ctx, w, h) {
-  const sx = w / COURT.width;
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+// Shared court→screen transform: screen = court * scale + offset
+function buildTransform(w, h, cameraX) {
+  const sx = w / VISIBLE_WIDTH;
   const sy = h / COURT.height;
+  // camera center (cameraX) maps to canvas center (w/2)
+  const ox = (w / 2) - cameraX * sx;
+  const oy = 0;
+  return { sx, sy, ox, oy };
+}
+
+function sx_of(tf, courtX) { return courtX * tf.sx + tf.ox; }
+function sy_of(tf, courtY) { return courtY * tf.sy + tf.oy; }
+
+function drawCourt(ctx, tf) {
+  const { sx, sy, ox, oy } = tf;
+  const courtW = COURT.width * sx;
+  const courtH = COURT.height * sy;
+  const midY = (COURT.height / 2) * sy + oy;
 
   // Court floor
   ctx.fillStyle = '#C4843F';
-  ctx.fillRect(0, 0, w, h);
+  ctx.fillRect(ox, oy, courtW, courtH);
 
   // Court lines
   ctx.strokeStyle = '#FFFFFF';
   ctx.lineWidth = 2;
 
   // Boundary
-  ctx.strokeRect(2, 2, w - 4, h - 4);
+  ctx.strokeRect(ox + 2, oy + 2, courtW - 4, courtH - 4);
 
   // Half court line
+  const halfX = sx_of(tf, COURT.width / 2);
   ctx.beginPath();
-  ctx.moveTo(w / 2, 0);
-  ctx.lineTo(w / 2, h);
+  ctx.moveTo(halfX, oy);
+  ctx.lineTo(halfX, oy + courtH);
   ctx.stroke();
 
   // Center circle
   ctx.beginPath();
-  ctx.arc(w / 2, h / 2, COURT.centerCircleRadius * sx, 0, Math.PI * 2);
+  ctx.arc(halfX, midY, COURT.centerCircleRadius * sx, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Left key
+  // Keys
   const keyW = COURT.keyWidth * sx;
   const keyH = COURT.keyHeight * sy;
-  ctx.strokeRect(0, h / 2 - keyH / 2, keyW, keyH);
-
-  // Right key
-  ctx.strokeRect(w - keyW, h / 2 - keyH / 2, keyW, keyH);
+  ctx.strokeRect(ox, midY - keyH / 2, keyW, keyH);
+  ctx.strokeRect(ox + courtW - keyW, midY - keyH / 2, keyW, keyH);
 
   // Free throw circles
   ctx.beginPath();
-  ctx.arc(keyW, h / 2, COURT.ftCircleRadius * sx, 0, Math.PI * 2);
+  ctx.arc(sx_of(tf, COURT.keyWidth), midY, COURT.ftCircleRadius * sx, 0, Math.PI * 2);
   ctx.stroke();
-
   ctx.beginPath();
-  ctx.arc(w - keyW, h / 2, COURT.ftCircleRadius * sx, 0, Math.PI * 2);
+  ctx.arc(sx_of(tf, COURT.width - COURT.keyWidth), midY, COURT.ftCircleRadius * sx, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Three-point arcs (simplified)
+  // Three-point arcs
   const threeR = COURT.threePointRadius * sx;
-  const rimLeft = COURT.rimX * sx;
-  const rimRight = w - COURT.rimX * sx;
+  const rimLeftX = sx_of(tf, COURT.rimX);
+  const rimRightX = sx_of(tf, COURT.width - COURT.rimX);
 
-  // Left three-point
   ctx.beginPath();
-  ctx.moveTo(0, h / 2 - threeR);
-  ctx.lineTo(rimLeft * 0.6, h / 2 - threeR);
-  ctx.arc(rimLeft, h / 2, threeR, -Math.PI / 2, Math.PI / 2, false);
-  ctx.lineTo(0, h / 2 + threeR);
+  ctx.moveTo(ox, midY - threeR);
+  ctx.lineTo(sx_of(tf, COURT.rimX * 0.6), midY - threeR);
+  ctx.arc(rimLeftX, midY, threeR, -Math.PI / 2, Math.PI / 2, false);
+  ctx.lineTo(ox, midY + threeR);
   ctx.stroke();
 
-  // Right three-point
   ctx.beginPath();
-  ctx.moveTo(w, h / 2 - threeR);
-  ctx.lineTo(w - rimLeft * 0.6, h / 2 - threeR);
-  ctx.arc(rimRight, h / 2, threeR, -Math.PI / 2, Math.PI / 2, true);
-  ctx.lineTo(w, h / 2 + threeR);
+  const rightEdge = ox + courtW;
+  ctx.moveTo(rightEdge, midY - threeR);
+  ctx.lineTo(sx_of(tf, COURT.width - COURT.rimX * 0.6), midY - threeR);
+  ctx.arc(rimRightX, midY, threeR, -Math.PI / 2, Math.PI / 2, true);
+  ctx.lineTo(rightEdge, midY + threeR);
   ctx.stroke();
 
   // Backboards and rims
   ctx.lineWidth = 3;
-  // Left
   ctx.strokeStyle = '#888';
   ctx.beginPath();
-  ctx.moveTo(rimLeft - 5, h / 2 - 15);
-  ctx.lineTo(rimLeft - 5, h / 2 + 15);
+  ctx.moveTo(rimLeftX - 5, midY - 15);
+  ctx.lineTo(rimLeftX - 5, midY + 15);
   ctx.stroke();
   ctx.strokeStyle = '#FF6600';
   ctx.beginPath();
-  ctx.arc(rimLeft, h / 2, 8, 0, Math.PI * 2);
+  ctx.arc(rimLeftX, midY, 8, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Right
   ctx.strokeStyle = '#888';
   ctx.beginPath();
-  ctx.moveTo(w - rimLeft + 5, h / 2 - 15);
-  ctx.lineTo(w - rimLeft + 5, h / 2 + 15);
+  ctx.moveTo(rimRightX + 5, midY - 15);
+  ctx.lineTo(rimRightX + 5, midY + 15);
   ctx.stroke();
   ctx.strokeStyle = '#FF6600';
   ctx.beginPath();
-  ctx.arc(w - rimLeft, h / 2, 8, 0, Math.PI * 2);
+  ctx.arc(rimRightX, midY, 8, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Court markings - paint area color (subtle)
+  // Paint area tint
   ctx.fillStyle = 'rgba(139, 90, 43, 0.3)';
-  ctx.fillRect(0, h / 2 - keyH / 2, keyW, keyH);
-  ctx.fillRect(w - keyW, h / 2 - keyH / 2, keyW, keyH);
+  ctx.fillRect(ox, midY - keyH / 2, keyW, keyH);
+  ctx.fillRect(ox + courtW - keyW, midY - keyH / 2, keyW, keyH);
 }
 
-function drawBenchPlayer(ctx, player, w, h) {
-  const sx = w / COURT.width;
-  const x = player.x * sx;
-  const y = player.y * (h / COURT.height);
+function drawBenchPlayer(ctx, player, tf) {
+  const { sx } = tf;
+  const x = sx_of(tf, player.x);
+  const y = sy_of(tf, player.y);
   const r = 8 * sx;
   const colors = TEAM_COLORS[player.team];
 
@@ -124,11 +142,10 @@ function drawBenchPlayer(ctx, player, w, h) {
   ctx.globalAlpha = 1;
 }
 
-function drawPlayer(ctx, player, w, h, isBallCarrier) {
-  const sx = w / COURT.width;
-  const sy = h / COURT.height;
-  const x = player.x * sx;
-  const y = player.y * sy;
+function drawPlayer(ctx, player, tf, isBallCarrier) {
+  const { sx } = tf;
+  const x = sx_of(tf, player.x);
+  const y = sy_of(tf, player.y);
   const r = player.radius * sx;
 
   const colors = TEAM_COLORS[player.team];
@@ -184,11 +201,10 @@ function drawPlayer(ctx, player, w, h, isBallCarrier) {
   ctx.fillText(player.name.split(' ').pop(), x, y - r - 8);
 }
 
-function drawBall(ctx, ball, w, h) {
-  const sx = w / COURT.width;
-  const sy = h / COURT.height;
-  const x = ball.x * sx;
-  const y = ball.y * sy;
+function drawBall(ctx, ball, tf) {
+  const { sx, sy } = tf;
+  const x = sx_of(tf, ball.x);
+  const y = sy_of(tf, ball.y);
   const arcOffset = ball.arcHeight ? ball.arcHeight * sy : 0;
 
   if (ball.carrier) return; // ball drawn with player
@@ -208,8 +224,8 @@ function drawBall(ctx, ball, w, h) {
     for (let i = 1; i <= 8; i++) {
       const trailT = Math.max(0, t - i * 0.05);
       if (trailT <= 0) continue;
-      const tx = lerp(ball.startX, ball.targetX, trailT) * sx;
-      const ty = lerp(ball.startY, ball.targetY, trailT) * sy;
+      const tx = sx_of(tf, lerp(ball.startX, ball.targetX, trailT));
+      const ty = sy_of(tf, lerp(ball.startY, ball.targetY, trailT));
       const alpha = (1 - i / 8) * 0.5;
       ctx.fillStyle = `rgba(180, 140, 255, ${alpha})`;
       ctx.beginPath();
@@ -270,12 +286,11 @@ function drawBall(ctx, ball, w, h) {
     const t = Math.min(elapsed / ball.flightDuration, 1);
     const ballY = y - arcOffset;
 
-    // Motion trail — speed lines behind the ball
     for (let i = 1; i <= 5; i++) {
       const trailT = Math.max(0, t - i * 0.06);
       if (trailT <= 0) continue;
-      const tx = lerp(ball.startX, ball.targetX, trailT) * sx;
-      const ty = lerp(ball.startY, ball.targetY, trailT) * sy;
+      const tx = sx_of(tf, lerp(ball.startX, ball.targetX, trailT));
+      const ty = sy_of(tf, lerp(ball.startY, ball.targetY, trailT));
       const alpha = (1 - i / 5) * 0.4;
       ctx.strokeStyle = `rgba(255, 140, 0, ${alpha})`;
       ctx.lineWidth = 3 - i * 0.4;
@@ -285,11 +300,10 @@ function drawBall(ctx, ball, w, h) {
       ctx.stroke();
     }
 
-    // Rim flash + impact lines as ball approaches the basket
     if (t > 0.7) {
       const flashAlpha = (t - 0.7) / 0.3;
-      const rimX = ball.targetX * sx;
-      const rimY = ball.targetY * sy;
+      const rimX = sx_of(tf, ball.targetX);
+      const rimY = sy_of(tf, ball.targetY);
 
       ctx.fillStyle = `rgba(255, 255, 200, ${flashAlpha * 0.5})`;
       ctx.beginPath();
@@ -310,7 +324,6 @@ function drawBall(ctx, ball, w, h) {
       }
     }
 
-    // "SLAM!" label
     ctx.fillStyle = 'rgba(255, 80, 0, 0.95)';
     ctx.font = 'bold 13px sans-serif';
     ctx.textAlign = 'center';
@@ -321,7 +334,7 @@ function drawBall(ctx, ball, w, h) {
 
 export default function CourtCanvas({ gameState }) {
   const canvasRef = useRef(null);
-  const animRef = useRef(null);
+  const cameraRef = useRef(COURT.width / 2); // start centered
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -333,23 +346,31 @@ export default function CourtCanvas({ gameState }) {
 
     ctx.clearRect(0, 0, w, h);
 
+    // Smoothly pan the camera toward the ball
+    const ballX = gameState.ball.x;
+    const half = VISIBLE_WIDTH / 2;
+    const target = clamp(ballX, half, COURT.width - half);
+    cameraRef.current = lerp(cameraRef.current, target, PAN_SMOOTH);
+
+    const tf = buildTransform(w, h, cameraRef.current);
+
     // Draw court
-    drawCourt(ctx, w, h);
+    drawCourt(ctx, tf);
 
     // Draw bench players (faded, along sideline)
-    gameState.players.filter(p => !p.onCourt).forEach(p => drawBenchPlayer(ctx, p, w, h));
+    gameState.players.filter(p => !p.onCourt).forEach(p => drawBenchPlayer(ctx, p, tf));
 
     // Draw on-court players (defense first, then offense on top)
     const defPlayers = gameState.players.filter(p => p.team !== gameState.possession && p.onCourt);
     const offPlayers = gameState.players.filter(p => p.team === gameState.possession && p.onCourt);
 
-    defPlayers.forEach(p => drawPlayer(ctx, p, w, h, false));
-    offPlayers.forEach(p => drawPlayer(ctx, p, w, h, p.id === gameState.ball.carrier));
+    defPlayers.forEach(p => drawPlayer(ctx, p, tf, false));
+    offPlayers.forEach(p => drawPlayer(ctx, p, tf, p.id === gameState.ball.carrier));
 
     // Draw ball
-    drawBall(ctx, gameState.ball, w, h);
+    drawBall(ctx, gameState.ball, tf);
 
-    // Shot result overlay
+    // --- Overlays (screen space, not panned) ---
     if (gameState.shotResultDisplay) {
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
       ctx.fillRect(w / 2 - 180, 15, 360, 36);
@@ -360,7 +381,6 @@ export default function CourtCanvas({ gameState }) {
       ctx.fillText(gameState.shotResultDisplay, w / 2, 33);
     }
 
-    // Fast break indicator
     if (gameState.fastBreak && gameState.fastBreak.active) {
       ctx.fillStyle = 'rgba(255, 200, 0, 0.85)';
       ctx.font = 'bold 13px sans-serif';
@@ -369,7 +389,6 @@ export default function CourtCanvas({ gameState }) {
       ctx.fillText('⚡ FAST BREAK', w / 2, h - 18);
     }
 
-    // Timeout overlay — huddle break with coach's message
     if (gameState.timeoutState) {
       const t = gameState.timeoutState;
       const progress = 1 - (t.timer / t.duration);
@@ -398,7 +417,6 @@ export default function CourtCanvas({ gameState }) {
       const msg = t.message.length > 62 ? t.message.slice(0, 59) + '…' : t.message;
       ctx.fillText(msg, px, py + 2);
 
-      // Progress bar
       ctx.fillStyle = 'rgba(255,255,255,0.18)';
       ctx.fillRect(px - 150, py + 28, 300, 6);
       ctx.fillStyle = accent;
@@ -417,7 +435,8 @@ export default function CourtCanvas({ gameState }) {
     const resize = () => {
       const container = canvas.parentElement;
       const maxW = container.clientWidth;
-      const aspect = COURT.width / COURT.height;
+      // Half-court aspect: (width/2) : height  →  uniform 2x zoom, full height visible
+      const aspect = VISIBLE_WIDTH / COURT.height;
       canvas.width = Math.min(maxW, 940);
       canvas.height = canvas.width / aspect;
     };
