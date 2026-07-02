@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { LAKERS_ROSTER, CELTICS_ROSTER, CLIPPERS_ROSTER, TEAM_COLORS } from '@/lib/gameData';
+import { LAKERS_ROSTER, CELTICS_ROSTER, CLIPPERS_ROSTER, LAKERS_BENCH, CELTICS_BENCH, CLIPPERS_BENCH, TEAM_COLORS } from '@/lib/gameData';
 import { createGameState, updateGame } from '@/lib/gameEngine';
 import { useCourtSound } from '@/hooks/useCourtSound';
 import CourtCanvas from '@/components/game/CourtCanvas';
@@ -22,6 +22,7 @@ export default function Home() {
 
   const opponentRoster = opponent === 'celtics' ? CELTICS_ROSTER : CLIPPERS_ROSTER;
   const oppColors = TEAM_COLORS[opponent];
+  const oppBench = opponent === 'celtics' ? CELTICS_BENCH : CLIPPERS_BENCH;
 
   const initGame = useCallback(() => {
     const oppRoster = opponent === 'celtics' ? CELTICS_ROSTER : CLIPPERS_ROSTER;
@@ -186,7 +187,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* Left roster */}
           <div className="hidden lg:block">
-            <RosterPanel roster={LAKERS_ROSTER} teamKey="lakers" gameState={gameState} />
+            <RosterPanel roster={LAKERS_ROSTER} bench={LAKERS_BENCH} teamKey="lakers" gameState={gameState} />
           </div>
 
           {/* Court */}
@@ -210,7 +211,7 @@ export default function Home() {
 
           {/* Right roster */}
           <div className="hidden lg:block">
-            <RosterPanel roster={opponentRoster} teamKey={opponent} gameState={gameState} />
+            <RosterPanel roster={opponentRoster} bench={oppBench} teamKey={opponent} gameState={gameState} />
           </div>
         </div>
 
@@ -231,8 +232,8 @@ export default function Home() {
 
         {/* Mobile Rosters */}
         <div className="lg:hidden mt-4 grid grid-cols-2 gap-3">
-          <RosterPanel roster={LAKERS_ROSTER} teamKey="lakers" gameState={gameState} />
-          <RosterPanel roster={opponentRoster} teamKey={opponent} gameState={gameState} />
+          <RosterPanel roster={LAKERS_ROSTER} bench={LAKERS_BENCH} teamKey="lakers" gameState={gameState} />
+          <RosterPanel roster={opponentRoster} bench={oppBench} teamKey={opponent} gameState={gameState} />
         </div>
       </div>
     </div>

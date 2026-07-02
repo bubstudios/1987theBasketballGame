@@ -1,6 +1,8 @@
 // 1986-87 Lakers and Celtics rosters with real attributes
 // Speed: 1-10 scale, Height in inches, Skills rated 1-10
 
+export { LAKERS_BENCH, CELTICS_BENCH, CLIPPERS_BENCH } from './benchData';
+
 export const LAKERS_ROSTER = [
   {
     name: "Magic Johnson",
