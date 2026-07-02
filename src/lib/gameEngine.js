@@ -442,6 +442,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   const isShortMid = distToBasket >= 80 && distToBasket < 150;
   const isMidRange = distToBasket >= 150 && distToBasket < 220;
   const threeZone = isThreePointer(carrier.x, carrier.y, state.attackingRight);
+  const isFastBreak = state.fastBreak && state.fastBreak.active;
 
   // Decide: shoot, drive, or pass
   let shootChance = 0;
@@ -476,7 +477,6 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     driveChance = 0.06 + (carrier.driveTendency || 5) * 0.04 + carrier.speed * 0.01;
   }
 
-  const isFastBreak = state.fastBreak && state.fastBreak.active;
   const roll = Math.random();
 
   if (roll < shootChance && (isFastBreak || state.shotClock < 20)) {
