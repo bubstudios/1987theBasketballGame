@@ -1,6 +1,8 @@
 // foulEngine.js — foul decision helpers, team foul/penalty tracking,
-// and rating-derived multipliers. Ratings are proxied from existing
-// player attributes (FTA/g, drive tendency, defense, block/steal rates).
+// and rating-derived multipliers. Uses the multi-dimensional discipline
+// rating and team foul-aggression tendency from the defensive system.
+
+import { TEAM_DEFENSE_TENDENCIES } from './defenseData';
 
 const PENALTY_THRESHOLD = 5; // 5th team foul of a quarter → penalty
 
@@ -22,13 +24,12 @@ export function foulDrawMult(player) {
   return clamp(0.82 + fta * 0.05 + (drive - 5) * 0.012, 0.7, 1.4);
 }
 
-// Defender discipline: better defense → fewer fouls; block/steal aggression → more
+// Defender discipline: high discipline rating → fewer fouls.
+// Team foul-aggression tendency scales the result (Lakers 103%, Celtics 94%).
 export function defenderDisciplineMult(defender) {
-  const def = defender.defense || 5;
-  const blk = defender.blockRate || 0.01;
-  const stl = defender.stealRate || 0.02;
-  const aggression = blk * 15 + stl * 15;
-  return clamp(def / 6 - aggression * 0.10, 0.55, 1.45);
+  const discipline = (defender.discipline || 50) / 99; // 0-1
+  const teamAggression = (TEAM_DEFENSE_TENDENCIES[defender.team] || {}).foulAggression || 1.0;
+  return clamp((1.3 - discipline * 0.6) * teamAggression, 0.55, 1.45);
 }
 
 export function fatigueFoulMult(fatigue) {

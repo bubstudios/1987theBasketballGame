@@ -1,0 +1,88 @@
+// defenseData.js — 1986-87 Lakers & Celtics multi-dimensional defensive ratings,
+// team defensive tendencies, and default matchup assignments.
+// All player ratings are out of 99.
+
+// Player defensive rating profiles keyed by name.
+// Fields: perimeterDef, postDef, helpDef, screenNav, stealDef, blockDef,
+//         dRebound, discipline, versatility, transitionDef
+export const LAKERS_DEFENSE = {
+  'Magic Johnson':       { perimeterDef: 82, postDef: 88, helpDef: 86, screenNav: 68, stealDef: 89, blockDef: 62, dRebound: 87, discipline: 79, versatility: 94, transitionDef: 82 },
+  'Byron Scott':          { perimeterDef: 86, postDef: 54, helpDef: 78, screenNav: 88, stealDef: 88, blockDef: 38, dRebound: 52, discipline: 82, versatility: 82, transitionDef: 86 },
+  'James Worthy':         { perimeterDef: 83, postDef: 77, helpDef: 87, screenNav: 78, stealDef: 83, blockDef: 76, dRebound: 75, discipline: 81, versatility: 90, transitionDef: 90 },
+  'A.C. Green':           { perimeterDef: 72, postDef: 86, helpDef: 86, screenNav: 72, stealDef: 72, blockDef: 75, dRebound: 94, discipline: 88, versatility: 85, transitionDef: 82 },
+  'Kareem Abdul-Jabbar':  { perimeterDef: 47, postDef: 86, helpDef: 88, screenNav: 42, stealDef: 47, blockDef: 90, dRebound: 85, discipline: 81, versatility: 58, transitionDef: 48 },
+  'Michael Cooper':       { perimeterDef: 99, postDef: 78, helpDef: 94, screenNav: 96, stealDef: 94, blockDef: 65, dRebound: 59, discipline: 94, versatility: 98, transitionDef: 86 },
+  'Mychal Thompson':      { perimeterDef: 53, postDef: 90, helpDef: 82, screenNav: 58, stealDef: 49, blockDef: 83, dRebound: 83, discipline: 78, versatility: 67, transitionDef: 60 },
+  'Kurt Rambis':          { perimeterDef: 50, postDef: 88, helpDef: 79, screenNav: 64, stealDef: 72, blockDef: 61, dRebound: 93, discipline: 74, versatility: 65, transitionDef: 80 },
+  'Billy Thompson':       { perimeterDef: 72, postDef: 72, helpDef: 77, screenNav: 70, stealDef: 67, blockDef: 74, dRebound: 76, discipline: 69, versatility: 78, transitionDef: 74 },
+  'Wes Matthews':         { perimeterDef: 77, postDef: 35, helpDef: 63, screenNav: 82, stealDef: 80, blockDef: 25, dRebound: 30, discipline: 68, versatility: 66, transitionDef: 78 },
+};
+
+export const CELTICS_DEFENSE = {
+  'Dennis Johnson':      { perimeterDef: 96, postDef: 82, helpDef: 92, screenNav: 90, stealDef: 88, blockDef: 55, dRebound: 65, discipline: 94, versatility: 94, transitionDef: 88 },
+  'Danny Ainge':         { perimeterDef: 82, postDef: 45, helpDef: 77, screenNav: 80, stealDef: 88, blockDef: 32, dRebound: 50, discipline: 77, versatility: 78, transitionDef: 80 },
+  'Larry Bird':          { perimeterDef: 79, postDef: 83, helpDef: 94, screenNav: 72, stealDef: 92, blockDef: 72, dRebound: 93, discipline: 91, versatility: 89, transitionDef: 76 },
+  'Kevin McHale':        { perimeterDef: 83, postDef: 97, helpDef: 98, screenNav: 75, stealDef: 62, blockDef: 96, dRebound: 92, discipline: 86, versatility: 96, transitionDef: 68 },
+  'Robert Parish':       { perimeterDef: 56, postDef: 93, helpDef: 92, screenNav: 52, stealDef: 66, blockDef: 94, dRebound: 96, discipline: 82, versatility: 68, transitionDef: 58 },
+  'Jerry Sichting':      { perimeterDef: 76, postDef: 31, helpDef: 69, screenNav: 78, stealDef: 74, blockDef: 20, dRebound: 27, discipline: 86, versatility: 62, transitionDef: 72 },
+  'Bill Walton':          { perimeterDef: 56, postDef: 91, helpDef: 97, screenNav: 56, stealDef: 65, blockDef: 91, dRebound: 91, discipline: 93, versatility: 77, transitionDef: 54 },
+  'Fred Roberts':        { perimeterDef: 60, postDef: 79, helpDef: 73, screenNav: 62, stealDef: 55, blockDef: 61, dRebound: 76, discipline: 75, versatility: 68, transitionDef: 64 },
+  'Darren Daye':         { perimeterDef: 70, postDef: 66, helpDef: 72, screenNav: 68, stealDef: 61, blockDef: 62, dRebound: 69, discipline: 66, versatility: 73, transitionDef: 68 },
+  'Greg Kite':            { perimeterDef: 31, postDef: 86, helpDef: 77, screenNav: 40, stealDef: 39, blockDef: 75, dRebound: 87, discipline: 58, versatility: 45, transitionDef: 45 },
+};
+
+// Team defensive tendency multipliers (1.0 = league baseline).
+// Lakers: active, opportunistic, gambling, fast-break-creating.
+// Celtics: structured, physical, disciplined, rim-protecting.
+export const TEAM_DEFENSE_TENDENCIES = {
+  lakers: {
+    stealAttemptFreq: 1.10,
+    passingLaneDenial: 1.10,
+    hardDoubleFreq: 0.95,
+    helpAtRim: 1.05,
+    fullSwitching: 0.85,
+    dropCoverageCenter: 1.15,
+    defRebEmphasis: 0.98,
+    foulAggression: 1.03,
+    halfcourtDiscipline: 1.0,
+  },
+  celtics: {
+    stealAttemptFreq: 0.92,
+    passingLaneDenial: 0.97,
+    hardDoubleFreq: 0.94,
+    helpAtRim: 1.15,
+    fullSwitching: 0.88,
+    dropCoverageCenter: 1.12,
+    defRebEmphasis: 1.05,
+    foulAggression: 0.94,
+    halfcourtDiscipline: 1.15,
+  },
+};
+
+// Default man-to-man matchups: defenseTeam → { offenseName: defenderName }
+export const DEFAULT_MATCHUPS = {
+  // Celtics defending Lakers
+  celtics: {
+    'Magic Johnson': 'Dennis Johnson',
+    'Byron Scott': 'Danny Ainge',
+    'James Worthy': 'Larry Bird',
+    'A.C. Green': 'Kevin McHale',
+    'Kareem Abdul-Jabbar': 'Robert Parish',
+  },
+  // Lakers defending Celtics
+  lakers: {
+    'Dennis Johnson': 'Magic Johnson',
+    'Danny Ainge': 'Byron Scott',
+    'Larry Bird': 'Michael Cooper',
+    'Kevin McHale': 'A.C. Green',
+    'Robert Parish': 'Kareem Abdul-Jabbar',
+  },
+};
+
+// Influence weights for the containment score (per spec: 55/20/15/10)
+export const SCHEME_WEIGHTS = {
+  primary: 0.55,
+  help: 0.20,
+  scheme: 0.15,
+  matchup: 0.10,
+};

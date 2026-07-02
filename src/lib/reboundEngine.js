@@ -1,4 +1,5 @@
 import { COURT } from './gameData';
+import { TEAM_DEFENSE_TENDENCIES } from './defenseData';
 
 // Rebounding system — two-stage:
 //   1. Decide whether the offense gets the rebound back (team-level).
@@ -68,6 +69,11 @@ export function determineOffensiveRebound(state, result, offensePlayers, defense
   // Shot type
   orbChance += SHOT_TYPE_ORB_MOD[result.type] ?? 0;
 
+  // Team defensive rebounding emphasis (Celtics crash the glass harder)
+  const defTeam = defensePlayers[0] ? defensePlayers[0].team : null;
+  const defRebEmphasis = defTeam ? ((TEAM_DEFENSE_TENDENCIES[defTeam] || {}).defRebEmphasis || 1.0) : 1.0;
+  orbChance -= (defRebEmphasis - 1) * 0.12;
+
   // Defensive "crash boards" play suppresses offensive rebounding
   if (crashBoards) orbChance -= 0.05;
 
@@ -122,6 +128,9 @@ export function selectRebounder(state, result, zone, team, isOffensive, defenseP
     const posMod = POSITION_WEIGHT[p.position] || 1.0;
     const prox = proximityMultiplier(dist(p, zone));
     let w = rate * posMod * prox;
+
+    // New dRebound rating boosts defensive rebounding (Parish, Green, Rambis)
+    if (!isOffensive) w *= 0.7 + ((p.dRebound || 50) / 99) * 0.6;
 
     w *= fatigueMultiplier(p.fatigue || 0);
 

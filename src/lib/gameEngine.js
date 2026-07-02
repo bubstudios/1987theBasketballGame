@@ -3,6 +3,7 @@ import { TIMEOUTS_PER_GAME, updateTimeout, checkAutoTimeout } from './timeoutEng
 import { determineOffensiveRebound, computeReboundZone, selectRebounder, decidePutback } from './reboundEngine';
 import { isInPenalty, applyTeamFoul, foulDrawMult, defenderDisciplineMult, fatigueFoulMult, pickFoulingDefender, intentionalFoulIntent } from './foulEngine';
 import { getTouchWeight, getScoringWeight, getTransitionController, recordCelticsPass, finalizeCelticsPossession } from './starEngine';
+import { mergeDefenseRatings, recomputeMatchups, getPrimaryDefender, getMatchupFor, evaluateContest, computeBlockChance, resolveBlockOutcome, computeStealChance, computeInterceptionChance, decideHelpCommit } from './defenseEngine';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -71,8 +72,9 @@ function randomInRange(min, max) {
 }
 
 // --- Shot contest grading (NBA tracking-style distance bands) ---
-// Court scale: 10 units = 1 foot. Contest level drives both the shot
-// make-probability (in takeShot) and CPU willingness to shoot (patience).
+// Contest levels are now computed by defenseEngine.evaluateContest, which
+// blends distance with the multi-dimensional defensive ratings. CONTEST_MOD
+// still maps each level to a make-probability adjustment.
 const CONTEST_MOD = {
   three: { wide_open: 0.03, open: 0.00, light_contest: -0.02, tight: -0.05, smothered: -0.09 },
   mid:   { wide_open: 0.05, open: 0.02, light_contest: -0.02, tight: -0.06, smothered: -0.11 },
@@ -80,25 +82,6 @@ const CONTEST_MOD = {
 };
 
 const DUNK_FLOOR = { wide_open: 0.92, open: 0.88, light_contest: 0.80, tight: 0.68, smothered: 0.55 };
-
-function gradeContest(distUnits) {
-  if (distUnits >= 55) return 'wide_open';    // 5.5+ ft
-  if (distUnits >= 40) return 'open';          // 4-5.5 ft
-  if (distUnits >= 28) return 'light_contest'; // 2.8-4 ft
-  if (distUnits >= 18) return 'tight';         // 1.8-2.8 ft
-  return 'smothered';                          // < 1.8 ft
-}
-
-// Defender quality — modest modifier (contest matters more than the name)
-function getDefenderQualityMod(defender, isAtRim) {
-  const defRating = defender.defense || 5;
-  let mod = 0;
-  if (defRating <= 3) mod = 0.01;
-  else if (defRating >= 9) mod = isAtRim ? -0.03 : -0.02;
-  else if (defRating >= 7) mod = isAtRim ? -0.02 : -0.01;
-  if (isAtRim && (defender.blockRate || 0) > 0.03) mod -= 0.02;
-  return mod;
-}
 
 // CPU patience: how willing the ball carrier is to launch given the contest
 // level and the shot clock. Half-court only — fast breaks take the first good
@@ -250,7 +233,10 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     });
   });
 
-  return {
+  mergeDefenseRatings(players.filter(p => p.team === 'lakers'), 'lakers');
+  mergeDefenseRatings(players.filter(p => p.team === opponentKey), opponentKey);
+
+  const state = {
     players,
     ball: {
       x: players[0].x,
@@ -316,7 +302,11 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
       birdTouchedThisPossession: false,
       birdTouchesThisGame: 0,
     },
+    defensiveMatchups: {},
+    helpCommitment: null,
   };
+  recomputeMatchups(state);
+  return state;
 }
 
 function getOffenseSpots(attackingRight) {
@@ -529,6 +519,32 @@ function updateBallFlight(state, dt) {
         return dist(p, { x: state.ball.targetX, y: state.ball.targetY }) < 30;
       });
       if (receiver && receiver.team === state.possession) {
+        // Passing-lane interception check (Lakers jump lanes more often)
+        const passer = state.players.find(p => p.id === state.ball.lastPasserId);
+        const defenseTeam = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
+        const defPlayers = getOnCourtPlayers(state, defenseTeam);
+        const intChance = computeInterceptionChance(state, passer || receiver, receiver, defPlayers);
+        if (intChance > 0 && Math.random() < intChance) {
+          let interceptor = null, id = Infinity;
+          defPlayers.forEach(d => {
+            const dd = dist(d, state.ball);
+            if (dd < id) { id = dd; interceptor = d; }
+          });
+          if (interceptor) {
+            interceptor.hasBall = true;
+            state.ball.carrier = interceptor.id;
+            state.ball.x = interceptor.x;
+            state.ball.y = interceptor.y;
+            if (passer) passer.stats.turnovers++;
+            interceptor.stats.steals++;
+            state.momentum[interceptor.team] += 2;
+            state.gameLog.unshift(`🏀 ${interceptor.name} intercepts ${passer ? passer.name : 'the pass'}!`);
+            state.turnoverCooldown = 2000;
+            switchPossession(state, interceptor);
+            state.ball.isShot = false;
+            return;
+          }
+        }
         state.ball.carrier = receiver.id;
         receiver.hasBall = true;
         state.ball.x = receiver.x;
@@ -730,14 +746,14 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
   }
 
   defensePlayers.forEach((defender, i) => {
-    const matchup = offensePlayers[i]; // man-to-man assignment
+    const matchup = getMatchupFor(state, defender) || offensePlayers[i];
     if (!matchup) return;
 
     const basket = getDefenseBasketPos(state.attackingRight);
 
     // Recovery factor: combines speed and defensive awareness (0.2 - 1.0)
-    // Faster, more aware defenders close out quicker and can help more
-    const defRating = defender.defense || 5;
+    // Uses the new perimeter/transition defensive ratings.
+    const defRating = ((defender.perimeterDef || 50) / 99) * 9 + 1;
     const spdRating = defender.speed || 5;
     const defFatigue = 1 - (defender.fatigue || 0) / 100 * 0.2;
     const recoveryFactor = ((spdRating + defRating) / 20) * defFatigue;
@@ -881,7 +897,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     return dd < closest.dist ? { player: d, dist: dd } : closest;
   }, { player: null, dist: Infinity });
 
-  const contestLevel = gradeContest(nearestDef.dist);
+  const { level: contestLevel } = evaluateContest(state, carrier, nearestDef, defenders, distToBasket, isFastBreak);
   const isOpen = contestLevel === 'wide_open' || contestLevel === 'open';
   const isVeryClose = distToBasket < 80;
   const isShortMid = distToBasket >= 80 && distToBasket < 150;
@@ -997,6 +1013,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     // Drive to basket — fouls are resolved before the drive resolves
     const fouled = checkDriveFoul(state, carrier, nearestDef, defenders, isFastBreak);
     if (!fouled) {
+      decideHelpCommit(state, carrier, nearestDef.player, defenders, distToBasket);
       carrier.targetX = lerp(carrier.x, basket.x, 0.5);
       carrier.targetY = lerp(carrier.y, basket.y, 0.5);
       state.actionTimer = randomInRange(400, 800);
@@ -1035,6 +1052,9 @@ function findBestPassTarget(state, carrier, teammates, defenders, basket) {
 
     // Score: openness * role weight dominates; mild proximity preference
     let score = openness * 2.5 * starW - distBasket * 0.15 + passingSkill * 5;
+
+    // Help commitment opens up the helper's man for a kick-out
+    if (state.helpCommitment && state.helpCommitment.openManId === t.id) score += 60;
 
     if (t.isCutting) score += 40; // cutters are high priority
 
@@ -1099,7 +1119,10 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   // Calculate make probability
   const d = dist(shooter, basket);
   const threePtr = isThreePointer(shooter.x, shooter.y, state.attackingRight);
-  const contestLevel = gradeContest(nearestDef ? nearestDef.dist : 999);
+  const defenseTeam = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
+  const shotDefensePlayers = getOnCourtPlayers(state, defenseTeam);
+  const isFb = !!(state.fastBreak && state.fastBreak.active);
+  const { level: contestLevel, helpDef: shotHelpDef } = evaluateContest(state, shooter, nearestDef, shotDefensePlayers, d, isFb);
   let prob;
 
   if (d < 60) {
@@ -1130,22 +1153,17 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     prob = clamp(prob, 0.05, 0.6);
   }
 
-  // Defender quality — modest modifier (contest matters more than the name)
-  if (nearestDef && nearestDef.player) {
-    prob += getDefenderQualityMod(nearestDef.player, d < 60);
-  }
-
   // Fatigue reduces shooting accuracy (up to ~18% drop when exhausted)
   const fatigueFactor = 1 - (shooter.fatigue || 0) / 100 * 0.18;
   prob *= fatigueFactor;
 
-  // Block detection: contested shots can be blocked, weighted by BLK% and distance
+  // Block detection: enhanced — interior defenders + help-side blockers
   let blockedBy = null;
-  if (nearestDef && nearestDef.player && !fouledBy && nearestDef.dist < 30) {
-    const distFactor = d < 60 ? 1.5 : 0.6;
-    const blockChance = (nearestDef.player.blockRate || 0.01) * distFactor;
+  const helpCommitted = !!(state.helpCommitment);
+  if (!fouledBy) {
+    const blockChance = computeBlockChance(d, threePtr, nearestDef && nearestDef.player, shotHelpDef, helpCommitted);
     if (Math.random() < blockChance) {
-      blockedBy = nearestDef.player;
+      blockedBy = (nearestDef && nearestDef.player) || shotHelpDef;
     }
   }
 
@@ -1169,6 +1187,7 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
 
   state.shotAnimating = true;
   state.fastBreak = null; // shot ends the fast break
+  state.helpCommitment = null; // shot resolves any help commitment
 }
 
 // Increment a player's personal foul + the team foul; disqualify at 6
@@ -1339,16 +1358,40 @@ function resolveShot(state) {
     result.shooter.stats.fga++;
     result.blockedBy.stats.blocks++;
     state.momentum[result.blockedBy.team] += 2;
-    state.shotResultDisplay = `${result.blockedBy.name} blocks ${result.shooter.name}!`;
-    state.gameLog.unshift(`🚫 ${result.blockedBy.name} BLOCKS ${result.shooter.name}!`);
+    const blockOutcome = resolveBlockOutcome(state, result.blockedBy);
+    if (blockOutcome.outcome === 'defense_recover') {
+      state.ball.carrier = result.blockedBy.id;
+      result.blockedBy.hasBall = true;
+      state.ball.x = result.blockedBy.x;
+      state.ball.y = result.blockedBy.y;
+      state.shotResultDisplay = `${result.blockedBy.name} blocks ${result.shooter.name}!`;
+      state.gameLog.unshift(`🚫 ${result.blockedBy.name} BLOCKS ${result.shooter.name}!`);
+      switchPossession(state, result.blockedBy);
+    } else if (blockOutcome.outcome === 'out_of_bounds') {
+      state.shotResultDisplay = `${result.blockedBy.name} blocks it out of bounds!`;
+      state.gameLog.unshift(`🚫 ${result.blockedBy.name} blocks ${result.shooter.name} — out of bounds!`);
+      state.shotClock = 24;
+      state.actionTimer = 800;
+    } else {
+      // Loose ball — nearest on-court player recovers (scramble or offense recover)
+      let nearest = null, nd = Infinity;
+      state.players.forEach(p => {
+        if (!p.onCourt) return;
+        const dd = dist(p, state.ball);
+        if (dd < nd) { nd = dd; nearest = p; }
+      });
+      state.shotResultDisplay = `${result.blockedBy.name} blocks ${result.shooter.name}! Loose ball!`;
+      state.gameLog.unshift(`🚫 ${result.blockedBy.name} BLOCKS ${result.shooter.name} — loose ball!`);
+      if (nearest) {
+        state.ball.carrier = nearest.id;
+        nearest.hasBall = true;
+        state.ball.x = nearest.x;
+        state.ball.y = nearest.y;
+        if (nearest.team !== state.possession) switchPossession(state, nearest);
+      }
+    }
     state.shotResultTimer = 1500;
     if (state.gameLog.length > 15) state.gameLog.pop();
-    // Give ball to blocker for potential fast break
-    state.ball.carrier = result.blockedBy.id;
-    result.blockedBy.hasBall = true;
-    state.ball.x = result.blockedBy.x;
-    state.ball.y = result.blockedBy.y;
-    switchPossession(state, result.blockedBy);
     state.ball.shotResult = null;
     return;
   }
@@ -1588,6 +1631,8 @@ function switchPossession(state, fastBreakInitiator = null) {
   state.screenState = null;
   state.ball.lastPasserId = null;
   state.players.forEach(p => { p.isSettingScreen = false; });
+  state.helpCommitment = null;
+  recomputeMatchups(state);
 
   // Count the new possession. Offensive rebounds do NOT reach here — they
   // extend the same possession per the correct NBA possession definition.
@@ -1643,6 +1688,7 @@ export function advanceToNextQuarter(state) {
   state.actionTimer = randomInRange(2000, 3500);
   state.passTimer = 0;
   setupPossessionPacing(state, false);
+  recomputeMatchups(state);
   resetPositions(state);
 }
 
@@ -1709,46 +1755,45 @@ function checkTurnover(state, carrier, defenders) {
   const defenseTeam = defenders[0] ? defenders[0].team : null;
   const play = getActiveDefensePlay(state, defenseTeam);
 
-  defenders.forEach(d => {
-    const dd = dist(carrier, d);
-    const stealRange = play === 'aggressive_steal' ? 28 : 20;
-    if (dd < stealRange) {
-      const carrierFatigueMult = 1 + (carrier.fatigue || 0) / 100 * 0.5;
-      let stealChance = (d.stealRate || 0.02) * 0.25 + (carrier.turnoverRate || 0.12) * 0.012 * carrierFatigueMult;
-      if (play === 'aggressive_steal') stealChance *= 2.4;
-      if ((play === 'double_ball' || play === 'double_post') && dd < 26) stealChance *= 1.7;
-      if (Math.random() < stealChance) {
-        carrier.hasBall = false;
-        d.hasBall = true;
-        state.ball.carrier = d.id;
-        carrier.stats.turnovers++;
-        d.stats.steals++;
-        state.momentum[d.team] += 2;
-        state.momentum[carrier.team] -= 1;
-        state.gameLog.unshift(`🏀 ${d.name} steals from ${carrier.name}!`);
-        state.turnoverCooldown = 2000;
-        switchPossession(state, d);
-        return;
-      }
-      // Aggressive steal gamble that misses can draw a reach-in foul
-      if (play === 'aggressive_steal' && dd < 22 && !d.fouledOut && Math.random() < 0.10) {
-        const rfo = commitPersonalFoul(state, d);
-        if (isInPenalty(state, d.team)) {
-          // In the penalty — the carrier goes to the line for two
-          setupFreeThrows(state, carrier, d, 2, rfo);
-          state.gameLog.unshift(`🦵 Reach-in foul on ${d.name} (${d.fouls}) — ${carrier.name} shoots (penalty)!`);
-          state.actionTimer = 1500;
-        } else {
-          state.gameLog.unshift(`🦵 Reach-in foul on ${d.name} (${d.fouls})`);
-          state.shotClock = 24; // non-shooting foul resets the clock
-          state.turnoverCooldown = 1500;
-          state.actionTimer = 600;
-        }
-        if (state.gameLog.length > 15) state.gameLog.pop();
-        return;
-      }
+  // Primary on-ball defender from matchup assignments (fallback: nearest)
+  const primaryDef = getPrimaryDefender(state, carrier) ||
+    defenders.reduce((closest, d) => dist(carrier, d) < dist(carrier, closest) ? d : closest, defenders[0]);
+  if (!primaryDef) return;
+
+  const dd = dist(carrier, primaryDef);
+  const stealRange = play === 'aggressive_steal' ? 28 : 22;
+  if (dd > stealRange) return;
+
+  const stealChance = computeStealChance(state, carrier, primaryDef, defenders, play);
+  if (Math.random() < stealChance) {
+    carrier.hasBall = false;
+    primaryDef.hasBall = true;
+    state.ball.carrier = primaryDef.id;
+    carrier.stats.turnovers++;
+    primaryDef.stats.steals++;
+    state.momentum[primaryDef.team] += 2;
+    state.momentum[carrier.team] -= 1;
+    state.gameLog.unshift(`🏀 ${primaryDef.name} steals from ${carrier.name}!`);
+    state.turnoverCooldown = 2000;
+    switchPossession(state, primaryDef);
+    return;
+  }
+
+  // Aggressive steal gamble that misses can draw a reach-in foul
+  if (play === 'aggressive_steal' && dd < 22 && !primaryDef.fouledOut && Math.random() < 0.10) {
+    const rfo = commitPersonalFoul(state, primaryDef);
+    if (isInPenalty(state, primaryDef.team)) {
+      setupFreeThrows(state, carrier, primaryDef, 2, rfo);
+      state.gameLog.unshift(`🦵 Reach-in foul on ${primaryDef.name} (${primaryDef.fouls}) — ${carrier.name} shoots (penalty)!`);
+      state.actionTimer = 1500;
+    } else {
+      state.gameLog.unshift(`🦵 Reach-in foul on ${primaryDef.name} (${primaryDef.fouls})`);
+      state.shotClock = 24;
+      state.turnoverCooldown = 1500;
+      state.actionTimer = 600;
     }
-  });
+    if (state.gameLog.length > 15) state.gameLog.pop();
+  }
 }
 
 function updatePlayerMovement(state, dt) {
@@ -1961,6 +2006,7 @@ function executeSubstitution(state, outgoing, incoming, reason = 'fatigue') {
     reason,
   });
   if (state.substitutionCommentary.length > 12) state.substitutionCommentary.pop();
+  recomputeMatchups(state);
 }
 
 export function checkSubstitutions(state) {
