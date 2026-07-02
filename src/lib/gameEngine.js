@@ -95,6 +95,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
       hasBall: i === 0, // PG starts with ball
       radius: PLAYER_BASE_RADIUS + (p.height - 75) * 0.3,
       maxSpeed: 1.5 + p.speed * 0.35,
+      transitionSpeed: (1.5 + p.speed * 0.35) * (1.3 + p.speed * 0.04),
       cutTimer: 0,
       isCutting: false,
       isSettingScreen: false,
@@ -121,6 +122,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
       hasBall: false,
       radius: PLAYER_BASE_RADIUS + (p.height - 75) * 0.3,
       maxSpeed: 1.5 + p.speed * 0.35,
+      transitionSpeed: (1.5 + p.speed * 0.35) * (1.3 + p.speed * 0.04),
       cutTimer: 0,
       isCutting: false,
       isSettingScreen: false,
@@ -452,7 +454,10 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     // Close shots: layups, dunks, hooks
     const freqFactor = Math.min(carrier.twoAttempts / 15, 1);
     shootChance = 0.18 + carrier.insideScoring * 0.04 + freqFactor * 0.1;
-    if (isFastBreak) shootChance += 0.2; // fast break: quick layup attempt
+    if (isFastBreak) {
+      const fbTendency = TEAM_FAST_BREAK[carrier.team] || 5;
+      shootChance += 0.08 + fbTendency * 0.015; // scaled by team pace tendency
+    }
   } else if (isShortMid && isOpen) {
     // Short mid-range (8-15 ft): pull-up jumpers and runners
     const freqFactor = Math.min(carrier.twoAttempts / 15, 1);
@@ -586,7 +591,12 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     const realPct = shooter.twoPct || 0.45;
     const insideAdj = (shooter.insideScoring - 6) * 0.03;
     prob = realPct * 0.6 + insideAdj + (isOpen ? 0.08 : -0.05);
-    if (state.fastBreak && state.fastBreak.active) prob += 0.15; // uncontested transition layup
+    if (state.fastBreak && state.fastBreak.active) {
+      // Scoring boost after a defensive stop, scaled by team pace tendency
+      // Lakers (9): +0.186, Clippers (7): +0.158, Celtics (4): +0.116
+      const fbTendency = TEAM_FAST_BREAK[shooter.team] || 5;
+      prob += 0.06 + fbTendency * 0.014;
+    }
     prob = Math.max(0.05, Math.min(prob, 0.85));
   } else if (threePtr) {
     // Use real 3P% as the base, blend with skill rating for context (open vs. contested)
@@ -935,14 +945,17 @@ function checkTurnover(state, carrier, defenders) {
 
 function updatePlayerMovement(state, dt) {
   const speedScale = dt / 16.67; // normalize to ~60fps
-  
+  const isFastBreak = state.fastBreak && state.fastBreak.active;
+
   state.players.forEach(player => {
     const dx = player.targetX - player.x;
     const dy = player.targetY - player.y;
     const d = Math.sqrt(dx * dx + dy * dy);
 
     if (d > 2) {
-      const speed = player.maxSpeed * speedScale;
+      // Transition speed: players sprint faster during fast breaks,
+      // scaled by their speed rating (Worthy/Magic much quicker than Kareem)
+      const speed = (isFastBreak ? (player.transitionSpeed || player.maxSpeed * 1.5) : player.maxSpeed) * speedScale;
       const moveX = (dx / d) * Math.min(speed, d);
       const moveY = (dy / d) * Math.min(speed, d);
       player.x += moveX;
