@@ -172,6 +172,10 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     turnoverCooldown: 0,
     ftState: null,
     fastBreak: null,
+    momentum: { lakers: 0, [opponentKey]: 0 },
+    pace: 5,
+    momentumHistory: [{ clock: 720, quarter: 1, team1: 0, team2: 0, pace: 0, fastBreak: false }],
+    momentumSampleTimer: 0,
   };
 }
 
@@ -246,6 +250,27 @@ export function updateGame(state, dt) {
     if (state.shotResultTimer <= 0) {
       state.shotResultDisplay = null;
     }
+  }
+
+  // Momentum decay & pace normalization
+  const momDecay = 0.05 * effectiveDt / 1000;
+  state.momentum.lakers = clamp(state.momentum.lakers * (1 - momDecay), -6, 6);
+  state.momentum[state.teamKeys.team2] = clamp(state.momentum[state.teamKeys.team2] * (1 - momDecay), -6, 6);
+  state.pace = lerp(state.pace, 5, 0.3 * effectiveDt / 1000);
+
+  // Sample momentum history periodically
+  state.momentumSampleTimer -= effectiveDt;
+  if (state.momentumSampleTimer <= 0) {
+    state.momentumHistory = [...state.momentumHistory, {
+      clock: state.gameClock,
+      quarter: state.quarter,
+      team1: state.momentum.lakers,
+      team2: state.momentum[state.teamKeys.team2],
+      pace: (state.pace - 5) * 0.5,
+      fastBreak: !!(state.fastBreak && state.fastBreak.active),
+    }];
+    if (state.momentumHistory.length > 600) state.momentumHistory.shift();
+    state.momentumSampleTimer = 5000;
   }
 
   // Handle ball in flight (pass or shot)
@@ -689,6 +714,7 @@ function resolveShot(state) {
   if (result.blockedBy) {
     result.shooter.stats.fga++;
     result.blockedBy.stats.blocks++;
+    state.momentum[result.blockedBy.team] += 2;
     state.shotResultDisplay = `${result.blockedBy.name} blocks ${result.shooter.name}!`;
     state.gameLog.unshift(`🚫 ${result.blockedBy.name} BLOCKS ${result.shooter.name}!`);
     state.shotResultTimer = 1500;
@@ -705,6 +731,7 @@ function resolveShot(state) {
 
   if (result.made) {
     state.score[result.shooter.team] += result.points;
+    state.momentum[result.shooter.team] += result.type === 'dunk' ? 2 : 1;
     result.shooter.stats.fgm++;
     result.shooter.stats.fga++;
     result.shooter.stats.points += result.points;
@@ -724,6 +751,7 @@ function resolveShot(state) {
     }
   } else {
     result.shooter.stats.fga++;
+    state.momentum[result.shooter.team] -= 0.5;
     state.shotResultDisplay = `${result.shooter.name} misses!`;
     state.gameLog.unshift(`✗ ${result.shooter.name} misses`);
   }
@@ -750,6 +778,7 @@ function resolveShot(state) {
     if (rebounder) {
       const isOffensive = rebounder.team === state.possession;
       rebounder.stats.rebounds++;
+      state.momentum[rebounder.team] += isOffensive ? 1 : 0.5;
       if (isOffensive) rebounder.stats.offReb++; else rebounder.stats.defReb++;
       state.ball.carrier = rebounder.id;
       rebounder.hasBall = true;
@@ -879,6 +908,8 @@ function switchPossession(state, fastBreakInitiator = null) {
 
   if (initiator && initiator.team === state.possession && Math.random() < tendency * 0.1) {
     state.fastBreak = { active: true, timer: 3500, initiator: initiator.id };
+    state.momentum[initiator.team] += 2;
+    state.pace = 9;
     state.ball.carrier = initiator.id;
     initiator.hasBall = true;
     state.ball.x = initiator.x;
@@ -964,6 +995,8 @@ function checkTurnover(state, carrier, defenders) {
         state.ball.carrier = d.id;
         carrier.stats.turnovers++;
         d.stats.steals++;
+        state.momentum[d.team] += 2;
+        state.momentum[carrier.team] -= 1;
         state.gameLog.unshift(`🏀 ${d.name} steals from ${carrier.name}!`);
         state.turnoverCooldown = 2000;
         switchPossession(state, d);

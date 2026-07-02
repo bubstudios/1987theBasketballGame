@@ -9,6 +9,7 @@ import GameControls from '@/components/game/GameControls';
 import GameLog from '@/components/game/GameLog';
 import RosterPanel from '@/components/game/RosterPanel';
 import BoxScore from '@/components/game/BoxScore';
+import MomentumChart from '@/components/game/MomentumChart';
 
 export default function Home() {
   const [gameState, setGameState] = useState(null);
@@ -221,6 +222,11 @@ export default function Home() {
         {/* Box Score */}
         <div className="mt-4 max-w-2xl mx-auto">
           <BoxScore gameState={gameState} />
+        </div>
+
+        {/* Momentum Chart */}
+        <div className="mt-4 max-w-2xl mx-auto">
+          <MomentumChart gameState={gameState} />
         </div>
 
         {/* Mobile Rosters */}
