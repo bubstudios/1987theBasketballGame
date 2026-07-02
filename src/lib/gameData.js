@@ -26,7 +26,7 @@ export const LAKERS_ROSTER = [
     defensiveRebRate: 0.165,  // DReb% (1986-87)
     stealRate: 0.029,         // STL% (1986-87)
     turnoverRate: 0.140,     // TOV% (1986-87)
-    ftAttempts: 6.0,          // FTA per game (1986-87)
+    ftAttempts: 7.9,          // FTA per game (1986-87)
     ftPct: 0.840,            // FT% (1986-87)
     blockRate: 0.012,        // BLK% (1986-87)
   },
@@ -211,7 +211,7 @@ export const CELTICS_ROSTER = [
     defensiveRebRate: 0.205,
     stealRate: 0.020,
     turnoverRate: 0.110,
-    ftAttempts: 5.0,
+    ftAttempts: 6.1,
     ftPct: 0.910,
     blockRate: 0.009,
   },

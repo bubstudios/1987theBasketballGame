@@ -2,6 +2,7 @@ import { COURT, TEAM_FAST_BREAK, PLAYER_MPG, STAR_PLAYERS } from './gameData';
 import { TIMEOUTS_PER_GAME, updateTimeout, checkAutoTimeout } from './timeoutEngine';
 import { determineOffensiveRebound, computeReboundZone, selectRebounder, decidePutback } from './reboundEngine';
 import { isInPenalty, applyTeamFoul, foulDrawMult, defenderDisciplineMult, fatigueFoulMult, pickFoulingDefender, intentionalFoulIntent } from './foulEngine';
+import { getStarTouchWeight, getStarShootMult, getStarDriveMult, getTransitionController } from './starEngine';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -915,6 +916,12 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     driveChance = 0.06 + (carrier.driveTendency || 5) * 0.04 + carrier.speed * 0.01;
   }
 
+  // --- Star involvement: Magic (quarterback) drives & draws fouls more;
+  // Bird (hub) shoots more. Soft-corrected by actual vs expected opportunities
+  // and boosted in clutch. Applied before patience so contested looks still defer.
+  shootChance *= getStarShootMult(state, carrier);
+  driveChance *= getStarDriveMult(state, carrier);
+
   // --- Shot-clock patience: in the half court the CPU defers contested looks
   // and hunts a better shot, only bailing out as the clock expires ---
   if (!isFastBreak) {
@@ -962,7 +969,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     }
   } else {
     // Pass to open teammate
-    const passTarget = findBestPassTarget(carrier, teammates, defenders, basket);
+    const passTarget = findBestPassTarget(state, carrier, teammates, defenders, basket);
     if (passTarget) {
       makePass(state, carrier, passTarget);
     }
@@ -970,7 +977,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   }
 }
 
-function findBestPassTarget(carrier, teammates, defenders, basket) {
+function findBestPassTarget(state, carrier, teammates, defenders, basket) {
   let best = null;
   let bestScore = -Infinity;
 
@@ -988,8 +995,12 @@ function findBestPassTarget(carrier, teammates, defenders, basket) {
     const distBasket = dist(t, basket);
     const passingSkill = carrier.passing;
 
-    // Score: prefer open players close to basket
-    let score = openness * 2 - distBasket * 0.5 + passingSkill * 5;
+    // Star involvement: bias touches toward stars (Bird gets more looks),
+    // but don't force the ball to a heavily guarded star.
+    const starW = getStarTouchWeight(state, t, openness);
+
+    // Score: prefer open players close to basket; star openness counts more
+    let score = openness * 2 * starW - distBasket * 0.5 + passingSkill * 5;
 
     if (t.isCutting) score += 40; // cutters are high priority
 
@@ -1501,18 +1512,21 @@ function switchPossession(state, fastBreakInitiator = null) {
   const initiator = fastBreakInitiator || state.players.find(p => p.id === state.ball.carrier);
 
   if (initiator && initiator.team === state.possession && Math.random() < tendency * 0.1) {
-    state.fastBreak = { active: true, timer: 3500, initiator: initiator.id };
+    // Outlet to the transition controller (Magic) when he didn't get the board
+    const controller = getTransitionController(state, state.possession);
+    const handler = (controller && controller.id !== initiator.id) ? controller : initiator;
+    state.fastBreak = { active: true, timer: 3500, initiator: handler.id };
     state.momentum[initiator.team] += 2;
     state.pace = 9;
-    state.ball.carrier = initiator.id;
-    initiator.hasBall = true;
-    state.ball.x = initiator.x;
-    state.ball.y = initiator.y;
+    state.ball.carrier = handler.id;
+    handler.hasBall = true;
+    state.ball.x = handler.x;
+    state.ball.y = handler.y;
     state.ball.inFlight = false;
     state.ball.isShot = false;
     state.actionTimer = 0;
     state.passTimer = 0;
-    state.gameLog.unshift(`⚡ ${initiator.name} leads the fast break!`);
+    state.gameLog.unshift(`⚡ ${handler.name} leads the fast break!`);
     if (state.gameLog.length > 15) state.gameLog.pop();
   } else {
     resetPositions(state);
@@ -1718,6 +1732,8 @@ function updateFatigue(state, dt) {
       const isCarrier = player.id === state.ball.carrier;
       const exertionMult = (isCarrier ? 1.3 : 1.0) * (isFastBreak ? 1.4 : 1.0);
       player.fatigue = clamp(player.fatigue + fatigueRate * exertionMult * gameSeconds, 0, 100);
+      // Track minutes played for the star opportunity-correction model
+      player.minutesPlayed = (player.minutesPlayed || 0) + gameSeconds;
     } else {
       // Bench recovery (~3x faster than accumulation)
       player.fatigue = clamp(player.fatigue - 0.35 * gameSeconds, 0, 100);
