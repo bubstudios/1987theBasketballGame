@@ -239,6 +239,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     momentumHistory: [{ clock: 720, quarter: 1, team1: 0, team2: 0, pace: 0, fastBreak: false }],
     momentumSampleTimer: 0,
     subTimer: 3000,
+    substitutionLog: [],
   };
 }
 
@@ -1219,6 +1220,20 @@ function executeSubstitution(state, outgoing, incoming) {
 
   state.gameLog.unshift(`🔄 ${incoming.name} checks in for ${outgoing.name}`);
   if (state.gameLog.length > 15) state.gameLog.pop();
+
+  // Dedicated substitution log — preserves full history with game context
+  const mins = Math.floor((720 - state.gameClock) / 60);
+  const secs = Math.floor((720 - state.gameClock) % 60);
+  const clockLabel = `Q${state.quarter} ${mins}:${String(secs).padStart(2, '0')}`;
+  state.substitutionLog.unshift({
+    clockLabel,
+    quarter: state.quarter,
+    gameClock: state.gameClock,
+    incoming: incoming.name,
+    outgoing: outgoing.name,
+    team: incoming.team,
+  });
+  if (state.substitutionLog.length > 200) state.substitutionLog.pop();
 }
 
 function checkSubstitutions(state) {
