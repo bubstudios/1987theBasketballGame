@@ -46,7 +46,7 @@ export default function RosterPanel({ roster, teamKey }) {
                 <span className="text-xs text-white font-medium truncate">{p.name}</span>
                 <span className="text-[10px] text-neutral-500">{p.position} · {heightToString(p.height)}</span>
               </div>
-              <div className="grid grid-cols-3 gap-x-2 gap-y-0.5 mt-1">
+              <div className="grid grid-cols-4 gap-x-2 gap-y-0.5 mt-1">
                 <div>
                   <div className="text-[8px] text-neutral-500">SPD</div>
                   <StatBar value={p.speed} color={colors.secondary === '#FFFFFF' ? colors.primary : colors.secondary} />
@@ -58,6 +58,10 @@ export default function RosterPanel({ roster, teamKey }) {
                 <div>
                   <div className="text-[8px] text-neutral-500">DEF</div>
                   <StatBar value={p.defense} color={colors.secondary === '#FFFFFF' ? colors.primary : colors.secondary} />
+                </div>
+                <div>
+                  <div className="text-[8px] text-neutral-500">3P%</div>
+                  <StatBar value={p.threePct * 100 / 45} color={colors.secondary === '#FFFFFF' ? colors.primary : colors.secondary} />
                 </div>
               </div>
             </div>

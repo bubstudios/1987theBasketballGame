@@ -14,6 +14,8 @@ export const LAKERS_ROSTER = [
     rebounding: 7,
     insideScoring: 7,
     threePoint: 5,
+    threeAttempts: 0.3,   // 3PA per game (1986-87)
+    threePct: 0.200,      // 3P% (1986-87)
   },
   {
     name: "Byron Scott",
@@ -27,6 +29,8 @@ export const LAKERS_ROSTER = [
     rebounding: 4,
     insideScoring: 6,
     threePoint: 7,
+    threeAttempts: 2.2,
+    threePct: 0.374,
   },
   {
     name: "James Worthy",
@@ -40,6 +44,8 @@ export const LAKERS_ROSTER = [
     rebounding: 6,
     insideScoring: 9,
     threePoint: 3,
+    threeAttempts: 0.1,
+    threePct: 0.125,
   },
   {
     name: "A.C. Green",
@@ -53,6 +59,8 @@ export const LAKERS_ROSTER = [
     rebounding: 9,
     insideScoring: 6,
     threePoint: 2,
+    threeAttempts: 0,
+    threePct: 0,
   },
   {
     name: "Kareem Abdul-Jabbar",
@@ -66,6 +74,8 @@ export const LAKERS_ROSTER = [
     rebounding: 8,
     insideScoring: 10,
     threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
   },
 ];
 
@@ -82,6 +92,8 @@ export const CELTICS_ROSTER = [
     rebounding: 4,
     insideScoring: 6,
     threePoint: 4,
+    threeAttempts: 0.5,
+    threePct: 0.313,
   },
   {
     name: "Danny Ainge",
@@ -95,6 +107,8 @@ export const CELTICS_ROSTER = [
     rebounding: 4,
     insideScoring: 5,
     threePoint: 8,
+    threeAttempts: 3.1,
+    threePct: 0.411,
   },
   {
     name: "Larry Bird",
@@ -108,6 +122,8 @@ export const CELTICS_ROSTER = [
     rebounding: 9,
     insideScoring: 8,
     threePoint: 9,
+    threeAttempts: 1.9,
+    threePct: 0.400,
   },
   {
     name: "Kevin McHale",
@@ -121,6 +137,8 @@ export const CELTICS_ROSTER = [
     rebounding: 8,
     insideScoring: 10,
     threePoint: 2,
+    threeAttempts: 0,
+    threePct: 0,
   },
   {
     name: "Robert Parish",
@@ -134,6 +152,8 @@ export const CELTICS_ROSTER = [
     rebounding: 9,
     insideScoring: 8,
     threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
   },
 ];
 

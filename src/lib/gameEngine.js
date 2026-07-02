@@ -409,7 +409,9 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   } else if (isClose && isOpen) {
     shootChance = 0.15 + carrier.shooting * 0.04;
   } else if (threeZone && isOpen) {
-    shootChance = 0.08 + carrier.threePoint * 0.04;
+    // Use real 3-point attempt frequency and skill to drive tendency
+    const freqFactor = Math.min(carrier.threeAttempts / 3, 1); // normalize ~3+ attempts to 1.0
+    shootChance = 0.04 + carrier.threePoint * 0.025 + freqFactor * 0.12;
   }
 
   if (isOpen && !threeZone) {
@@ -420,7 +422,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
 
   if (roll < shootChance && state.shotClock < 20) {
     // Take shot
-    takeShot(state, carrier);
+    takeShot(state, carrier, isOpen);
     state.actionTimer = 1500;
   } else if (roll < shootChance + driveChance) {
     // Drive to basket
@@ -488,7 +490,7 @@ function makePass(state, passer, receiver) {
   if (state.gameLog.length > 15) state.gameLog.pop();
 }
 
-function takeShot(state, shooter) {
+function takeShot(state, shooter, isOpen) {
   const basket = getBasketPos(state.attackingRight);
   shooter.hasBall = false;
   state.ball.carrier = null;
@@ -510,7 +512,11 @@ function takeShot(state, shooter) {
   if (d < 60) {
     prob = 0.45 + shooter.insideScoring * 0.04; // layup/dunk
   } else if (threePtr) {
-    prob = 0.15 + shooter.threePoint * 0.035;
+    // Use real 3P% as the base, blend with skill rating for context (open vs. contested)
+    const realPct = shooter.threePct || 0;
+    const skillAdj = (shooter.threePoint - 5) * 0.02; // +/- relative to average skill
+    prob = realPct * 0.75 + skillAdj + (isOpen ? 0.06 : -0.04);
+    prob = Math.max(0.03, Math.min(prob, 0.55));
   } else {
     prob = 0.25 + shooter.shooting * 0.04;
   }
