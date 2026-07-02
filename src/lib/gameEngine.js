@@ -2,7 +2,7 @@ import { COURT, TEAM_FAST_BREAK, PLAYER_MPG, STAR_PLAYERS } from './gameData';
 import { TIMEOUTS_PER_GAME, updateTimeout, checkAutoTimeout } from './timeoutEngine';
 import { determineOffensiveRebound, computeReboundZone, selectRebounder, decidePutback } from './reboundEngine';
 import { isInPenalty, applyTeamFoul, foulDrawMult, defenderDisciplineMult, fatigueFoulMult, pickFoulingDefender, intentionalFoulIntent } from './foulEngine';
-import { getStarTouchWeight, getStarShootMult, getStarDriveMult, getTransitionController } from './starEngine';
+import { getTouchWeight, getScoringWeight, getTransitionController } from './starEngine';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -916,11 +916,11 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     driveChance = 0.06 + (carrier.driveTendency || 5) * 0.04 + carrier.speed * 0.01;
   }
 
-  // --- Star involvement: Magic (quarterback) drives & draws fouls more;
-  // Bird (hub) shoots more. Soft-corrected by actual vs expected opportunities
-  // and boosted in clutch. Applied before patience so contested looks still defer.
-  shootChance *= getStarShootMult(state, carrier);
-  driveChance *= getStarDriveMult(state, carrier);
+  // --- Role-based scoring weight: stars finish more, role players pass more.
+  // Opportunity correction prevents any player from being over/under-used.
+  const scoringWeight = getScoringWeight(state, carrier);
+  shootChance *= scoringWeight;
+  driveChance *= scoringWeight;
 
   // --- Shot-clock patience: in the half court the CPU defers contested looks
   // and hunts a better shot, only bailing out as the clock expires ---
@@ -995,12 +995,12 @@ function findBestPassTarget(state, carrier, teammates, defenders, basket) {
     const distBasket = dist(t, basket);
     const passingSkill = carrier.passing;
 
-    // Star involvement: bias touches toward stars (Bird gets more looks),
-    // but don't force the ball to a heavily guarded star.
-    const starW = getStarTouchWeight(state, t, openness);
+    // Role-based touch weight: bias passes toward high-initiation players
+    // (Magic controls, Bird receives, Worthy/Scott get touches).
+    const starW = getTouchWeight(state, t, openness);
 
-    // Score: prefer open players close to basket; star openness counts more
-    let score = openness * 2 * starW - distBasket * 0.5 + passingSkill * 5;
+    // Score: openness * role weight dominates; mild proximity preference
+    let score = openness * 2.5 * starW - distBasket * 0.15 + passingSkill * 5;
 
     if (t.isCutting) score += 40; // cutters are high priority
 
@@ -1273,6 +1273,7 @@ function resolveFreeThrowRebound(state, ft) {
     rebounder.hasBall = true;
     state.ball.x = rebounder.x;
     state.ball.y = rebounder.y;
+    state.ball.lastPasserId = null;
     state.gameLog.unshift(`↑ ${rebounder.name} ${isOffensive ? 'offensive' : 'defensive'} rebound (FT miss)`);
     if (state.gameLog.length > 15) state.gameLog.pop();
     if (!isOffensive) {
@@ -1329,6 +1330,7 @@ function resolveShot(state) {
         passer.stats.assists++;
       }
     }
+    state.ball.lastPasserId = null;
     if (result.type === 'dunk') {
       const phrase = DUNK_PHRASES[Math.floor(Math.random() * DUNK_PHRASES.length)];
       state.shotResultDisplay = `💥 ${result.shooter.name} ${phrase.display} +${result.points}`;
@@ -1372,6 +1374,7 @@ function resolveShot(state) {
       rebounder.hasBall = true;
       state.ball.x = rebounder.x;
       state.ball.y = rebounder.y;
+      state.ball.lastPasserId = null;
       state.gameLog.unshift(`↑ ${rebounder.name} ${isOffensive ? 'offensive' : 'defensive'} rebound`);
       if (state.gameLog.length > 15) state.gameLog.pop();
 
@@ -1422,6 +1425,7 @@ function resolveFouledShot(state, result) {
         passer.stats.assists++;
       }
     }
+    state.ball.lastPasserId = null;
   }
 
   // Free throw count: 1 for and-one, 2 for missed 2-pt, 3 for missed 3-pt
@@ -1504,6 +1508,7 @@ function switchPossession(state, fastBreakInitiator = null) {
   state.turnoverCooldown = 1000;
   state.userPlayCall = null;
   state.screenState = null;
+  state.ball.lastPasserId = null;
   state.players.forEach(p => { p.isSettingScreen = false; });
 
   // Fast break check: live-ball transitions (steals, defensive rebounds, blocks)
