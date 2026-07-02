@@ -1,8 +1,8 @@
 import React from 'react';
-import { Play, Pause, RotateCcw, Zap } from 'lucide-react';
+import { Play, Pause, RotateCcw, Zap, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function GameControls({ gameState, onPause, onReset, onSpeedChange }) {
+export default function GameControls({ gameState, onPause, onReset, onSpeedChange, soundMuted, onToggleSound }) {
   if (!gameState) return null;
 
   const speeds = [0.5, 1, 2, 3];
@@ -25,6 +25,16 @@ export default function GameControls({ gameState, onPause, onReset, onSpeedChang
         className="bg-neutral-800 border-neutral-600 text-white hover:bg-neutral-700"
       >
         <RotateCcw className="w-4 h-4" />
+      </Button>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onToggleSound}
+        className="bg-neutral-800 border-neutral-600 text-white hover:bg-neutral-700"
+        title={soundMuted ? 'Unmute court sound' : 'Mute court sound'}
+      >
+        {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
       </Button>
 
       <div className="flex items-center gap-1 ml-2">

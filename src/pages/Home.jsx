@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { LAKERS_ROSTER, CELTICS_ROSTER } from '@/lib/gameData';
 import { createGameState, updateGame } from '@/lib/gameEngine';
+import { useCourtSound } from '@/hooks/useCourtSound';
 import CourtCanvas from '@/components/game/CourtCanvas';
 import Scoreboard from '@/components/game/Scoreboard';
 import GameControls from '@/components/game/GameControls';
@@ -12,10 +13,13 @@ export default function Home() {
   const gameRef = useRef(null);
   const rafRef = useRef(null);
   const lastTimeRef = useRef(null);
+  const prevVelRef = useRef({});
+  const { playSqueak, muted, toggleMute } = useCourtSound();
 
   const initGame = useCallback(() => {
     const state = createGameState(LAKERS_ROSTER, CELTICS_ROSTER);
     gameRef.current = state;
+    prevVelRef.current = {};
     setGameState({ ...state });
     lastTimeRef.current = null;
   }, []);
@@ -40,6 +44,26 @@ export default function Home() {
 
       const updated = updateGame(gameRef.current, dt);
       gameRef.current = updated;
+
+      // Detect sharp direction changes → shoe squeaks
+      if (!updated.isPaused) {
+        let bestSqueak = 0;
+        for (const p of updated.players) {
+          const prev = prevVelRef.current[p.id] || { vx: 0, vy: 0, speed: 0 };
+          const vx = p.x - (prev.x ?? p.x);
+          const vy = p.y - (prev.y ?? p.y);
+          const speed = Math.sqrt(vx * vx + vy * vy);
+
+          if (speed > 1.2 && prev.speed > 1.2) {
+            const dot = (vx * prev.vx + vy * prev.vy) / (speed * prev.speed);
+            if (dot < 0.5) {
+              bestSqueak = Math.max(bestSqueak, Math.min(speed / 4, 1));
+            }
+          }
+          prevVelRef.current[p.id] = { vx, vy, speed, x: p.x, y: p.y };
+        }
+        if (bestSqueak > 0) playSqueak(bestSqueak);
+      }
 
       // Throttle React updates to ~30fps for performance
       setGameState(prev => {
@@ -99,6 +123,8 @@ export default function Home() {
             onPause={handlePause}
             onReset={initGame}
             onSpeedChange={handleSpeedChange}
+            soundMuted={muted}
+            onToggleSound={toggleMute}
           />
         </div>
 
