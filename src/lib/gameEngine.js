@@ -84,6 +84,21 @@ const CONTEST_MOD = {
 
 const DUNK_FLOOR = { wide_open: 0.92, open: 0.88, light_contest: 0.80, tight: 0.68, smothered: 0.55 };
 
+// Assist eligibility — a made basket is only credited an assist when the pass
+// directly created the score. Extended dribbling, isolation moves, and post
+// moves (a long hold time after receiving the pass) erase the assist. Targets
+// the ~60-72% assisted rate of 1980s basketball rather than near-100%.
+function shouldAwardAssist(holdTime, shotType) {
+  let base;
+  if (shotType === 'three') base = 0.85;
+  else if (shotType === 'dunk' || shotType === 'layup') base = 0.72;
+  else base = 0.62; // mid-range
+  if (holdTime > 5) base *= 0.15;
+  else if (holdTime > 3) base *= 0.40;
+  else if (holdTime > 1.8) base *= 0.65;
+  return Math.random() < base;
+}
+
 // CPU patience: how willing the ball carrier is to launch given the contest
 // level and the shot clock. Half-court only — fast breaks take the first good
 // look. Wide-open shots are always takeable; contested looks are deferred until
@@ -259,6 +274,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
       passTargetId: null,
       passerId: null,
       flightElapsed: 0,
+      carrierHoldTime: 0,
     },
     score: { lakers: 0, [opponentKey]: 0 },
     gameClock: 720, // 12 min quarter in seconds
@@ -502,6 +518,7 @@ export function updateGame(state, dt) {
     if (carrier) {
       state.ball.x = carrier.x;
       state.ball.y = carrier.y;
+      state.ball.carrierHoldTime = (state.ball.carrierHoldTime || 0) + effectiveDt / 1000;
     }
   }
 
@@ -555,6 +572,7 @@ function updateBallFlight(state, dt) {
     state.ball.carrier = intendedReceiver.id;
     state.ball.x = intendedReceiver.x;
     state.ball.y = intendedReceiver.y;
+    state.ball.carrierHoldTime = 0;
   } else {
     // Error recovery: receiver left the court mid-pass (substitution/timeout).
     // Return the ball to the passer or first on-court offensive player —
@@ -570,6 +588,7 @@ function updateBallFlight(state, dt) {
       state.ball.carrier = fallback.id;
       state.ball.x = fallback.x;
       state.ball.y = fallback.y;
+      state.ball.carrierHoldTime = 0;
     }
   }
 
@@ -1201,7 +1220,9 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     type: isDunk ? 'dunk' : (d < 60 ? 'layup' : (threePtr ? 'three' : 'mid-range')),
     fouledBy: fouledBy || null,
     blockedBy: blockedBy || null,
+    holdTime: state.ball.carrierHoldTime || 0,
   };
+  state.ball.carrierHoldTime = 0;
 
   state.shotAnimating = true;
   state.fastBreak = null; // shot ends the fast break
@@ -1347,6 +1368,7 @@ function resolveFreeThrowRebound(state, ft) {
     state.ball.x = rebounder.x;
     state.ball.y = rebounder.y;
     state.ball.lastPasserId = null;
+    state.ball.carrierHoldTime = 0;
     state.gameLog.unshift(`↑ ${rebounder.name} ${isOffensive ? 'offensive' : 'defensive'} rebound (FT miss)`);
     if (state.gameLog.length > 15) state.gameLog.pop();
     if (!isOffensive) {
@@ -1377,6 +1399,7 @@ function resolveShot(state) {
     result.shooter.stats.fga++;
     result.blockedBy.stats.blocks++;
     state.momentum[result.blockedBy.team] += 2;
+    state.ball.lastPasserId = null; // a block voids the potential assist
     const blockOutcome = resolveBlockOutcome(state, result.blockedBy);
     if (blockOutcome.outcome === 'defense_recover') {
       state.ball.carrier = result.blockedBy.id;
@@ -1423,7 +1446,8 @@ function resolveShot(state) {
     result.shooter.stats.points += result.points;
     if (state.ball.lastPasserId) {
       const passer = state.players.find(p => p.id === state.ball.lastPasserId);
-      if (passer && passer.team === result.shooter.team && passer.id !== result.shooter.id) {
+      if (passer && passer.team === result.shooter.team && passer.id !== result.shooter.id
+          && shouldAwardAssist(result.holdTime || 0, result.type)) {
         passer.stats.assists++;
       }
     }
@@ -1472,6 +1496,7 @@ function resolveShot(state) {
       state.ball.x = rebounder.x;
       state.ball.y = rebounder.y;
       state.ball.lastPasserId = null;
+      state.ball.carrierHoldTime = 0;
       state.gameLog.unshift(`↑ ${rebounder.name} ${isOffensive ? 'offensive' : 'defensive'} rebound`);
       if (state.gameLog.length > 15) state.gameLog.pop();
 
@@ -1519,7 +1544,8 @@ function resolveFouledShot(state, result) {
     shooter.stats.points += result.points;
     if (state.ball.lastPasserId) {
       const passer = state.players.find(p => p.id === state.ball.lastPasserId);
-      if (passer && passer.team === shooter.team && passer.id !== shooter.id) {
+      if (passer && passer.team === shooter.team && passer.id !== shooter.id
+          && shouldAwardAssist(result.holdTime || 0, result.type)) {
         passer.stats.assists++;
       }
     }
@@ -1613,30 +1639,36 @@ function getPaceAdjustment(state) {
 
 // Determine possession type and target duration. Drives the time gate that
 // prevents half-court offenses from shooting in the first few seconds.
-// Distribution: ~20% fast break, ~20% early, ~50% normal half-court, ~10% deliberate.
+// Distribution: ~20% fast break, ~30% early, ~55% normal half-court, ~15% deliberate.
 function setupPossessionPacing(state, isFastBreak) {
   if (isFastBreak) {
     state.possessionType = 'fastbreak';
-    state.possessionTargetDuration = randomInRange(4, 9);
+    state.possessionTargetDuration = randomInRange(4, 8);
     return;
   }
   const teamPace = TEAM_FAST_BREAK[state.possession] || 5;
   const transitionBias = (teamPace - 5) * 0.015; // Lakers +6%, Celtics -1.5%
+
+  // Pace governor: paceAdj < 0 = behind pace (too slow); > 0 = ahead (too fast)
+  const paceAdj = getPaceAdjustment(state);
+  const earlyShift = -paceAdj * 0.12; // behind pace → lean toward early offense
+
   const roll = Math.random();
   let pType, targetDur;
-  if (roll < 0.20 + transitionBias) {
+  // Faster distribution: more early offense, far fewer deliberate sets
+  if (roll < 0.30 + transitionBias + earlyShift) {
     pType = 'early';
-    targetDur = randomInRange(9, 14);
-  } else if (roll < 0.70 + transitionBias) {
+    targetDur = randomInRange(8, 13);
+  } else if (roll < 0.85 + transitionBias + earlyShift * 0.5) {
     pType = 'halfcourt';
-    targetDur = randomInRange(15, 21);
+    targetDur = randomInRange(13, 19);
   } else {
     pType = 'deliberate';
-    targetDur = randomInRange(19, 24);
+    targetDur = randomInRange(18, 23);
   }
-  // Soft pace governor: if ahead of pace, lengthen possessions; if behind, shorten
-  const paceAdj = getPaceAdjustment(state);
-  targetDur *= (1 + paceAdj * 0.15);
+  // Behind pace → trim setup; ahead → add setup
+  targetDur = clamp(targetDur + (paceAdj > 0 ? paceAdj * 2 : paceAdj * 1.5), 6, 24);
+
   state.possessionType = pType;
   state.possessionTargetDuration = targetDur;
 }
@@ -1756,6 +1788,7 @@ function switchPossession(state, fastBreakInitiator = null, reason = 'unknown') 
   state.userPlayCall = null;
   state.screenState = null;
   state.ball.lastPasserId = null;
+  state.ball.carrierHoldTime = 0;
   state.players.forEach(p => { p.isSettingScreen = false; });
   state.helpCommitment = null;
   recomputeMatchups(state);
@@ -1768,7 +1801,9 @@ function switchPossession(state, fastBreakInitiator = null, reason = 'unknown') 
   // Celtics slightly less). Was far too high before (Lakers 90%, Celtics 40%).
   const tendency = TEAM_FAST_BREAK[state.possession] || 5;
   const initiator = fastBreakInitiator || state.players.find(p => p.id === state.ball.carrier);
-  const fastBreakChance = 0.15 + (tendency - 5) * 0.012;
+  // Pace-aware: behind pace → more transition; ahead → fewer
+  const paceAdj = getPaceAdjustment(state);
+  const fastBreakChance = clamp(0.18 + (tendency - 5) * 0.012 - paceAdj * 0.05, 0.08, 0.35);
 
   if (initiator && initiator.team === state.possession && Math.random() < fastBreakChance) {
     // Outlet to the transition controller (Magic) when he didn't get the board
@@ -1790,8 +1825,8 @@ function switchPossession(state, fastBreakInitiator = null, reason = 'unknown') 
     if (state.gameLog.length > 15) state.gameLog.pop();
   } else {
     resetPositions(state);
-    // Bring the ball up + initial set: consumes 2-3.5s before the first decision
-    state.actionTimer = randomInRange(2000, 3500);
+    // Bring the ball up + initial set: consumes 1.5-2.5s before the first decision
+    state.actionTimer = randomInRange(1500, 2500);
     state.passTimer = 0;
     setupPossessionPacing(state, false);
   }
@@ -1812,7 +1847,7 @@ export function advanceToNextQuarter(state) {
   state.quarterBreak = null;
   state.fastBreak = null;
   state.possessionCount[state.possession] = (state.possessionCount[state.possession] || 0) + 1;
-  state.actionTimer = randomInRange(2000, 3500);
+  state.actionTimer = randomInRange(1500, 2500);
   state.passTimer = 0;
   setupPossessionPacing(state, false);
   recomputeMatchups(state);
@@ -1839,6 +1874,7 @@ export function resetPositions(state) {
   offPlayers[0].hasBall = true;
   state.ball.inFlight = false;
   state.ball.isShot = false;
+  state.ball.carrierHoldTime = 0;
 
   defPlayers.forEach(p => {
     p.hasBall = false;
