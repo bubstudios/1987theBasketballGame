@@ -30,7 +30,7 @@ export default function RosterPanel({ roster, bench, teamKey, gameState }) {
     const isStar = live?.star || false;
 
     return (
-      <div key={i} className={`flex items-center gap-2 ${!onCourt ? 'opacity-45' : ''}`}>
+      <div key={i} className={`flex items-center gap-2 ${!onCourt ? 'opacity-70' : ''}`}>
         <div className="relative shrink-0">
           <div
             className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold ${fouledOut ? 'opacity-40' : ''}`}
@@ -79,15 +79,30 @@ export default function RosterPanel({ roster, bench, teamKey, gameState }) {
               <StatBar value={p.defensiveRebRate * 100} max={25} color={barColor} />
             </div>
           </div>
-          {onCourt && fatigue > 5 && (
+          {onCourt ? (
+            fatigue > 5 && (
+              <div className="mt-1 flex items-center gap-1">
+                <span className="text-[7px] text-neutral-600 w-5">FAT</span>
+                <div className="flex-1 h-1 bg-neutral-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${fatigue}%`,
+                      backgroundColor: fatigue > 75 ? '#ef4444' : fatigue > 50 ? '#f59e0b' : '#22c55e',
+                    }}
+                  />
+                </div>
+              </div>
+            )
+          ) : (
             <div className="mt-1 flex items-center gap-1">
-              <span className="text-[7px] text-neutral-600 w-5">FAT</span>
+              <span className="text-[7px] text-neutral-600 w-5">STAM</span>
               <div className="flex-1 h-1 bg-neutral-700 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
-                    width: `${fatigue}%`,
-                    backgroundColor: fatigue > 75 ? '#ef4444' : fatigue > 50 ? '#f59e0b' : '#22c55e',
+                    width: `${100 - fatigue}%`,
+                    backgroundColor: fatigue < 25 ? '#22c55e' : fatigue < 50 ? '#f59e0b' : '#ef4444',
                   }}
                 />
               </div>
