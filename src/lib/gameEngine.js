@@ -249,6 +249,8 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     timeoutState: null,
     playCall: null,
     userPlayCall: null,
+    screenState: null,
+    screenCooldown: 0,
   };
 }
 
@@ -392,6 +394,9 @@ export function updateGame(state, dt) {
     // --- OFFENSE AI: Motion Offense ---
     updateMotionOffense(state, offensePlayers, ballCarrier, effectiveDt);
 
+    // --- SCREENS: bigs set ball screens so the offense can create separation ---
+    updateScreens(state, offensePlayers, defensePlayers, ballCarrier, effectiveDt);
+
     // --- DEFENSE AI: Man-to-Man ---
     updateManToManDefense(state, defensePlayers, offensePlayers, effectiveDt);
   }
@@ -480,6 +485,11 @@ function updateMotionOffense(state, offensePlayers, ballCarrier, dt) {
       return;
     }
 
+    // A player actively setting a screen holds his position at the pick
+    if (player.isSettingScreen && state.screenState) {
+      return;
+    }
+
     player.cutTimer -= dt;
 
     if (player.cutTimer <= 0 && !player.isCutting) {
@@ -533,6 +543,82 @@ function findDoubleTeamer(defensePlayers, offensePlayers, target) {
   return best;
 }
 
+// Pick-and-screen engine: a big sets a ball screen for the carrier.
+// The defender guarding the carrier gets "screened" — he trails his man
+// with a lag instead of sticking cleanly, which opens up driving/shooting lanes.
+function updateScreens(state, offensePlayers, defensePlayers, ballCarrier, dt) {
+  // An active screen is in progress — hold the pick and let the carrier use it
+  if (state.screenState) {
+    const sc = state.screenState;
+    sc.timer -= dt;
+
+    const screener = state.players.find(p => p.id === sc.screenerId);
+    const screenedDef = state.players.find(p => p.id === sc.screenedDefenderId);
+
+    // Ball moved away from the screened carrier (pass/shot) — screen is stale
+    if (!ballCarrier || state.ball.carrier !== sc.targetId) {
+      if (screener) screener.isSettingScreen = false;
+      state.screenState = null;
+      return;
+    }
+
+    if (screener && screenedDef) {
+      // Plant the screener between the carrier and his defender
+      const midX = (ballCarrier.x + screenedDef.x) / 2;
+      const midY = (ballCarrier.y + screenedDef.y) / 2;
+      screener.targetX = midX;
+      screener.targetY = midY;
+      screener.isSettingScreen = true;
+
+      // Carrier rubs off the screen and drives toward the basket
+      const basket = getBasketPos(state.attackingRight);
+      ballCarrier.targetX = lerp(ballCarrier.x, basket.x, 0.45);
+      ballCarrier.targetY = lerp(ballCarrier.y, basket.y, 0.45);
+    }
+
+    if (sc.timer <= 0) {
+      if (screener) screener.isSettingScreen = false;
+      state.screenState = null;
+    }
+    return;
+  }
+
+  // Cooldown before the next screen can be set
+  state.screenCooldown -= dt;
+  if (state.screenCooldown > 0 || !ballCarrier) return;
+
+  // ~25% chance to set a screen once the cooldown clears
+  if (Math.random() > 0.25) {
+    state.screenCooldown = 2000;
+    return;
+  }
+
+  // A big (PF/C) sets the screen — never the ball carrier himself
+  const screener = offensePlayers.find(p =>
+    p.id !== ballCarrier.id && (p.position === 'C' || p.position === 'PF')
+  );
+  if (!screener) {
+    state.screenCooldown = 3000;
+    return;
+  }
+
+  // The defender guarding the ball carrier (index-matched) is the screened man
+  const carrierIdx = offensePlayers.findIndex(p => p.id === ballCarrier.id);
+  const screenedDef = defensePlayers[carrierIdx];
+  if (!screenedDef) {
+    state.screenCooldown = 3000;
+    return;
+  }
+
+  state.screenState = {
+    screenerId: screener.id,
+    screenedDefenderId: screenedDef.id,
+    targetId: ballCarrier.id,
+    timer: 2000,
+  };
+  state.screenCooldown = 8000;
+}
+
 function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
   const ballCarrier = state.ball.carrier
     ? state.players.find(p => p.id === state.ball.carrier)
@@ -578,6 +664,10 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
 
     let defX, defY;
 
+    // Active screen — a screened defender can't track his man cleanly
+    const screen = state.screenState;
+    const isScreened = screen && screen.screenedDefenderId === defender.id;
+
     if (doubler && defender.id === doubler.id && doubleTarget) {
       // This defender abandons his man to double the target
       const angle = Math.atan2(basket.y - doubleTarget.y, basket.x - doubleTarget.x);
@@ -585,14 +675,19 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
       defX = doubleTarget.x + Math.cos(angle) * doubleDist;
       defY = doubleTarget.y + Math.sin(angle) * doubleDist;
     } else if (matchup.id === state.ball.carrier) {
-      // On-ball defense — press the handler
-      // Better defenders (high recovery) can press tighter without getting beat
-      let pressDist = 22 + (1 - recoveryFactor) * 18;
-      if (play === 'aggressive_steal') pressDist = 14; // gambling, tighter
-      if (doubleTarget && doubleTarget.id === matchup.id) pressDist = 14; // trapped
-      const angle = Math.atan2(basket.y - matchup.y, basket.x - matchup.x);
-      defX = matchup.x + Math.cos(angle) * pressDist;
-      defY = matchup.y + Math.sin(angle) * pressDist;
+      // On-ball defense — tight, stuck to the handler
+      if (isScreened) {
+        // Screened — trail the man with a lag, can't stick cleanly
+        defX = lerp(defender.x, matchup.x, 0.4);
+        defY = lerp(defender.y, matchup.y, 0.4);
+      } else {
+        let pressDist = 16 + (1 - recoveryFactor) * 6;
+        if (play === 'aggressive_steal') pressDist = 12;
+        if (doubleTarget && doubleTarget.id === matchup.id) pressDist = 12;
+        const angle = Math.atan2(basket.y - matchup.y, basket.x - matchup.x);
+        defX = matchup.x + Math.cos(angle) * pressDist;
+        defY = matchup.y + Math.sin(angle) * pressDist;
+      }
     } else if (passReceiver && matchup.id === passReceiver.id) {
       // Pass anticipation — sprint to close out on the receiver before the ball arrives
       // Recovery factor determines how tight the closeout is
@@ -601,21 +696,26 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
       defX = matchup.x + Math.cos(angle) * closeoutDist;
       defY = matchup.y + Math.sin(angle) * closeoutDist;
     } else {
-      // Off-ball defense — recover to man, sag toward ball based on recovery ability
-      // Crash Boards: guards/wings sag hard to the glass instead of helping on the ball
+      // Off-ball defense — stick to your man, minimal sag
       const crashBoards = play === 'crash_boards';
-      const sagToBasket = crashBoards ? 0.5 : 0.25;
-      const midX = lerp(matchup.x, basket.x, sagToBasket);
-      const midY = lerp(matchup.y, basket.y, sagToBasket);
 
-      if (ballCarrier && !crashBoards) {
-        // Faster, more aware defenders can sag toward the ball and still recover
-        const sagAmount = 0.22 * recoveryFactor;
-        defX = lerp(midX, ballCarrier.x, sagAmount);
-        defY = lerp(midY, ballCarrier.y, sagAmount);
+      if (isScreened) {
+        // Screened — trail the man with a lag
+        defX = lerp(defender.x, matchup.x, 0.4);
+        defY = lerp(defender.y, matchup.y, 0.4);
       } else {
-        defX = midX;
-        defY = midY;
+        const sagToBasket = crashBoards ? 0.35 : 0.10;
+        const midX = lerp(matchup.x, basket.x, sagToBasket);
+        const midY = lerp(matchup.y, basket.y, sagToBasket);
+
+        if (ballCarrier && !crashBoards) {
+          const sagAmount = 0.06 * recoveryFactor;
+          defX = lerp(midX, ballCarrier.x, sagAmount);
+          defY = lerp(midY, ballCarrier.y, sagAmount);
+        } else {
+          defX = midX;
+          defY = midY;
+        }
       }
     }
 
@@ -1146,6 +1246,8 @@ function switchPossession(state, fastBreakInitiator = null) {
   state.shotClock = 24;
   state.turnoverCooldown = 1000;
   state.userPlayCall = null;
+  state.screenState = null;
+  state.players.forEach(p => { p.isSettingScreen = false; });
 
   // Fast break check: live-ball transitions (steals, defensive rebounds, blocks)
   // can trigger a break instead of resetting to half-court sets
