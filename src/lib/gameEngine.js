@@ -897,13 +897,13 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     return dd < closest.dist ? { player: d, dist: dd } : closest;
   }, { player: null, dist: Infinity });
 
+  const isFastBreak = state.fastBreak && state.fastBreak.active;
   const { level: contestLevel } = evaluateContest(state, carrier, nearestDef, defenders, distToBasket, isFastBreak);
   const isOpen = contestLevel === 'wide_open' || contestLevel === 'open';
   const isVeryClose = distToBasket < 80;
   const isShortMid = distToBasket >= 80 && distToBasket < 150;
   const isMidRange = distToBasket >= 150 && distToBasket < 220;
   const threeZone = isThreePointer(carrier.x, carrier.y, state.attackingRight);
-  const isFastBreak = state.fastBreak && state.fastBreak.active;
 
   // Late-game: a trailing defense intentionally fouls to stop the clock
   if (!isFastBreak && checkIntentionalFoul(state, carrier, nearestDef.player)) {
