@@ -441,7 +441,7 @@ export default function CourtCanvas({ gameState }) {
       ctx.fillText(`END OF QUARTER ${gameState.quarter}`, px2, py2 - 8);
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 12px sans-serif';
-      ctx.fillText('Next quarter starting…', px2, py2 + 18);
+      ctx.fillText(`Press Continue to start Q${gameState.quarter + 1}`, px2, py2 + 18);
     }
   }, [gameState]);
 

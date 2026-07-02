@@ -110,13 +110,13 @@ function getPatienceFactor(contestLevel, shotClock) {
   const late = shotClock > 4;
   switch (contestLevel) {
     case 'open':
-      return early ? 0.7 : (mid ? 0.9 : 1.0);
+      return early ? 0.50 : (mid ? 0.78 : 1.0);
     case 'light_contest':
-      return early ? 0.30 : (mid ? 0.60 : (late ? 0.90 : 1.2));
+      return early ? 0.18 : (mid ? 0.48 : (late ? 0.85 : 1.15));
     case 'tight':
-      return early ? 0.12 : (mid ? 0.35 : (late ? 0.70 : 1.3));
+      return early ? 0.06 : (mid ? 0.22 : (late ? 0.62 : 1.25));
     default: // smothered
-      return early ? 0.04 : (mid ? 0.12 : (late ? 0.45 : 1.4));
+      return early ? 0.02 : (mid ? 0.07 : (late ? 0.38 : 1.35));
   }
 }
 
@@ -354,17 +354,13 @@ export function updateGame(state, dt) {
     return state;
   }
 
-  // End-of-quarter intermission — play stops between quarters
+  // End-of-quarter intermission — play stops until the user continues
   if (state.quarterBreak) {
-    state.quarterBreak.timer -= effectiveDt;
     // Players catch their breath during the break
     state.players.forEach(p => {
       p.fatigue = clamp(p.fatigue - 0.6 * (effectiveDt / 1000), 0, 100);
     });
     updatePlayerMovement(state, effectiveDt);
-    if (state.quarterBreak.timer <= 0) {
-      finishQuarterBreak(state);
-    }
     return state;
   }
 
@@ -376,8 +372,8 @@ export function updateGame(state, dt) {
     state.gameClock = 0;
     state.shotClock = 0;
     if (state.quarter < 4) {
-      // Stop play for a brief intermission between quarters
-      state.quarterBreak = { timer: 3500 };
+      // Stop play for an intermission — user must continue to the next quarter
+      state.quarterBreak = { awaitingInput: true };
       return state;
     } else {
       state.isPaused = true;
@@ -747,9 +743,9 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
         defX = lerp(defender.x, matchup.x, 0.4);
         defY = lerp(defender.y, matchup.y, 0.4);
       } else {
-        let pressDist = 16 + (1 - recoveryFactor) * 6;
-        if (play === 'aggressive_steal') pressDist = 12;
-        if (doubleTarget && doubleTarget.id === matchup.id) pressDist = 12;
+        let pressDist = 13 + (1 - recoveryFactor) * 6;
+        if (play === 'aggressive_steal') pressDist = 10;
+        if (doubleTarget && doubleTarget.id === matchup.id) pressDist = 10;
         const angle = Math.atan2(basket.y - matchup.y, basket.x - matchup.x);
         defX = matchup.x + Math.cos(angle) * pressDist;
         defY = matchup.y + Math.sin(angle) * pressDist;
@@ -757,7 +753,7 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
     } else if (passReceiver && matchup.id === passReceiver.id) {
       // Pass anticipation — sprint to close out on the receiver before the ball arrives
       // Recovery factor determines how tight the closeout is
-      const closeoutDist = lerp(40, 20, recoveryFactor);
+      const closeoutDist = lerp(34, 16, recoveryFactor);
       const angle = Math.atan2(basket.y - matchup.y, basket.x - matchup.x);
       defX = matchup.x + Math.cos(angle) * closeoutDist;
       defY = matchup.y + Math.sin(angle) * closeoutDist;
@@ -1523,8 +1519,8 @@ function switchPossession(state, fastBreakInitiator = null) {
   }
 }
 
-// End of an intermission — advance to the next quarter
-function finishQuarterBreak(state) {
+// End of an intermission — advance to the next quarter (called when user hits Continue)
+export function advanceToNextQuarter(state) {
   state.quarter++;
   state.gameClock = 720;
   state.shotClock = 24;

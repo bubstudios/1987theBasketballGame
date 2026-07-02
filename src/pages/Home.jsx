@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { LAKERS_ROSTER, CELTICS_ROSTER, CLIPPERS_ROSTER, LAKERS_BENCH, CELTICS_BENCH, CLIPPERS_BENCH, TEAM_COLORS } from '@/lib/gameData';
-import { createGameState, updateGame } from '@/lib/gameEngine';
+import { createGameState, updateGame, advanceToNextQuarter } from '@/lib/gameEngine';
+import { Button } from '@/components/ui/button';
 import { useCourtSound } from '@/hooks/useCourtSound';
 import CourtCanvas from '@/components/game/CourtCanvas';
 import Scoreboard from '@/components/game/Scoreboard';
@@ -126,6 +127,13 @@ export default function Home() {
     setGameState({ ...gameRef.current });
   };
 
+  const handleContinue = () => {
+    if (gameRef.current && gameRef.current.quarterBreak) {
+      advanceToNextQuarter(gameRef.current);
+      setGameState({ ...gameRef.current });
+    }
+  };
+
   const isGameOver = gameState && gameState.quarter >= 4 && gameState.gameClock <= 0;
 
   return (
@@ -184,6 +192,17 @@ export default function Home() {
             onToggleSound={toggleMute}
           />
         </div>
+
+        {/* Quarter Break — user continues to next quarter */}
+        {gameState?.quarterBreak && !isGameOver && (
+          <div className="mb-4 text-center py-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <div className="text-lg font-bold text-amber-400">End of Quarter {gameState.quarter}</div>
+            <div className="text-xs text-neutral-400 mt-1">Intermission — players catch their breath</div>
+            <Button onClick={handleContinue} className="mt-3">
+              Continue to Quarter {gameState.quarter + 1}
+            </Button>
+          </div>
+        )}
 
         {/* Game Over */}
         {isGameOver && (
