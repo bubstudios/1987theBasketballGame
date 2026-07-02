@@ -633,7 +633,7 @@ function checkTurnover(state, carrier, defenders) {
   defenders.forEach(d => {
     const dd = dist(carrier, d);
     if (dd < 20) {
-      const stealChance = 0.003 * d.defense * (1 / (1 + carrier.passing * 0.2));
+      const stealChance = (d.stealRate || 0.02) * 0.12 + (carrier.turnoverRate || 0.12) * 0.006;
       if (Math.random() < stealChance) {
         carrier.hasBall = false;
         d.hasBall = true;

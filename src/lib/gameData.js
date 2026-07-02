@@ -20,6 +20,8 @@ export const LAKERS_ROSTER = [
     twoPct: 0.480,        // 2P% (1986-87)
     offensiveRebRate: 0.048,  // OReb% (1986-87)
     defensiveRebRate: 0.165,  // DReb% (1986-87)
+    stealRate: 0.029,         // STL% (1986-87)
+    turnoverRate: 0.140,     // TOV% (1986-87)
   },
   {
     name: "Byron Scott",
@@ -39,6 +41,8 @@ export const LAKERS_ROSTER = [
     twoPct: 0.488,
     offensiveRebRate: 0.029,
     defensiveRebRate: 0.075,
+    stealRate: 0.022,
+    turnoverRate: 0.100,
   },
   {
     name: "James Worthy",
@@ -58,6 +62,8 @@ export const LAKERS_ROSTER = [
     twoPct: 0.509,
     offensiveRebRate: 0.057,
     defensiveRebRate: 0.108,
+    stealRate: 0.020,
+    turnoverRate: 0.115,
   },
   {
     name: "A.C. Green",
@@ -77,6 +83,8 @@ export const LAKERS_ROSTER = [
     twoPct: 0.519,
     offensiveRebRate: 0.071,
     defensiveRebRate: 0.132,
+    stealRate: 0.015,
+    turnoverRate: 0.100,
   },
   {
     name: "Kareem Abdul-Jabbar",
@@ -96,6 +104,8 @@ export const LAKERS_ROSTER = [
     twoPct: 0.473,
     offensiveRebRate: 0.050,
     defensiveRebRate: 0.120,
+    stealRate: 0.012,
+    turnoverRate: 0.090,
   },
 ];
 
@@ -118,6 +128,8 @@ export const CELTICS_ROSTER = [
     twoPct: 0.462,
     offensiveRebRate: 0.023,
     defensiveRebRate: 0.084,
+    stealRate: 0.025,
+    turnoverRate: 0.120,
   },
   {
     name: "Danny Ainge",
@@ -137,6 +149,8 @@ export const CELTICS_ROSTER = [
     twoPct: 0.418,
     offensiveRebRate: 0.020,
     defensiveRebRate: 0.076,
+    stealRate: 0.023,
+    turnoverRate: 0.110,
   },
   {
     name: "Larry Bird",
@@ -156,6 +170,8 @@ export const CELTICS_ROSTER = [
     twoPct: 0.489,
     offensiveRebRate: 0.070,
     defensiveRebRate: 0.205,
+    stealRate: 0.020,
+    turnoverRate: 0.110,
   },
   {
     name: "Kevin McHale",
@@ -175,6 +191,8 @@ export const CELTICS_ROSTER = [
     twoPct: 0.506,
     offensiveRebRate: 0.060,
     defensiveRebRate: 0.150,
+    stealRate: 0.013,
+    turnoverRate: 0.090,
   },
   {
     name: "Robert Parish",
@@ -194,6 +212,8 @@ export const CELTICS_ROSTER = [
     twoPct: 0.511,
     offensiveRebRate: 0.090,
     defensiveRebRate: 0.205,
+    stealRate: 0.015,
+    turnoverRate: 0.090,
   },
 ];
 
