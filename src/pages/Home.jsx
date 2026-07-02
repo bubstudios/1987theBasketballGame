@@ -117,11 +117,12 @@ export default function Home() {
     if (ok) setGameState({ ...gameRef.current });
   };
 
-  const handleCallPlay = (playId) => {
+  const handleCallPlay = (playId, side) => {
     if (!gameRef.current) return;
-    if (gameRef.current.possession !== 'lakers') return;
     if (gameRef.current.timeoutState || gameRef.current.ftState || gameRef.current.shotAnimating) return;
-    gameRef.current.userPlayCall = { team: 'lakers', type: playId };
+    if (side === 'offense' && gameRef.current.possession !== 'lakers') return;
+    if (side === 'defense' && gameRef.current.possession === 'lakers') return;
+    gameRef.current.userPlayCall = { team: 'lakers', type: playId, side };
     setGameState({ ...gameRef.current });
   };
 

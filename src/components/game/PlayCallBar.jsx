@@ -1,19 +1,28 @@
 import React from 'react';
-import { User, Mountain, Target, Zap, Megaphone } from 'lucide-react';
+import { Flame, Mountain, Target, Zap, Megaphone, LayoutGrid, Hand, Users, UserCheck } from 'lucide-react';
 
-const PLAY_CALLS = [
-  { id: 'iso_pg', label: 'ISO PG', desc: 'Isolate the point guard', icon: User },
+const OFFENSE_PLAYS = [
+  { id: 'iso_hot', label: 'ISO Hottest', desc: 'Isolate the hottest hand', icon: Flame },
   { id: 'feed_post', label: 'Feed Post', desc: 'Pound it inside to the big', icon: Mountain },
   { id: 'shoot_3', label: 'Shoot 3', desc: 'Hunt the long ball', icon: Target },
   { id: 'attack_rim', label: 'Attack Rim', desc: 'Drive hard to the basket', icon: Zap },
+];
+
+const DEFENSE_PLAYS = [
+  { id: 'crash_boards', label: 'Crash Boards', desc: 'Send everyone to the glass', icon: LayoutGrid },
+  { id: 'aggressive_steal', label: 'Aggressive Steal', desc: 'Gamble for the ball — foul risk', icon: Hand },
+  { id: 'double_post', label: 'Double Post', desc: 'Double the post big', icon: Users },
+  { id: 'double_ball', label: 'Double Ball', desc: 'Double the ball-handler', icon: UserCheck },
 ];
 
 export default function PlayCallBar({ gameState, onCallPlay }) {
   if (!gameState) return null;
 
   const lakersPossession = gameState.possession === 'lakers';
-  const blocked = !lakersPossession
-    || !!gameState.timeoutState
+  const plays = lakersPossession ? OFFENSE_PLAYS : DEFENSE_PLAYS;
+  const side = lakersPossession ? 'offense' : 'defense';
+
+  const blocked = !!gameState.timeoutState
     || !!gameState.ftState
     || gameState.shotAnimating
     || gameState.isPaused
@@ -26,23 +35,25 @@ export default function PlayCallBar({ gameState, onCallPlay }) {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Megaphone size={13} className="text-amber-400" />
-          <span className="text-xs text-neutral-400 uppercase tracking-widest font-semibold">Play Call</span>
+          <span className="text-xs text-neutral-400 uppercase tracking-widest font-semibold">
+            {lakersPossession ? 'Offensive Play Call' : 'Defensive Play Call'}
+          </span>
         </div>
         <span className="text-[9px] text-neutral-500">
-          {active ? 'Overriding CPU · single play' : lakersPossession ? 'Lakers ball' : '—'}
+          {active ? 'Active · single play' : lakersPossession ? 'Lakers ball' : 'On defense'}
         </span>
       </div>
 
       <div className="grid grid-cols-4 gap-2">
-        {PLAY_CALLS.map(play => {
+        {plays.map(play => {
           const Icon = play.icon;
-          const isActive = active && active.type === play.id;
+          const isActive = active && active.type === play.id && active.side === side;
           const disabled = blocked || isActive;
           return (
             <button
               key={play.id}
               disabled={disabled}
-              onClick={() => onCallPlay(play.id)}
+              onClick={() => onCallPlay(play.id, side)}
               className={`rounded-lg p-2 text-left transition-colors border ${
                 isActive
                   ? 'bg-amber-500/20 border-amber-400'
@@ -56,12 +67,6 @@ export default function PlayCallBar({ gameState, onCallPlay }) {
           );
         })}
       </div>
-
-      {!lakersPossession && !active && (
-        <div className="text-[10px] text-neutral-600 italic mt-2 text-center">
-          Available on Lakers possession
-        </div>
-      )}
     </div>
   );
 }

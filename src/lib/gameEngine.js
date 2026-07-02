@@ -513,10 +513,33 @@ function updateMotionOffense(state, offensePlayers, ballCarrier, dt) {
   });
 }
 
+function getActiveDefensePlay(state, defenseTeam) {
+  if (state.userPlayCall && state.userPlayCall.side === 'defense' && state.userPlayCall.team === defenseTeam) {
+    return state.userPlayCall.type;
+  }
+  return null;
+}
+
+function findDoubleTeamer(defensePlayers, offensePlayers, target) {
+  if (!target) return null;
+  const primaryIdx = offensePlayers.findIndex(o => o.id === target.id);
+  let best = null;
+  let bestD = Infinity;
+  defensePlayers.forEach((d, i) => {
+    if (i === primaryIdx) return; // skip the defender already on the target
+    const dd = dist(d, target);
+    if (dd < bestD) { bestD = dd; best = d; }
+  });
+  return best;
+}
+
 function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
   const ballCarrier = state.ball.carrier
     ? state.players.find(p => p.id === state.ball.carrier)
     : null;
+
+  const defenseTeam = defensePlayers[0] ? defensePlayers[0].team : null;
+  const play = getActiveDefensePlay(state, defenseTeam);
 
   // Anticipate pass receiver during ball flight for early closeout
   let passReceiver = null;
@@ -525,6 +548,19 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
       p.team === state.possession &&
       dist(p, { x: state.ball.targetX, y: state.ball.targetY }) < 35
     );
+  }
+
+  // Double-team: pick the target and which defender cheats over to help
+  let doubleTarget = null;
+  let doubler = null;
+  if (play === 'double_ball' && ballCarrier) {
+    doubleTarget = ballCarrier;
+    doubler = findDoubleTeamer(defensePlayers, offensePlayers, doubleTarget);
+  } else if (play === 'double_post') {
+    doubleTarget = offensePlayers.find(p => p.courtIndex === 4)
+      || offensePlayers.find(p => p.position === 'C')
+      || offensePlayers[offensePlayers.length - 1];
+    if (doubleTarget) doubler = findDoubleTeamer(defensePlayers, offensePlayers, doubleTarget);
   }
 
   defensePlayers.forEach((defender, i) => {
@@ -542,10 +578,18 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
 
     let defX, defY;
 
-    if (matchup.id === state.ball.carrier) {
+    if (doubler && defender.id === doubler.id && doubleTarget) {
+      // This defender abandons his man to double the target
+      const angle = Math.atan2(basket.y - doubleTarget.y, basket.x - doubleTarget.x);
+      const doubleDist = 20;
+      defX = doubleTarget.x + Math.cos(angle) * doubleDist;
+      defY = doubleTarget.y + Math.sin(angle) * doubleDist;
+    } else if (matchup.id === state.ball.carrier) {
       // On-ball defense — press the handler
       // Better defenders (high recovery) can press tighter without getting beat
-      const pressDist = 22 + (1 - recoveryFactor) * 18;
+      let pressDist = 22 + (1 - recoveryFactor) * 18;
+      if (play === 'aggressive_steal') pressDist = 14; // gambling, tighter
+      if (doubleTarget && doubleTarget.id === matchup.id) pressDist = 14; // trapped
       const angle = Math.atan2(basket.y - matchup.y, basket.x - matchup.x);
       defX = matchup.x + Math.cos(angle) * pressDist;
       defY = matchup.y + Math.sin(angle) * pressDist;
@@ -558,10 +602,13 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
       defY = matchup.y + Math.sin(angle) * closeoutDist;
     } else {
       // Off-ball defense — recover to man, sag toward ball based on recovery ability
-      const midX = lerp(matchup.x, basket.x, 0.25);
-      const midY = lerp(matchup.y, basket.y, 0.25);
+      // Crash Boards: guards/wings sag hard to the glass instead of helping on the ball
+      const crashBoards = play === 'crash_boards';
+      const sagToBasket = crashBoards ? 0.5 : 0.25;
+      const midX = lerp(matchup.x, basket.x, sagToBasket);
+      const midY = lerp(matchup.y, basket.y, sagToBasket);
 
-      if (ballCarrier) {
+      if (ballCarrier && !crashBoards) {
         // Faster, more aware defenders can sag toward the ball and still recover
         const sagAmount = 0.22 * recoveryFactor;
         defX = lerp(midX, ballCarrier.x, sagAmount);
@@ -578,10 +625,22 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
 }
 
 // On-screen user play calls — override the CPU ball-carrier decision for one possession.
-// ISO PG: force the ball to the point guard and let him isolate.
+// ISO Hottest: force the ball to the hottest hand and let him isolate.
 // Feed Post: pound it inside to the center for a close finish.
 // Shoot 3: find the best deep shooter and let it fly from beyond the arc.
 // Attack Rim: the current carrier drives hard and finishes at the basket.
+function getHottestPlayer(teammates) {
+  // Hottest hand = most points scored so far; tie-break by scoring skill
+  let best = null;
+  let bestScore = -Infinity;
+  teammates.forEach(t => {
+    const pts = (t.stats && t.stats.points) || 0;
+    const score = pts * 10 + (t.shooting + t.insideScoring) * 0.5;
+    if (score > bestScore) { bestScore = score; best = t; }
+  });
+  return best || teammates[0];
+}
+
 function applyUserPlayCall(state, carrier, teammates, basket, distToBasket, isOpen, threeZone, nearestDef) {
   const playId = state.userPlayCall.type;
 
@@ -604,9 +663,9 @@ function applyUserPlayCall(state, carrier, teammates, basket, distToBasket, isOp
     return true;
   };
 
-  if (playId === 'iso_pg') {
-    const pg = teammates.find(t => t.courtIndex === 0);
-    if (pg && carrier.id !== pg.id) return passTo(pg);
+  if (playId === 'iso_hot') {
+    const hot = getHottestPlayer(teammates);
+    if (hot && carrier.id !== hot.id) return passTo(hot);
     if (distToBasket < 90) return shootNow();
     return driveTo(0.6);
   }
@@ -651,7 +710,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
 
   // User's on-screen play call overrides the CPU for this single possession.
   // It persists across passes and is consumed when a shot goes up or possession changes.
-  if (state.userPlayCall && state.userPlayCall.team === carrier.team) {
+  if (state.userPlayCall && state.userPlayCall.side === 'offense' && state.userPlayCall.team === carrier.team) {
     const handled = applyUserPlayCall(state, carrier, teammates, basket, distToBasket, isOpen, threeZone, nearestDef);
     if (handled) return;
   }
@@ -792,7 +851,8 @@ function makePass(state, passer, receiver) {
 function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   // A drawn-up play is consumed once the shot goes up
   if (state.playCall) state.playCall = null;
-  state.userPlayCall = null;
+  // Defensive play calls survive the shot so Crash Boards still affects the rebound
+  if (state.userPlayCall && state.userPlayCall.side === 'offense') state.userPlayCall = null;
   const basket = getBasketPos(state.attackingRight);
   shooter.hasBall = false;
   state.ball.carrier = null;
@@ -946,14 +1006,17 @@ function resolveShot(state) {
   } else {
     // Rebound — weighted by OReb%/DReb% and proximity to basket
     const basket = getBasketPos(state.attackingRight);
+    const defenseTeam = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
+    const crashBoards = getActiveDefensePlay(state, defenseTeam) === 'crash_boards';
     let rebounder = null;
     let minD = Infinity;
     state.players.forEach(p => {
       if (!p.onCourt) return;
       const d = dist(p, basket);
-      const rate = p.team === state.possession
-        ? (p.offensiveRebRate || 0.05)
-        : (p.defensiveRebRate || 0.15);
+      const isDefense = p.team !== state.possession;
+      const rate = isDefense
+        ? (p.defensiveRebRate || 0.15) * (crashBoards ? 1.7 : 1)
+        : (p.offensiveRebRate || 0.05);
       const reboundChance = d - rate * 180 - p.rebounding * 4;
       if (reboundChance < minD) { minD = reboundChance; rebounder = p; }
     });
@@ -1168,11 +1231,17 @@ function updateFastBreak(state, offensePlayers, defensePlayers, dt) {
 }
 
 function checkTurnover(state, carrier, defenders) {
+  const defenseTeam = defenders[0] ? defenders[0].team : null;
+  const play = getActiveDefensePlay(state, defenseTeam);
+
   defenders.forEach(d => {
     const dd = dist(carrier, d);
-    if (dd < 20) {
+    const stealRange = play === 'aggressive_steal' ? 28 : 20;
+    if (dd < stealRange) {
       const carrierFatigueMult = 1 + (carrier.fatigue || 0) / 100 * 0.5;
-      const stealChance = (d.stealRate || 0.02) * 0.12 + (carrier.turnoverRate || 0.12) * 0.006 * carrierFatigueMult;
+      let stealChance = (d.stealRate || 0.02) * 0.12 + (carrier.turnoverRate || 0.12) * 0.006 * carrierFatigueMult;
+      if (play === 'aggressive_steal') stealChance *= 2.4;
+      if ((play === 'double_ball' || play === 'double_post') && dd < 26) stealChance *= 1.7;
       if (Math.random() < stealChance) {
         carrier.hasBall = false;
         d.hasBall = true;
@@ -1184,6 +1253,17 @@ function checkTurnover(state, carrier, defenders) {
         state.gameLog.unshift(`🏀 ${d.name} steals from ${carrier.name}!`);
         state.turnoverCooldown = 2000;
         switchPossession(state, d);
+        return;
+      }
+      // Aggressive steal gamble that misses can draw a reach-in foul
+      if (play === 'aggressive_steal' && dd < 22 && !d.fouledOut && Math.random() < 0.10) {
+        d.fouls = (d.fouls || 0) + 1;
+        if (d.fouls >= 6) d.fouledOut = true;
+        state.gameLog.unshift(`🦵 Reach-in foul on ${d.name} (${d.fouls})`);
+        if (state.gameLog.length > 15) state.gameLog.pop();
+        state.shotClock = 24; // non-shooting foul resets the clock
+        state.turnoverCooldown = 1500;
+        state.actionTimer = 600;
       }
     }
   });
