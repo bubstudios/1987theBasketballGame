@@ -24,6 +24,7 @@ export const LAKERS_ROSTER = [
     turnoverRate: 0.140,     // TOV% (1986-87)
     ftAttempts: 6.0,          // FTA per game (1986-87)
     ftPct: 0.840,            // FT% (1986-87)
+    blockRate: 0.012,        // BLK% (1986-87)
   },
   {
     name: "Byron Scott",
@@ -47,6 +48,7 @@ export const LAKERS_ROSTER = [
     turnoverRate: 0.100,
     ftAttempts: 2.6,
     ftPct: 0.833,
+    blockRate: 0.005,
   },
   {
     name: "James Worthy",
@@ -70,6 +72,7 @@ export const LAKERS_ROSTER = [
     turnoverRate: 0.115,
     ftAttempts: 6.1,
     ftPct: 0.749,
+    blockRate: 0.018,
   },
   {
     name: "A.C. Green",
@@ -93,6 +96,7 @@ export const LAKERS_ROSTER = [
     turnoverRate: 0.100,
     ftAttempts: 3.2,
     ftPct: 0.662,
+    blockRate: 0.015,
   },
   {
     name: "Kareem Abdul-Jabbar",
@@ -116,6 +120,7 @@ export const LAKERS_ROSTER = [
     turnoverRate: 0.090,
     ftAttempts: 3.5,
     ftPct: 0.737,
+    blockRate: 0.035,
   },
 ];
 
@@ -142,6 +147,7 @@ export const CELTICS_ROSTER = [
     turnoverRate: 0.120,
     ftAttempts: 2.4,
     ftPct: 0.811,
+    blockRate: 0.008,
   },
   {
     name: "Danny Ainge",
@@ -165,6 +171,7 @@ export const CELTICS_ROSTER = [
     turnoverRate: 0.110,
     ftAttempts: 2.3,
     ftPct: 0.893,
+    blockRate: 0.003,
   },
   {
     name: "Larry Bird",
@@ -188,6 +195,7 @@ export const CELTICS_ROSTER = [
     turnoverRate: 0.110,
     ftAttempts: 5.0,
     ftPct: 0.910,
+    blockRate: 0.009,
   },
   {
     name: "Kevin McHale",
@@ -211,6 +219,7 @@ export const CELTICS_ROSTER = [
     turnoverRate: 0.090,
     ftAttempts: 6.2,
     ftPct: 0.830,
+    blockRate: 0.040,
   },
   {
     name: "Robert Parish",
@@ -234,6 +243,7 @@ export const CELTICS_ROSTER = [
     turnoverRate: 0.090,
     ftAttempts: 3.5,
     ftPct: 0.726,
+    blockRate: 0.038,
   },
 ];
 

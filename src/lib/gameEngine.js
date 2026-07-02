@@ -426,7 +426,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     // Foul detection: contested shots can draw fouls, weighted by FTA rate
     const foulChance = nearestDef.dist < 25 ? Math.min(0.08 + carrier.ftAttempts * 0.015, 0.28) : 0;
     const fouledBy = (foulChance > 0 && Math.random() < foulChance) ? nearestDef.player : null;
-    takeShot(state, carrier, isOpen, fouledBy);
+    takeShot(state, carrier, isOpen, fouledBy, nearestDef);
     state.actionTimer = 1500;
   } else if (roll < shootChance + driveChance) {
     // Drive to basket
@@ -494,7 +494,7 @@ function makePass(state, passer, receiver) {
   if (state.gameLog.length > 15) state.gameLog.pop();
 }
 
-function takeShot(state, shooter, isOpen, fouledBy) {
+function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   const basket = getBasketPos(state.attackingRight);
   shooter.hasBall = false;
   state.ball.carrier = null;
@@ -533,12 +533,23 @@ function takeShot(state, shooter, isOpen, fouledBy) {
     prob = Math.max(0.05, Math.min(prob, 0.6));
   }
 
+  // Block detection: contested shots can be blocked, weighted by BLK% and distance
+  let blockedBy = null;
+  if (nearestDef && nearestDef.player && !fouledBy && nearestDef.dist < 30) {
+    const distFactor = d < 60 ? 1.5 : 0.6;
+    const blockChance = (nearestDef.player.blockRate || 0.01) * distFactor;
+    if (Math.random() < blockChance) {
+      blockedBy = nearestDef.player;
+    }
+  }
+
   state.ball.shotResult = {
-    made: Math.random() < prob,
+    made: blockedBy ? false : Math.random() < prob,
     shooter: shooter,
     points: threePtr ? 3 : 2,
     type: d < 60 ? 'layup' : (threePtr ? 'three' : 'mid-range'),
     fouledBy: fouledBy || null,
+    blockedBy: blockedBy || null,
   };
 
   state.shotAnimating = true;
@@ -552,6 +563,16 @@ function resolveShot(state) {
 
   if (result.fouledBy) {
     resolveFouledShot(state, result);
+    state.ball.shotResult = null;
+    return;
+  }
+
+  if (result.blockedBy) {
+    state.shotResultDisplay = `${result.blockedBy.name} blocks ${result.shooter.name}!`;
+    state.gameLog.unshift(`🚫 ${result.blockedBy.name} BLOCKS ${result.shooter.name}!`);
+    state.shotResultTimer = 1500;
+    if (state.gameLog.length > 15) state.gameLog.pop();
+    switchPossession(state);
     state.ball.shotResult = null;
     return;
   }
