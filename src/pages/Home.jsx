@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { LAKERS_ROSTER, CELTICS_ROSTER, CLIPPERS_ROSTER, LAKERS_BENCH, CELTICS_BENCH, CLIPPERS_BENCH, TEAM_COLORS } from '@/lib/gameData';
+import { LAKERS_ROSTER, CELTICS_ROSTER, LAKERS_BENCH, CELTICS_BENCH, TEAM_COLORS } from '@/lib/gameData';
 import { createGameState, updateGame, advanceToNextQuarter } from '@/lib/gameEngine';
 import { Button } from '@/components/ui/button';
 import { useCourtSound } from '@/hooks/useCourtSound';
@@ -19,26 +19,21 @@ import { callTimeout } from '@/lib/timeoutEngine';
 
 export default function Home() {
   const [gameState, setGameState] = useState(null);
-  const [opponent, setOpponent] = useState('celtics');
   const gameRef = useRef(null);
   const rafRef = useRef(null);
   const lastTimeRef = useRef(null);
   const prevVelRef = useRef({});
   const { playSqueak, muted, toggleMute } = useCourtSound();
 
-  const opponentRoster = opponent === 'celtics' ? CELTICS_ROSTER : CLIPPERS_ROSTER;
-  const oppColors = TEAM_COLORS[opponent];
-  const oppBench = opponent === 'celtics' ? CELTICS_BENCH : CLIPPERS_BENCH;
+  const oppColors = TEAM_COLORS.celtics;
 
   const initGame = useCallback(() => {
-    const oppRoster = opponent === 'celtics' ? CELTICS_ROSTER : CLIPPERS_ROSTER;
-    const oppBench = opponent === 'celtics' ? CELTICS_BENCH : CLIPPERS_BENCH;
-    const state = createGameState([...LAKERS_ROSTER, ...LAKERS_BENCH], [...oppRoster, ...oppBench], opponent);
+    const state = createGameState([...LAKERS_ROSTER, ...LAKERS_BENCH], [...CELTICS_ROSTER, ...CELTICS_BENCH], 'celtics');
     gameRef.current = state;
     prevVelRef.current = {};
     setGameState({ ...state });
     lastTimeRef.current = null;
-  }, [opponent]);
+  }, []);
 
   useEffect(() => {
     initGame();
@@ -146,24 +141,6 @@ export default function Home() {
           <span style={{ color: oppColors.primary }}>{oppColors.name}</span>
         </h1>
         <p className="text-xs text-neutral-500 mt-1 uppercase tracking-widest">1986-87 Season · NBA Sim</p>
-        <div className="flex items-center justify-center gap-2 mt-3">
-          <button
-            onClick={() => setOpponent('celtics')}
-            className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
-              opponent === 'celtics' ? 'bg-green-700 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
-            }`}
-          >
-            Celtics
-          </button>
-          <button
-            onClick={() => setOpponent('clippers')}
-            className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
-              opponent === 'clippers' ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
-            }`}
-          >
-            Clippers
-          </button>
-        </div>
         <div className="flex items-center justify-center gap-3 mt-2">
           <Link
             to="/lakers-offense"
@@ -209,9 +186,9 @@ export default function Home() {
           <div className="text-center mb-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
             <div className="text-lg font-bold text-amber-400">Final Score</div>
             <div className="text-sm text-neutral-300">
-              {gameState.score.lakers > gameState.score[opponent]
+              {gameState.score.lakers > gameState.score.celtics
                 ? 'Lakers Win!'
-                : gameState.score[opponent] > gameState.score.lakers
+                : gameState.score.celtics > gameState.score.lakers
                 ? `${oppColors.name} Win!`
                 : 'Tied Game!'}
             </div>
@@ -241,14 +218,14 @@ export default function Home() {
           <div className="lg:col-span-1 space-y-3">
             <Scoreboard gameState={gameState} />
             <PlayCallBar gameState={gameState} onCallPlay={handleCallPlay} />
-            <CoachControls gameState={gameState} opponent={opponent} onCallTimeout={handleCallTimeout} />
+            <CoachControls gameState={gameState} opponent="celtics" onCallTimeout={handleCallTimeout} />
           </div>
         </div>
 
         {/* Rosters */}
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <RosterPanel roster={LAKERS_ROSTER} bench={LAKERS_BENCH} teamKey="lakers" gameState={gameState} />
-          <RosterPanel roster={opponentRoster} bench={oppBench} teamKey={opponent} gameState={gameState} />
+          <RosterPanel roster={CELTICS_ROSTER} bench={CELTICS_BENCH} teamKey="celtics" gameState={gameState} />
         </div>
 
         {/* Game Log */}
