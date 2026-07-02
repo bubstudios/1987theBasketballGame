@@ -74,11 +74,72 @@ const PLAYER_ROLES = {
     fgaTarget: 3.7, mpgExpected: 10.6,
   },
   // --- Celtics ---
+  // Boston: DJ/Ainge initiate, Bird is the hub, Bird & McHale co-star,
+  // Parish is the third interior option. Ratings out of 99.
   'Larry Bird': {
     team: 'celtics', starRole: 'hub',
-    initiation: 88, finishing: 95, offBall: 99, transition: 55,
-    creation: 94, offReb: 92, clutchPriority: 99,
+    initiation: 92, finishing: 99, offBall: 99, transition: 70,
+    creation: 96, offReb: 72, clutchPriority: 99,
     fgaTarget: 20.2, mpgExpected: 40.6,
+    shotWeight: 26,
+  },
+  'Kevin McHale': {
+    team: 'celtics', starRole: 'post_star',
+    initiation: 28, finishing: 98, offBall: 95, transition: 30,
+    creation: 50, offReb: 92, clutchPriority: 92,
+    fgaTarget: 17.0, mpgExpected: 39.7,
+    shotWeight: 22,
+  },
+  'Robert Parish': {
+    team: 'celtics',
+    initiation: 15, finishing: 84, offBall: 88, transition: 75,
+    creation: 35, offReb: 93,
+    fgaTarget: 13.2, mpgExpected: 37.4,
+    shotWeight: 18,
+  },
+  'Dennis Johnson': {
+    team: 'celtics', starRole: 'organizer',
+    initiation: 94, finishing: 74, offBall: 78, transition: 88,
+    creation: 92, offReb: 35,
+    fgaTarget: 12.1, mpgExpected: 37.1,
+    shotWeight: 17,
+  },
+  'Danny Ainge': {
+    team: 'celtics',
+    initiation: 80, finishing: 80, offBall: 95, transition: 90,
+    creation: 84, offReb: 38,
+    fgaTarget: 11.9, mpgExpected: 35.2,
+    shotWeight: 17,
+  },
+  'Jerry Sichting': {
+    team: 'celtics',
+    initiation: 84, finishing: 50, offBall: 89, transition: 80,
+    creation: 80, offReb: 15,
+    fgaTarget: 5.1, mpgExpected: 20.1,
+  },
+  'Bill Walton': {
+    team: 'celtics',
+    initiation: 68, finishing: 42, offBall: 78, transition: 45,
+    creation: 90, offReb: 82,
+    fgaTarget: 2.6, mpgExpected: 11.2,
+  },
+  'Fred Roberts': {
+    team: 'celtics',
+    initiation: 15, finishing: 56, offBall: 75, transition: 60,
+    creation: 28, offReb: 72,
+    fgaTarget: 3.7, mpgExpected: 14.8,
+  },
+  'Darren Daye': {
+    team: 'celtics',
+    initiation: 35, finishing: 62, offBall: 80, transition: 82,
+    creation: 45, offReb: 62,
+    fgaTarget: 3.3, mpgExpected: 11.9,
+  },
+  'Greg Kite': {
+    team: 'celtics',
+    initiation: 5, finishing: 22, offBall: 55, transition: 30,
+    creation: 15, offReb: 80,
+    fgaTarget: 1.5, mpgExpected: 10.1,
   },
 };
 
@@ -94,24 +155,45 @@ export function getTeamFGA(state, team) {
 }
 
 // --- Lineup-dependent role adjustment ---
-// Cooper and Matthews step up as initiators when Magic (and Cooper) sit.
+// Lakers: Cooper and Matthews step up as initiators when Magic (and Cooper) sit.
+// Celtics: Sichting becomes the primary organizer when Dennis Johnson rests,
+// and Daye's off-ball/finishing rise when Bird sits.
 function getAdjustedRole(state, player) {
   const role = getRole(player);
   if (!role) return null;
   const team = player.team;
-  const magicOn = state.players.some(p => p.name === 'Magic Johnson' && p.team === team && p.onCourt);
-  const cooperOn = state.players.some(p => p.name === 'Michael Cooper' && p.team === team && p.onCourt);
   const adjusted = { ...role };
-  if (!magicOn) {
-    if (player.name === 'Michael Cooper') {
-      adjusted.initiation = 94;
-      adjusted.creation = 94;
-    }
-    if (!cooperOn && player.name === 'Wes Matthews') {
-      adjusted.initiation = 97;
-      adjusted.creation = 92;
+
+  if (team === 'lakers') {
+    const magicOn = state.players.some(p => p.name === 'Magic Johnson' && p.team === team && p.onCourt);
+    const cooperOn = state.players.some(p => p.name === 'Michael Cooper' && p.team === team && p.onCourt);
+    if (!magicOn) {
+      if (player.name === 'Michael Cooper') {
+        adjusted.initiation = 94;
+        adjusted.creation = 94;
+      }
+      if (!cooperOn && player.name === 'Wes Matthews') {
+        adjusted.initiation = 97;
+        adjusted.creation = 92;
+      }
     }
   }
+
+  if (team === 'celtics') {
+    const djOn = state.players.some(p => p.name === 'Dennis Johnson' && p.team === team && p.onCourt);
+    const birdOn = state.players.some(p => p.name === 'Larry Bird' && p.team === team && p.onCourt);
+    // Sichting steps up as initiator when DJ rests
+    if (!djOn && player.name === 'Jerry Sichting') {
+      adjusted.initiation = 94;
+      adjusted.creation = 88;
+    }
+    // Daye gets more involved when Bird rests
+    if (!birdOn && player.name === 'Darren Daye') {
+      adjusted.offBall = 90;
+      adjusted.finishing = 70;
+    }
+  }
+
   return adjusted;
 }
 
@@ -178,17 +260,136 @@ function clutchBoost(state, player) {
   return role.starRole === 'quarterback' ? 1.10 : 1.15;
 }
 
+// --- Celtics offensive role system ---
+// Boston runs a different structure than the Lakers: Dennis Johnson or Ainge
+// initiate the possession, but Larry Bird is the hub who frequently receives
+// the first meaningful touch and dictates what happens next. Bird and McHale
+// are co-primary scorers; Parish is a substantial third interior option.
+const CELTICS_CLUTCH_WEIGHTS = {
+  'Larry Bird': 38,
+  'Kevin McHale': 27,
+  'Dennis Johnson': 13,
+  'Danny Ainge': 12,
+  'Robert Parish': 10,
+};
+
+// Shot-finisher bias: starting-five hierarchy + Bird-first-touch boost.
+function celticsShotBias(state, player) {
+  const role = getAdjustedRole(state, player);
+  if (!role) return 1.0;
+  let m = 1.0;
+  if (role.shotWeight) m *= role.shotWeight / 20;
+  // After 2+ Celtics possessions without a Bird touch, strongly bias the
+  // next possession toward starting with a Bird touch.
+  if (player.name === 'Larry Bird' && state.celticsOffense) {
+    if ((state.celticsOffense.possessionsSinceBirdTouch || 0) >= 2) m *= 2.0;
+  }
+  return m;
+}
+
+// Star protection — keeps Bird and McHale central without scripting the box
+// score. Boosts underused stars, suppresses over-shooting support players.
+// NEVER adjusts shooting %.
+function celticsStarProtection(state, player) {
+  const role = getRole(player);
+  if (!role) return 1.0;
+  const teamFga = getTeamFGA(state, player.team);
+  if (teamFga < 8) return 1.0;
+
+  let mult = 1.0;
+  const playerFga = (player.stats && player.stats.fga) || 0;
+  const mins = (player.minutesPlayed || 0) / 60;
+
+  // Bird / McHale below 70% of expected opportunities → boost action weight
+  if ((player.name === 'Larry Bird' || player.name === 'Kevin McHale') && mins >= 0.5 && role.fgaTarget) {
+    const expectedFga = role.fgaTarget * (mins / role.mpgExpected);
+    if (expectedFga >= 0.5 && playerFga / expectedFga < 0.70) {
+      mult *= player.name === 'Larry Bird' ? 1.20 : 1.18;
+    }
+  }
+
+  // After 12 team attempts: Bird+McHale combined <35% → boost both
+  if (teamFga >= 12 && (player.name === 'Larry Bird' || player.name === 'Kevin McHale')) {
+    const bird = state.players.find(p => p.name === 'Larry Bird' && p.team === player.team);
+    const mchale = state.players.find(p => p.name === 'Kevin McHale' && p.team === player.team);
+    const birdFga = (bird && bird.stats && bird.stats.fga) || 0;
+    const mchaleFga = (mchale && mchale.stats && mchale.stats.fga) || 0;
+    if ((birdFga + mchaleFga) / teamFga < 0.35) {
+      mult *= 1.25;
+    }
+  }
+
+  // Supporting player >35% of attempts → suppress (unless hot or a star rests)
+  if (player.name !== 'Larry Bird' && player.name !== 'Kevin McHale' && playerFga / teamFga > 0.35) {
+    const fgm = (player.stats && player.stats.fgm) || 0;
+    const isHot = playerFga >= 3 && fgm / playerFga >= 0.60;
+    const birdOn = state.players.some(p => p.name === 'Larry Bird' && p.team === player.team && p.onCourt);
+    const mchaleOn = state.players.some(p => p.name === 'Kevin McHale' && p.team === player.team && p.onCourt);
+    if (!isHot && (birdOn || mchaleOn)) {
+      mult *= 0.80;
+    }
+  }
+
+  return mult;
+}
+
+// Clutch: final 5 minutes, game within 8 — Bird and McHale dominate.
+function celticsClutchBoost(state, player) {
+  if (!isClutch(state)) return 1.0;
+  const w = CELTICS_CLUTCH_WEIGHTS[player.name];
+  if (w != null) return w / 20;
+  const birdOn = state.players.some(p => p.name === 'Larry Bird' && p.team === player.team && p.onCourt);
+  const mchaleOn = state.players.some(p => p.name === 'Kevin McHale' && p.team === player.team && p.onCourt);
+  if (birdOn || mchaleOn) return 0.5;
+  return 0.9;
+}
+
+// --- Celtics touch & possession tracking ---
+// Bird should receive the first meaningful touch ~40-50% of half-court
+// possessions. If two consecutive possessions pass without a Bird touch,
+// the next possession is strongly biased toward a Bird touch.
+export function recordCelticsPass(state, receiver) {
+  if (!state.celticsOffense || !receiver) return;
+  if (receiver.team === 'celtics' && receiver.name === 'Larry Bird') {
+    state.celticsOffense.birdTouchedThisPossession = true;
+    state.celticsOffense.possessionsSinceBirdTouch = 0;
+    state.celticsOffense.birdTouchesThisGame++;
+  }
+}
+
+// Called at the top of switchPossession — finalizes the ending Celtics
+// possession's Bird-touch state before the ball changes hands.
+export function finalizeCelticsPossession(state) {
+  if (!state.celticsOffense) return;
+  if (state.possession !== 'celtics') return;
+  if (!state.celticsOffense.birdTouchedThisPossession) {
+    state.celticsOffense.possessionsSinceBirdTouch++;
+  } else {
+    state.celticsOffense.possessionsSinceBirdTouch = 0;
+  }
+  state.celticsOffense.birdTouchedThisPossession = false;
+}
+
 // --- Touch weight (pass-target selection) ---
-// Biases passes toward high-initiation / high-off-ball players. Reduced when
-// the target is heavily guarded — no forced bad shots.
+// Celtics use a distinct hub-and-stars structure; Lakers keep the existing
+// generic model. Both still respect openness — no forced bad shots.
 export function getTouchWeight(state, player, openness) {
   const role = getAdjustedRole(state, player);
   if (!role) return 1.0;
 
   let w = (role.initiation + role.offBall) / 100; // ~0.5–1.8
-  w *= opportunityModifier(player);
-  w *= earlyGameProtection(state, player);
-  w *= clutchBoost(state, player);
+
+  if (player.team === 'celtics') {
+    w *= celticsShotBias(state, player);
+    w *= celticsStarProtection(state, player);
+    w *= celticsClutchBoost(state, player);
+    w *= opportunityModifier(player);
+    w *= earlyGameProtection(state, player);
+  } else {
+    w *= opportunityModifier(player);
+    w *= earlyGameProtection(state, player);
+    w *= clutchBoost(state, player);
+  }
 
   if (openness != null && openness < 28) w *= 0.7;
 
@@ -197,15 +398,25 @@ export function getTouchWeight(state, player, openness) {
 
 // --- Scoring weight (ball-carrier shoot/drive decisions) ---
 // Scales the carrier's shootChance and driveChance. Role players pass more;
-// stars finish more. Opportunity + early-game correction prevent distortion.
+// stars finish more. Celtics use the same shot-finisher hierarchy + star
+// protection that governs touch selection.
 export function getScoringWeight(state, player) {
   const role = getAdjustedRole(state, player);
   if (!role) return 1.0;
 
   let w = 0.6 + (role.finishing / 99) * 0.8; // ~0.8–1.4
-  w *= opportunityModifier(player);
-  w *= earlyGameProtection(state, player);
-  w *= clutchBoost(state, player);
+
+  if (player.team === 'celtics') {
+    w *= celticsShotBias(state, player);
+    w *= celticsStarProtection(state, player);
+    w *= celticsClutchBoost(state, player);
+    w *= opportunityModifier(player);
+    w *= earlyGameProtection(state, player);
+  } else {
+    w *= opportunityModifier(player);
+    w *= earlyGameProtection(state, player);
+    w *= clutchBoost(state, player);
+  }
 
   return Math.max(0.15, w);
 }

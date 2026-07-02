@@ -2,7 +2,7 @@ import { COURT, TEAM_FAST_BREAK, PLAYER_MPG, STAR_PLAYERS } from './gameData';
 import { TIMEOUTS_PER_GAME, updateTimeout, checkAutoTimeout } from './timeoutEngine';
 import { determineOffensiveRebound, computeReboundZone, selectRebounder, decidePutback } from './reboundEngine';
 import { isInPenalty, applyTeamFoul, foulDrawMult, defenderDisciplineMult, fatigueFoulMult, pickFoulingDefender, intentionalFoulIntent } from './foulEngine';
-import { getTouchWeight, getScoringWeight, getTransitionController } from './starEngine';
+import { getTouchWeight, getScoringWeight, getTransitionController, recordCelticsPass, finalizeCelticsPossession } from './starEngine';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -307,6 +307,11 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     userPlayCall: null,
     screenState: null,
     screenCooldown: 0,
+    celticsOffense: {
+      possessionsSinceBirdTouch: 0,
+      birdTouchedThisPossession: false,
+      birdTouchesThisGame: 0,
+    },
   };
 }
 
@@ -1031,6 +1036,7 @@ function makePass(state, passer, receiver) {
   state.ball.isSkyhook = false;
   state.ball.isDunk = false;
   state.ball.lastPasserId = passer.id;
+  recordCelticsPass(state, receiver);
 
   const passerData = passer;
   const logEntry = `${passerData.name} passes to ${receiver.name}`;
@@ -1502,6 +1508,7 @@ function updateFreeThrows(state, dt) {
 }
 
 function switchPossession(state, fastBreakInitiator = null) {
+  finalizeCelticsPossession(state);
   state.possession = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
   state.attackingRight = state.possession === state.teamKeys.team1;
   state.shotClock = 24;
