@@ -126,6 +126,7 @@ export function createGameState(lakersRoster, celticsRoster) {
       startY: 0,
       shotArcPeak: 0,
       isShot: false,
+      isDunk: false,
       shotResult: null,
     },
     score: { lakers: 0, celtics: 0 },
@@ -503,6 +504,7 @@ function makePass(state, passer, receiver) {
   // Magic's special long passes get the magical trail effect
   state.ball.isMagicPass = passer.name === 'Magic Johnson' && d > 180;
   state.ball.isSkyhook = false;
+  state.ball.isDunk = false;
 
   const passerData = passer;
   const logEntry = `${passerData.name} passes to ${receiver.name}`;
@@ -564,11 +566,20 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     }
   }
 
+  // Dunk detection: close, uncontested shots can be dunks, weighted by dunkTendency
+  const isDunk = d < 55 && !threePtr && !blockedBy && Math.random() < (shooter.dunkTendency || 3) * 0.08;
+  state.ball.isDunk = isDunk;
+  if (isDunk) {
+    state.ball.flightDuration = 350;
+    state.ball.shotArcPeak = 5;
+    prob = Math.max(prob, 0.68);
+  }
+
   state.ball.shotResult = {
     made: blockedBy ? false : Math.random() < prob,
     shooter: shooter,
     points: threePtr ? 3 : 2,
-    type: d < 60 ? 'layup' : (threePtr ? 'three' : 'mid-range'),
+    type: isDunk ? 'dunk' : (d < 60 ? 'layup' : (threePtr ? 'three' : 'mid-range')),
     fouledBy: fouledBy || null,
     blockedBy: blockedBy || null,
   };
@@ -600,9 +611,14 @@ function resolveShot(state) {
 
   if (result.made) {
     state.score[result.shooter.team] += result.points;
-    const desc = result.type === 'three' ? 'three-pointer' : (result.type === 'layup' ? 'layup' : 'jumper');
-    state.shotResultDisplay = `${result.shooter.name} hits the ${desc}! +${result.points}`;
-    state.gameLog.unshift(`✓ ${result.shooter.name} ${desc} — ${result.points} pts`);
+    if (result.type === 'dunk') {
+      state.shotResultDisplay = `💥 ${result.shooter.name} SLAMS IT DOWN! +${result.points}`;
+      state.gameLog.unshift(`💥 ${result.shooter.name} THROWS IT DOWN! — ${result.points} pts`);
+    } else {
+      const desc = result.type === 'three' ? 'three-pointer' : (result.type === 'layup' ? 'layup' : 'jumper');
+      state.shotResultDisplay = `${result.shooter.name} hits the ${desc}! +${result.points}`;
+      state.gameLog.unshift(`✓ ${result.shooter.name} ${desc} — ${result.points} pts`);
+    }
   } else {
     state.shotResultDisplay = `${result.shooter.name} misses!`;
     state.gameLog.unshift(`✗ ${result.shooter.name} misses`);

@@ -231,6 +231,60 @@ function drawBall(ctx, ball, w, h) {
     ctx.textBaseline = 'middle';
     ctx.fillText('SKYHOOK!', x, ballY - 18);
   }
+
+  // Dunk effect — motion trail + rim flash on impact
+  if (ball.isDunk && ball.inFlight) {
+    const elapsed = Date.now() - ball.flightStart;
+    const t = Math.min(elapsed / ball.flightDuration, 1);
+    const ballY = y - arcOffset;
+
+    // Motion trail — speed lines behind the ball
+    for (let i = 1; i <= 5; i++) {
+      const trailT = Math.max(0, t - i * 0.06);
+      if (trailT <= 0) continue;
+      const tx = lerp(ball.startX, ball.targetX, trailT) * sx;
+      const ty = lerp(ball.startY, ball.targetY, trailT) * sy;
+      const alpha = (1 - i / 5) * 0.4;
+      ctx.strokeStyle = `rgba(255, 140, 0, ${alpha})`;
+      ctx.lineWidth = 3 - i * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(x, ballY);
+      ctx.stroke();
+    }
+
+    // Rim flash + impact lines as ball approaches the basket
+    if (t > 0.7) {
+      const flashAlpha = (t - 0.7) / 0.3;
+      const rimX = ball.targetX * sx;
+      const rimY = ball.targetY * sy;
+
+      ctx.fillStyle = `rgba(255, 255, 200, ${flashAlpha * 0.5})`;
+      ctx.beginPath();
+      ctx.arc(rimX, rimY, 20, 0, Math.PI * 2);
+      ctx.fill();
+
+      const time = Date.now() * 0.01;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2 + time;
+        const r1 = 12;
+        const r2 = 20 + flashAlpha * 8;
+        ctx.strokeStyle = `rgba(255, 220, 100, ${flashAlpha * 0.8})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(rimX + Math.cos(angle) * r1, rimY + Math.sin(angle) * r1);
+        ctx.lineTo(rimX + Math.cos(angle) * r2, rimY + Math.sin(angle) * r2);
+        ctx.stroke();
+      }
+    }
+
+    // "SLAM!" label
+    ctx.fillStyle = 'rgba(255, 80, 0, 0.95)';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SLAM!', x, ballY - 18);
+  }
 }
 
 export default function CourtCanvas({ gameState }) {
