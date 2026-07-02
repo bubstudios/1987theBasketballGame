@@ -307,6 +307,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     userPlayCall: null,
     screenState: null,
     screenCooldown: 0,
+    stealCheckTimer: 0,
     celticsOffense: {
       possessionsSinceBirdTouch: 0,
       birdTouchedThisPossession: false,
@@ -487,8 +488,12 @@ export function updateGame(state, dt) {
   }
 
   // Check for turnovers (defender close to ball handler)
-  if (state.turnoverCooldown <= 0 && ballCarrier) {
+  // Gated by a 500ms timer — per-frame checking inflated steal frequency
+  // ~60x because the on-ball defender is always within steal range.
+  state.stealCheckTimer -= effectiveDt;
+  if (state.turnoverCooldown <= 0 && state.stealCheckTimer <= 0 && ballCarrier) {
     checkTurnover(state, ballCarrier, defensePlayers);
+    state.stealCheckTimer = 500;
   }
 
   return state;
@@ -1629,7 +1634,7 @@ function checkTurnover(state, carrier, defenders) {
     const stealRange = play === 'aggressive_steal' ? 28 : 20;
     if (dd < stealRange) {
       const carrierFatigueMult = 1 + (carrier.fatigue || 0) / 100 * 0.5;
-      let stealChance = (d.stealRate || 0.02) * 0.12 + (carrier.turnoverRate || 0.12) * 0.006 * carrierFatigueMult;
+      let stealChance = (d.stealRate || 0.02) * 0.25 + (carrier.turnoverRate || 0.12) * 0.012 * carrierFatigueMult;
       if (play === 'aggressive_steal') stealChance *= 2.4;
       if ((play === 'double_ball' || play === 'double_post') && dd < 26) stealChance *= 1.7;
       if (Math.random() < stealChance) {
