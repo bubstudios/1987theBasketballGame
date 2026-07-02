@@ -1,4 +1,5 @@
 import React from 'react';
+import { Star } from 'lucide-react';
 import { TEAM_COLORS } from '@/lib/gameData';
 
 function heightToString(inches) {
@@ -28,6 +29,9 @@ export default function RosterPanel({ roster, bench, teamKey, gameState }) {
     const fatigue = live?.fatigue || 0;
     const onCourt = live?.onCourt ?? false;
     const isStar = live?.star || false;
+    const isClutch = gameState?.quarter >= 4 && gameState?.gameClock <= 120;
+    const isPeak = onCourt && fatigue < 30;
+    const showStarGlow = isStar && onCourt && (isPeak || isClutch);
 
     return (
       <div key={i} className={`flex items-center gap-2 ${!onCourt ? 'opacity-70' : ''}`}>
@@ -92,6 +96,17 @@ export default function RosterPanel({ roster, bench, teamKey, gameState }) {
                     }}
                   />
                 </div>
+                {showStarGlow && (
+                  <Star
+                    className="shrink-0 animate-pulse"
+                    size={10}
+                    fill="currentColor"
+                    style={{
+                      color: isClutch ? '#f97316' : '#fbbf24',
+                      filter: `drop-shadow(0 0 3px ${isClutch ? '#f97316' : '#fbbf24'})`,
+                    }}
+                  />
+                )}
               </div>
             )
           ) : (
