@@ -324,6 +324,15 @@ export default function CourtCanvas({ gameState }) {
       ctx.textBaseline = 'middle';
       ctx.fillText(gameState.shotResultDisplay, w / 2, 33);
     }
+
+    // Fast break indicator
+    if (gameState.fastBreak && gameState.fastBreak.active) {
+      ctx.fillStyle = 'rgba(255, 200, 0, 0.85)';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚡ FAST BREAK', w / 2, h - 18);
+    }
   }, [gameState]);
 
   useEffect(() => {

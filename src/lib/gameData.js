@@ -439,3 +439,14 @@ export const TEAM_COLORS = {
     abbr: "LAC",
   },
 };
+
+// Team-level fast break tendency (1-10 scale)
+// Based on 1986-87 pace, steals, and transition play research:
+// - Lakers: Showtime — elite transition team (Pace 101.6, 8.9 SPG, Magic-led)
+// - Celtics: deliberate half-court offense (Pace 98.6, 6.8 SPG, K.C. Jones system)
+// - Clippers: high pace but sloppy (Pace 102.7, 9.2 SPG, 18.2 TOV/G)
+export const TEAM_FAST_BREAK = {
+  lakers: 9,
+  celtics: 4,
+  clippers: 7,
+};

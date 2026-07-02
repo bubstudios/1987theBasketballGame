@@ -1,4 +1,4 @@
-import { COURT } from './gameData';
+import { COURT, TEAM_FAST_BREAK } from './gameData';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -57,6 +57,23 @@ const CUT_TARGETS_LEFT = [
   { x: 120, y: 320 },
   { x: 90, y: 150 },
   { x: 90, y: 350 },
+];
+
+// Fast break lane positions (index 0 = ball carrier drives to basket)
+const FASTBREAK_LANES_RIGHT = [
+  { x: 850, y: 250 },  // carrier → basket (overridden in updateFastBreak)
+  { x: 820, y: 100 },  // right wing lane
+  { x: 820, y: 400 },  // left wing lane
+  { x: 860, y: 250 },  // rim runner
+  { x: 500, y: 250 },  // trailer
+];
+
+const FASTBREAK_LANES_LEFT = [
+  { x: 90, y: 250 },
+  { x: 120, y: 100 },
+  { x: 120, y: 400 },
+  { x: 80, y: 250 },
+  { x: 440, y: 250 },
 ];
 
 export function createGameState(lakersRoster, opponentRoster, opponentKey = 'celtics') {
@@ -152,6 +169,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     gameSpeed: 1,
     turnoverCooldown: 0,
     ftState: null,
+    fastBreak: null,
   };
 }
 
@@ -244,11 +262,16 @@ export function updateGame(state, dt) {
   const defensePlayers = state.players.filter(p => p.team !== state.possession);
   const ballCarrier = state.players.find(p => p.id === state.ball.carrier);
 
-  // --- OFFENSE AI: Motion Offense ---
-  updateMotionOffense(state, offensePlayers, ballCarrier, effectiveDt);
+  // --- Fast break or half-court offense ---
+  if (state.fastBreak && state.fastBreak.active) {
+    updateFastBreak(state, offensePlayers, defensePlayers, effectiveDt);
+  } else {
+    // --- OFFENSE AI: Motion Offense ---
+    updateMotionOffense(state, offensePlayers, ballCarrier, effectiveDt);
 
-  // --- DEFENSE AI: Man-to-Man ---
-  updateManToManDefense(state, defensePlayers, offensePlayers, effectiveDt);
+    // --- DEFENSE AI: Man-to-Man ---
+    updateManToManDefense(state, defensePlayers, offensePlayers, effectiveDt);
+  }
 
   // --- Decision making for ball carrier ---
   if (ballCarrier && state.actionTimer <= 0 && state.passTimer <= 0) {
@@ -428,6 +451,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     // Close shots: layups, dunks, hooks
     const freqFactor = Math.min(carrier.twoAttempts / 15, 1);
     shootChance = 0.18 + carrier.insideScoring * 0.04 + freqFactor * 0.1;
+    if (isFastBreak) shootChance += 0.2; // fast break: quick layup attempt
   } else if (isShortMid && isOpen) {
     // Short mid-range (8-15 ft): pull-up jumpers and runners
     const freqFactor = Math.min(carrier.twoAttempts / 15, 1);
@@ -452,9 +476,10 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     driveChance = 0.06 + (carrier.driveTendency || 5) * 0.04 + carrier.speed * 0.01;
   }
 
+  const isFastBreak = state.fastBreak && state.fastBreak.active;
   const roll = Math.random();
 
-  if (roll < shootChance && state.shotClock < 20) {
+  if (roll < shootChance && (isFastBreak || state.shotClock < 20)) {
     // Foul detection: contested shots can draw fouls, weighted by FTA rate
     const foulChance = nearestDef.dist < 25 ? Math.min(0.08 + carrier.ftAttempts * 0.015, 0.28) : 0;
     const fouledBy = (foulChance > 0 && Math.random() < foulChance && !nearestDef.player.fouledOut) ? nearestDef.player : null;
@@ -561,7 +586,8 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     const realPct = shooter.twoPct || 0.45;
     const insideAdj = (shooter.insideScoring - 6) * 0.03;
     prob = realPct * 0.6 + insideAdj + (isOpen ? 0.08 : -0.05);
-    prob = Math.max(0.05, Math.min(prob, 0.7));
+    if (state.fastBreak && state.fastBreak.active) prob += 0.15; // uncontested transition layup
+    prob = Math.max(0.05, Math.min(prob, 0.85));
   } else if (threePtr) {
     // Use real 3P% as the base, blend with skill rating for context (open vs. contested)
     const realPct = shooter.threePct || 0;
@@ -606,6 +632,7 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   };
 
   state.shotAnimating = true;
+  state.fastBreak = null; // shot ends the fast break
 }
 
 function resolveShot(state) {
@@ -627,7 +654,12 @@ function resolveShot(state) {
     state.gameLog.unshift(`🚫 ${result.blockedBy.name} BLOCKS ${result.shooter.name}!`);
     state.shotResultTimer = 1500;
     if (state.gameLog.length > 15) state.gameLog.pop();
-    switchPossession(state);
+    // Give ball to blocker for potential fast break
+    state.ball.carrier = result.blockedBy.id;
+    result.blockedBy.hasBall = true;
+    state.ball.x = result.blockedBy.x;
+    state.ball.y = result.blockedBy.y;
+    switchPossession(state, result.blockedBy);
     state.ball.shotResult = null;
     return;
   }
@@ -687,7 +719,7 @@ function resolveShot(state) {
       state.gameLog.unshift(`↑ ${rebounder.name} ${isOffensive ? 'offensive' : 'defensive'} rebound`);
 
       if (rebounder.team !== state.possession) {
-        switchPossession(state);
+        switchPossession(state, rebounder);
       } else {
         state.shotClock = 24;
       }
@@ -795,12 +827,32 @@ function updateFreeThrows(state, dt) {
   }
 }
 
-function switchPossession(state) {
+function switchPossession(state, fastBreakInitiator = null) {
   state.possession = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
   state.attackingRight = state.possession === state.teamKeys.team1;
   state.shotClock = 24;
   state.turnoverCooldown = 1000;
-  resetPositions(state);
+
+  // Fast break check: live-ball transitions (steals, defensive rebounds, blocks)
+  // can trigger a break instead of resetting to half-court sets
+  const tendency = TEAM_FAST_BREAK[state.possession] || 5;
+  const initiator = fastBreakInitiator || state.players.find(p => p.id === state.ball.carrier);
+
+  if (initiator && initiator.team === state.possession && Math.random() < tendency * 0.1) {
+    state.fastBreak = { active: true, timer: 3500, initiator: initiator.id };
+    state.ball.carrier = initiator.id;
+    initiator.hasBall = true;
+    state.ball.x = initiator.x;
+    state.ball.y = initiator.y;
+    state.ball.inFlight = false;
+    state.ball.isShot = false;
+    state.actionTimer = 0;
+    state.passTimer = 0;
+    state.gameLog.unshift(`⚡ ${initiator.name} leads the fast break!`);
+    if (state.gameLog.length > 15) state.gameLog.pop();
+  } else {
+    resetPositions(state);
+  }
 }
 
 function resetPositions(state) {
@@ -829,6 +881,39 @@ function resetPositions(state) {
   });
 }
 
+function updateFastBreak(state, offensePlayers, defensePlayers, dt) {
+  const fb = state.fastBreak;
+  fb.timer -= dt;
+
+  const basket = getBasketPos(state.attackingRight);
+  const lanes = state.attackingRight ? FASTBREAK_LANES_RIGHT : FASTBREAK_LANES_LEFT;
+
+  // Offense: ball carrier drives to basket, others fill transition lanes
+  offensePlayers.forEach((player, i) => {
+    if (player.id === state.ball.carrier) {
+      player.targetX = basket.x;
+      player.targetY = basket.y;
+    } else {
+      const lane = lanes[i % lanes.length];
+      player.targetX = lane.x;
+      player.targetY = lane.y;
+    }
+    player.isCutting = true; // sprinting
+  });
+
+  // Defense: sprint back to protect the basket
+  defensePlayers.forEach(defender => {
+    const defX = state.attackingRight ? basket.x - 50 : basket.x + 50;
+    defender.targetX = clamp(defX + randomInRange(-30, 30), 20, COURT.width - 20);
+    defender.targetY = clamp(basket.y + randomInRange(-50, 50), 20, COURT.height - 20);
+  });
+
+  // Fast break ends when timer expires → normal half-court offense takes over
+  if (fb.timer <= 0) {
+    state.fastBreak = null;
+  }
+}
+
 function checkTurnover(state, carrier, defenders) {
   defenders.forEach(d => {
     const dd = dist(carrier, d);
@@ -842,7 +927,7 @@ function checkTurnover(state, carrier, defenders) {
         d.stats.steals++;
         state.gameLog.unshift(`🏀 ${d.name} steals from ${carrier.name}!`);
         state.turnoverCooldown = 2000;
-        switchPossession(state);
+        switchPossession(state, d);
       }
     }
   });
