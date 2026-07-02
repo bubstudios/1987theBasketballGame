@@ -240,6 +240,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     momentumSampleTimer: 0,
     subTimer: 3000,
     substitutionLog: [],
+    substitutionCommentary: [],
   };
 }
 
@@ -1191,7 +1192,44 @@ function findSubstitute(outgoing, bench) {
   return best.fatigue < 50 ? best : null;
 }
 
-function executeSubstitution(state, outgoing, incoming) {
+function generateSubCommentary(state, outgoing, incoming, reason) {
+  const isClutch = state.quarter >= 4 && state.gameClock <= 120;
+  const msgs = [];
+
+  if (reason === 'fatigue') {
+    // Tired player coming out for a breather
+    if (outgoing.fatigue > 82) {
+      msgs.push(`${outgoing.name} is gassed — ${incoming.name} steps in to spell him.`);
+      msgs.push(`Running on empty: ${outgoing.name} hits the bench for ${incoming.name}.`);
+      msgs.push(`${outgoing.name} needs a breather. ${incoming.name} enters the game.`);
+    } else {
+      msgs.push(`Coach rests ${outgoing.name}, bringing in ${incoming.name} for a spark.`);
+      msgs.push(`${outgoing.name} catches a blow. ${incoming.name} checks in.`);
+      msgs.push(`Quick breather for ${outgoing.name} — ${incoming.name} takes the floor.`);
+    }
+    if (outgoing.star) {
+      msgs.push(`${outgoing.name} has logged heavy minutes — ${incoming.name} gives him a rest.`);
+    }
+    if (isClutch) {
+      msgs.push(`Clutch timeout: ${outgoing.name} is drained, ${incoming.name} comes in to finish.`);
+    }
+  } else if (reason === 'return') {
+    // Starter returning fresh
+    msgs.push(`${incoming.name} is rested and back in — ${outgoing.name} takes a seat.`);
+    msgs.push(`Fresh legs: ${incoming.name} returns to the floor for ${outgoing.name}.`);
+    msgs.push(`Rest over for ${incoming.name}. ${outgoing.name} heads to the bench.`);
+    if (isClutch) {
+      msgs.push(`Clutch move: ${incoming.name} re-enters for ${outgoing.name} to close it out.`);
+    }
+    if (incoming.star) {
+      msgs.push(`${incoming.name} is back and ready — coach wants his star on the floor.`);
+    }
+  }
+
+  return msgs[Math.floor(Math.random() * msgs.length)];
+}
+
+function executeSubstitution(state, outgoing, incoming, reason = 'fatigue') {
   // Incoming player takes the outgoing's court spot and index
   incoming.onCourt = true;
   incoming.courtIndex = outgoing.courtIndex;
@@ -1234,6 +1272,22 @@ function executeSubstitution(state, outgoing, incoming) {
     team: incoming.team,
   });
   if (state.substitutionLog.length > 200) state.substitutionLog.pop();
+
+  // Dynamic commentary — short contextual message explaining the coach's call
+  const commentary = generateSubCommentary(state, outgoing, incoming, reason);
+  state.substitutionCommentary.unshift({
+    clockLabel,
+    message: commentary,
+    incoming: incoming.name,
+    outgoing: outgoing.name,
+    team: incoming.team,
+    incomingStar: incoming.star || false,
+    outgoingStar: outgoing.star || false,
+    incomingFatigue: incoming.fatigue,
+    outgoingFatigue: outgoing.fatigue,
+    reason,
+  });
+  if (state.substitutionCommentary.length > 12) state.substitutionCommentary.pop();
 }
 
 function checkSubstitutions(state) {
@@ -1256,7 +1310,7 @@ function checkSubstitutions(state) {
     if (mostTired) {
       const sub = findSubstitute(mostTired, bench);
       if (sub) {
-        executeSubstitution(state, mostTired, sub);
+        executeSubstitution(state, mostTired, sub, 'fatigue');
         return; // one sub per team per check
       }
     }
@@ -1269,7 +1323,7 @@ function checkSubstitutions(state) {
         let target = benchOnCourt[0];
         benchOnCourt.forEach(p => { if (p.fatigue > target.fatigue) target = p; });
         if (target.fatigue > 40) {
-          executeSubstitution(state, target, recoveredStarter);
+          executeSubstitution(state, target, recoveredStarter, 'return');
         }
       }
     }

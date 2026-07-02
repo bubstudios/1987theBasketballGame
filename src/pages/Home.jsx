@@ -11,6 +11,7 @@ import RosterPanel from '@/components/game/RosterPanel';
 import BoxScore from '@/components/game/BoxScore';
 import MomentumChart from '@/components/game/MomentumChart';
 import SubstitutionLog from '@/components/game/SubstitutionLog';
+import SubstitutionCommentary from '@/components/game/SubstitutionCommentary';
 
 export default function Home() {
   const [gameState, setGameState] = useState(null);
@@ -227,8 +228,9 @@ export default function Home() {
           <BoxScore gameState={gameState} />
         </div>
 
-        {/* Substitution Log */}
-        <div className="mt-4 max-w-2xl mx-auto">
+        {/* Substitution Log & Commentary */}
+        <div className="mt-4 max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <SubstitutionCommentary gameState={gameState} />
           <SubstitutionLog gameState={gameState} />
         </div>
 
