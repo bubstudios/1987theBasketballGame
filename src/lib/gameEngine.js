@@ -256,6 +256,9 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
       isShot: false,
       isDunk: false,
       shotResult: null,
+      passTargetId: null,
+      passerId: null,
+      flightElapsed: 0,
     },
     score: { lakers: 0, [opponentKey]: 0 },
     gameClock: 720, // 12 min quarter in seconds
@@ -389,9 +392,13 @@ export function updateGame(state, dt) {
   }
 
   if (state.shotClock <= 0) {
-    // Shot clock violation - turnover
+    // Shot clock violation — charge a turnover to the ball handler
+    const offender = state.players.find(p => p.id === state.ball.carrier)
+      || getOnCourtPlayers(state, state.possession)[0];
+    if (offender) offender.stats.turnovers++;
+    state.gameLog.unshift(`✗ Shot-clock violation on ${state.possession}`);
     state.shotClock = 24;
-    switchPossession(state);
+    switchPossession(state, null, 'shot_clock_violation');
     return state;
   }
 
@@ -438,7 +445,7 @@ export function updateGame(state, dt) {
   // Fatigue & substitutions
   updateFatigue(state, effectiveDt);
   state.subTimer -= effectiveDt;
-  if (state.subTimer <= 0 && !state.shotAnimating) {
+  if (state.subTimer <= 0 && !state.shotAnimating && !state.ball.inFlight && !state.ftState) {
     checkSubstitutions(state);
     checkAutoTimeout(state);
     state.subTimer = 3000;
@@ -502,8 +509,23 @@ export function updateGame(state, dt) {
 }
 
 function updateBallFlight(state, dt) {
-  const elapsed = Date.now() - state.ball.flightStart;
-  const t = Math.min(elapsed / state.ball.flightDuration, 1);
+  state.ball.flightElapsed = (state.ball.flightElapsed || 0) + dt;
+
+  let intendedReceiver = null;
+
+  if (!state.ball.isShot && state.ball.passTargetId) {
+    intendedReceiver = state.players.find(
+      player => player.id === state.ball.passTargetId && player.onCourt
+    );
+
+    // Follow the intended receiver's current position so the pass tracks them
+    if (intendedReceiver) {
+      state.ball.targetX = intendedReceiver.x;
+      state.ball.targetY = intendedReceiver.y;
+    }
+  }
+
+  const t = Math.min(state.ball.flightElapsed / state.ball.flightDuration, 1);
 
   state.ball.x = lerp(state.ball.startX, state.ball.targetX, t);
   state.ball.y = lerp(state.ball.startY, state.ball.targetY, t);
@@ -513,42 +535,48 @@ function updateBallFlight(state, dt) {
     state.ball.arcHeight = state.ball.shotArcPeak * Math.sin(t * Math.PI);
   }
 
-  if (t >= 1) {
-    state.ball.inFlight = false;
+  if (t < 1) return;
 
-    if (state.ball.isShot) {
-      resolveShot(state);
-    } else {
-      // Pass completed
-      const receiver = state.players.find(p => {
-        return dist(p, { x: state.ball.targetX, y: state.ball.targetY }) < 30;
-      });
-      if (receiver && receiver.team === state.possession) {
-        // Pass completed — turnovers are handled by the single per-possession roll
-        state.ball.carrier = receiver.id;
-        receiver.hasBall = true;
-        state.ball.x = receiver.x;
-        state.ball.y = receiver.y;
-      } else {
-        // Loose ball - nearest player grabs it
-        let nearest = null;
-        let nearDist = Infinity;
-        state.players.forEach(p => {
-          if (!p.onCourt) return;
-          const d = dist(p, state.ball);
-          if (d < nearDist) { nearDist = d; nearest = p; }
-        });
-        if (nearest) {
-          state.ball.carrier = nearest.id;
-          nearest.hasBall = true;
-          if (nearest.team !== state.possession) {
-            switchPossession(state);
-          }
-        }
-      }
-    }
+  state.ball.inFlight = false;
+
+  if (state.ball.isShot) {
+    resolveShot(state);
     state.ball.isShot = false;
+    state.ball.flightElapsed = 0;
+    return;
   }
+
+  // Normal pass completion — the intended receiver gets the ball.
+  // Turnovers are decided by the one-roll-per-possession system, so an
+  // ordinary completed pass never randomly changes possession.
+  if (intendedReceiver && intendedReceiver.team === state.possession) {
+    state.players.forEach(player => { player.hasBall = false; });
+    intendedReceiver.hasBall = true;
+    state.ball.carrier = intendedReceiver.id;
+    state.ball.x = intendedReceiver.x;
+    state.ball.y = intendedReceiver.y;
+  } else {
+    // Error recovery: receiver left the court mid-pass (substitution/timeout).
+    // Return the ball to the passer or first on-court offensive player —
+    // never hand it to the defense, never switch possession.
+    const passer = state.players.find(
+      player => player.id === state.ball.passerId && player.onCourt && player.team === state.possession
+    );
+    const fallback = passer || getOnCourtPlayers(state, state.possession)[0];
+
+    if (fallback) {
+      state.players.forEach(player => { player.hasBall = false; });
+      fallback.hasBall = true;
+      state.ball.carrier = fallback.id;
+      state.ball.x = fallback.x;
+      state.ball.y = fallback.y;
+    }
+  }
+
+  state.ball.passTargetId = null;
+  state.ball.passerId = null;
+  state.ball.flightElapsed = 0;
+  state.ball.isShot = false;
 }
 
 function updateMotionOffense(state, offensePlayers, ballCarrier, dt) {
@@ -1048,17 +1076,26 @@ function findBestPassTarget(state, carrier, teammates, defenders, basket) {
 }
 
 function makePass(state, passer, receiver) {
-  passer.hasBall = false;
+  // Ensure only one player has the ball at a time
+  state.players.forEach(player => { player.hasBall = false; });
+
   state.ball.carrier = null;
   state.ball.inFlight = true;
   state.ball.isShot = false;
+
+  // Store the exact intended receiver by player ID — no coordinate guessing
+  state.ball.passTargetId = receiver.id;
+  state.ball.passerId = passer.id;
+
   state.ball.startX = passer.x;
   state.ball.startY = passer.y;
   state.ball.targetX = receiver.x;
   state.ball.targetY = receiver.y;
-  state.ball.flightStart = Date.now();
+
+  // Simulation-time tracking (respects game speed); minimum 180ms flight
+  state.ball.flightElapsed = 0;
   const d = dist(passer, receiver);
-  state.ball.flightDuration = (d / PASS_SPEED) * (16.67); // roughly scale to frames
+  state.ball.flightDuration = Math.max(180, (d / PASS_SPEED) * 16.67);
 
   // Magic's special long passes get the magical trail effect
   state.ball.isMagicPass = passer.name === 'Magic Johnson' && d > 180;
@@ -1067,9 +1104,7 @@ function makePass(state, passer, receiver) {
   state.ball.lastPasserId = passer.id;
   recordCelticsPass(state, receiver);
 
-  const passerData = passer;
-  const logEntry = `${passerData.name} passes to ${receiver.name}`;
-  state.gameLog.unshift(logEntry);
+  state.gameLog.unshift(`${passer.name} passes to ${receiver.name}`);
   if (state.gameLog.length > 15) state.gameLog.pop();
 }
 
@@ -1083,6 +1118,9 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   state.ball.carrier = null;
   state.ball.inFlight = true;
   state.ball.isShot = true;
+  state.ball.passTargetId = null;
+  state.ball.passerId = null;
+  state.ball.flightElapsed = 0;
   state.ball.startX = shooter.x;
   state.ball.startY = shooter.y;
   state.ball.targetX = basket.x;
@@ -1259,7 +1297,7 @@ function checkDriveFoul(state, carrier, nearestDef, defenders, isFastBreak) {
     state.gameLog.unshift(`🦵 Offensive foul on ${carrier.name} (${carrier.fouls})! Turnover.`);
     if (state.gameLog.length > 15) state.gameLog.pop();
     state.shotResultTimer = 1500;
-    switchPossession(state);
+    switchPossession(state, null, 'recorded_turnover');
     state.actionTimer = 1200;
     return true;
   }
@@ -1312,13 +1350,13 @@ function resolveFreeThrowRebound(state, ft) {
     state.gameLog.unshift(`↑ ${rebounder.name} ${isOffensive ? 'offensive' : 'defensive'} rebound (FT miss)`);
     if (state.gameLog.length > 15) state.gameLog.pop();
     if (!isOffensive) {
-      switchPossession(state, rebounder);
+      switchPossession(state, rebounder, 'defensive_rebound');
     } else {
       state.shotClock = 24;
       state.actionTimer = 500;
     }
   } else {
-    switchPossession(state);
+    switchPossession(state, null, 'dead_ball');
   }
 }
 
@@ -1347,7 +1385,7 @@ function resolveShot(state) {
       state.ball.y = result.blockedBy.y;
       state.shotResultDisplay = `${result.blockedBy.name} blocks ${result.shooter.name}!`;
       state.gameLog.unshift(`🚫 ${result.blockedBy.name} BLOCKS ${result.shooter.name}!`);
-      switchPossession(state, result.blockedBy);
+      switchPossession(state, result.blockedBy, 'block');
     } else if (blockOutcome.outcome === 'out_of_bounds') {
       state.shotResultDisplay = `${result.blockedBy.name} blocks it out of bounds!`;
       state.gameLog.unshift(`🚫 ${result.blockedBy.name} blocks ${result.shooter.name} — out of bounds!`);
@@ -1368,7 +1406,7 @@ function resolveShot(state) {
         nearest.hasBall = true;
         state.ball.x = nearest.x;
         state.ball.y = nearest.y;
-        if (nearest.team !== state.possession) switchPossession(state, nearest);
+        if (nearest.team !== state.possession) switchPossession(state, nearest, 'block');
       }
     }
     state.shotResultTimer = 1500;
@@ -1411,7 +1449,7 @@ function resolveShot(state) {
 
   // Reset possession
   if (result.made) {
-    switchPossession(state);
+    switchPossession(state, null, 'made_basket');
   } else {
     // --- Two-stage rebound: decide which team wins, then which player ---
     const basket = getBasketPos(state.attackingRight);
@@ -1439,7 +1477,7 @@ function resolveShot(state) {
 
       if (!isOffensive) {
         // Defensive rebound → transition (may trigger a fast break)
-        switchPossession(state, rebounder);
+        switchPossession(state, rebounder, 'defensive_rebound');
       } else {
         // Offensive rebound → fresh shot clock, then consider an immediate putback
         state.shotClock = 24;
@@ -1555,7 +1593,7 @@ function updateFreeThrows(state, dt) {
       if (ft.finalMissed) {
         resolveFreeThrowRebound(state, ft);
       } else {
-        switchPossession(state);
+        switchPossession(state, null, 'dead_ball');
       }
     }
   }
@@ -1689,23 +1727,27 @@ function executePendingTurnover(state) {
       const verb = type === 'stripped' ? 'strips' : 'steals from';
       state.gameLog.unshift(`🏀 ${thief.name} ${verb} ${carrier.name}!`);
       state.turnoverCooldown = 2000;
-      switchPossession(state, thief);
+      switchPossession(state, thief, 'recorded_turnover');
     } else {
       state.gameLog.unshift(`✗ Turnover by ${carrier.name}`);
       state.turnoverCooldown = 2000;
-      switchPossession(state);
+      switchPossession(state, null, 'recorded_turnover');
     }
   } else {
     const desc = type === 'offensive_foul' ? 'Charge on' : (type === 'travel' ? 'Traveling on' : 'Turnover by');
     state.gameLog.unshift(`✗ ${desc} ${carrier.name}!`);
     state.turnoverCooldown = 2000;
-    switchPossession(state);
+    switchPossession(state, null, 'recorded_turnover');
   }
 
   if (state.gameLog.length > 15) state.gameLog.pop();
 }
 
-function switchPossession(state, fastBreakInitiator = null) {
+function switchPossession(state, fastBreakInitiator = null, reason = 'unknown') {
+  if (reason === 'unknown') {
+    console.error('Possession switched without a recorded reason');
+  }
+  state.lastPossessionEndReason = reason;
   finalizeCelticsPossession(state);
   state.possession = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
   state.attackingRight = state.possession === state.teamKeys.team1;
