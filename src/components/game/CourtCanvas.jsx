@@ -143,7 +143,7 @@ function drawPlayer(ctx, player, w, h, isBallCarrier) {
   ctx.fillText(player.number, x, y);
 
   // Name label
-  ctx.fillStyle = '#FFFFFF';
+  ctx.fillStyle = '#000000';
   ctx.font = `${Math.max(8, 10 * sx)}px sans-serif`;
   ctx.fillText(player.name.split(' ').pop(), x, y - r - 6);
 }
