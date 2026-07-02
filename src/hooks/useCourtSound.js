@@ -26,7 +26,7 @@ export function useCourtSound() {
 
     const now = ctx.currentTime;
     // Global throttle so overlapping squeaks don't pile up
-    if (now - lastSqueakRef.current < 0.07) return;
+    if (now - lastSqueakRef.current < 0.35) return;
     lastSqueakRef.current = now;
 
     const dur = 0.05 + Math.random() * 0.07;

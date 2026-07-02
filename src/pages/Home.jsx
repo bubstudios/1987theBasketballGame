@@ -54,9 +54,9 @@ export default function Home() {
           const vy = p.y - (prev.y ?? p.y);
           const speed = Math.sqrt(vx * vx + vy * vy);
 
-          if (speed > 1.2 && prev.speed > 1.2) {
+          if (speed > 2 && prev.speed > 2) {
             const dot = (vx * prev.vx + vy * prev.vy) / (speed * prev.speed);
-            if (dot < 0.5) {
+            if (dot < 0.2 && Math.random() < 0.3) {
               bestSqueak = Math.max(bestSqueak, Math.min(speed / 4, 1));
             }
           }
