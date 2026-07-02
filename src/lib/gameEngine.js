@@ -251,6 +251,12 @@ export function updateGame(state, dt) {
   // Handle ball in flight (pass or shot)
   if (state.ball.inFlight) {
     updateBallFlight(state, effectiveDt);
+    // Keep defense active during passes so defenders recover and anticipate closeouts
+    if (!state.ball.isShot) {
+      const passOffense = state.players.filter(p => p.team === state.possession);
+      const passDefense = state.players.filter(p => p.team !== state.possession);
+      updateManToManDefense(state, passDefense, passOffense, effectiveDt);
+    }
     updatePlayerMovement(state, effectiveDt);
     return state;
   }
@@ -392,34 +398,57 @@ function updateMotionOffense(state, offensePlayers, ballCarrier, dt) {
 }
 
 function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
+  const ballCarrier = state.ball.carrier
+    ? state.players.find(p => p.id === state.ball.carrier)
+    : null;
+
+  // Anticipate pass receiver during ball flight for early closeout
+  let passReceiver = null;
+  if (state.ball.inFlight && !state.ball.isShot) {
+    passReceiver = state.players.find(p =>
+      p.team === state.possession &&
+      dist(p, { x: state.ball.targetX, y: state.ball.targetY }) < 35
+    );
+  }
+
   defensePlayers.forEach((defender, i) => {
     const matchup = offensePlayers[i]; // man-to-man assignment
     if (!matchup) return;
 
     const basket = getDefenseBasketPos(state.attackingRight);
 
-    // Position between man and basket, closer to man
-    const toBall = state.ball.carrier
-      ? state.players.find(p => p.id === state.ball.carrier)
-      : null;
+    // Recovery factor: combines speed and defensive awareness (0.2 - 1.0)
+    // Faster, more aware defenders close out quicker and can help more
+    const defRating = defender.defense || 5;
+    const spdRating = defender.speed || 5;
+    const recoveryFactor = (spdRating + defRating) / 20;
 
     let defX, defY;
 
     if (matchup.id === state.ball.carrier) {
-      // On-ball defense — get right up on them
+      // On-ball defense — press the handler
+      // Better defenders (high recovery) can press tighter without getting beat
+      const pressDist = 22 + (1 - recoveryFactor) * 18;
       const angle = Math.atan2(basket.y - matchup.y, basket.x - matchup.x);
-      defX = matchup.x + Math.cos(angle) * 22;
-      defY = matchup.y + Math.sin(angle) * 22;
+      defX = matchup.x + Math.cos(angle) * pressDist;
+      defY = matchup.y + Math.sin(angle) * pressDist;
+    } else if (passReceiver && matchup.id === passReceiver.id) {
+      // Pass anticipation — sprint to close out on the receiver before the ball arrives
+      // Recovery factor determines how tight the closeout is
+      const closeoutDist = lerp(40, 20, recoveryFactor);
+      const angle = Math.atan2(basket.y - matchup.y, basket.x - matchup.x);
+      defX = matchup.x + Math.cos(angle) * closeoutDist;
+      defY = matchup.y + Math.sin(angle) * closeoutDist;
     } else {
-      // Off-ball defense — stay between man and basket, sag toward ball
+      // Off-ball defense — recover to man, sag toward ball based on recovery ability
       const midX = lerp(matchup.x, basket.x, 0.25);
       const midY = lerp(matchup.y, basket.y, 0.25);
 
-      // Help side sag toward ball
-      if (toBall) {
-        const sagAmount = 0.15 * (1 - defender.defense / 10);
-        defX = lerp(midX, toBall.x, sagAmount);
-        defY = lerp(midY, toBall.y, sagAmount);
+      if (ballCarrier) {
+        // Faster, more aware defenders can sag toward the ball and still recover
+        const sagAmount = 0.22 * recoveryFactor;
+        defX = lerp(midX, ballCarrier.x, sagAmount);
+        defY = lerp(midY, ballCarrier.y, sagAmount);
       } else {
         defX = midX;
         defY = midY;
