@@ -429,7 +429,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   }
 
   if (isOpen && !threeZone) {
-    driveChance = 0.15 + carrier.speed * 0.02;
+    driveChance = 0.06 + (carrier.driveTendency || 5) * 0.04 + carrier.speed * 0.01;
   }
 
   const roll = Math.random();

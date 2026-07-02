@@ -8,6 +8,7 @@ export const LAKERS_ROSTER = [
     position: "PG",
     height: 81, // 6'9"
     speed: 8,
+    driveTendency: 9, // elite rim-attacking guard, 6.0 FTA
     shooting: 7,
     passing: 10,
     defense: 6,
@@ -32,6 +33,7 @@ export const LAKERS_ROSTER = [
     position: "SG",
     height: 75, // 6'3"
     speed: 8,
+    driveTendency: 5, // more of a shooter than slasher
     shooting: 8,
     passing: 5,
     defense: 6,
@@ -56,6 +58,7 @@ export const LAKERS_ROSTER = [
     position: "SF",
     height: 81, // 6'9"
     speed: 9,
+    driveTendency: 10, // one of the greatest slashers in NBA history
     shooting: 7,
     passing: 5,
     defense: 6,
@@ -80,6 +83,7 @@ export const LAKERS_ROSTER = [
     position: "PF",
     height: 81, // 6'9"
     speed: 7,
+    driveTendency: 4, // rebounder/garbage scorer, not a driver
     shooting: 5,
     passing: 3,
     defense: 7,
@@ -104,6 +108,7 @@ export const LAKERS_ROSTER = [
     position: "C",
     height: 86, // 7'2"
     speed: 5,
+    driveTendency: 2, // post player, scores with the skyhook
     shooting: 8,
     passing: 4,
     defense: 7,
@@ -131,6 +136,7 @@ export const CELTICS_ROSTER = [
     position: "PG",
     height: 76, // 6'4"
     speed: 7,
+    driveTendency: 4, // mid-range/defensive guard
     shooting: 6,
     passing: 8,
     defense: 9,
@@ -155,6 +161,7 @@ export const CELTICS_ROSTER = [
     position: "SG",
     height: 77, // 6'5"
     speed: 7,
+    driveTendency: 3, // primarily a shooter, 2.3 FTA
     shooting: 8,
     passing: 6,
     defense: 5,
@@ -179,6 +186,7 @@ export const CELTICS_ROSTER = [
     position: "SF",
     height: 81, // 6'9"
     speed: 6,
+    driveTendency: 6, // crafty driver, 5.0 FTA
     shooting: 10,
     passing: 9,
     defense: 7,
@@ -203,6 +211,7 @@ export const CELTICS_ROSTER = [
     position: "PF",
     height: 82, // 6'10"
     speed: 5,
+    driveTendency: 2, // post player with inside moves
     shooting: 7,
     passing: 4,
     defense: 8,
@@ -227,6 +236,7 @@ export const CELTICS_ROSTER = [
     position: "C",
     height: 84, // 7'0"
     speed: 6,
+    driveTendency: 2, // post player, not a perimeter driver
     shooting: 7,
     passing: 3,
     defense: 8,
