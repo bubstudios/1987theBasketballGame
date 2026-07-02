@@ -409,8 +409,9 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   }, { player: null, dist: Infinity });
 
   const isOpen = nearestDef.dist > 40;
-  const isClose = distToBasket < 150;
   const isVeryClose = distToBasket < 80;
+  const isShortMid = distToBasket >= 80 && distToBasket < 150;
+  const isMidRange = distToBasket >= 150 && distToBasket < 220;
   const threeZone = isThreePointer(carrier.x, carrier.y, state.attackingRight);
 
   // Decide: shoot, drive, or pass
@@ -418,11 +419,17 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   let driveChance = 0;
 
   if (isVeryClose) {
+    // Close shots: layups, dunks, hooks
     const freqFactor = Math.min(carrier.twoAttempts / 15, 1);
     shootChance = 0.18 + carrier.insideScoring * 0.04 + freqFactor * 0.1;
-  } else if (isClose && isOpen) {
+  } else if (isShortMid && isOpen) {
+    // Short mid-range (8-15 ft): pull-up jumpers and runners
     const freqFactor = Math.min(carrier.twoAttempts / 15, 1);
-    shootChance = 0.1 + carrier.shooting * 0.03 + freqFactor * 0.12;
+    shootChance = 0.12 + carrier.shooting * 0.03 + freqFactor * 0.1;
+  } else if (isMidRange && isOpen) {
+    // Mid-range (15-22 ft): bread-and-butter of 1980s basketball
+    const freqFactor = Math.min(carrier.twoAttempts / 15, 1);
+    shootChance = 0.14 + carrier.shooting * 0.035 + freqFactor * 0.12;
   } else if (threeZone && isOpen) {
     // Use real 3-point attempt frequency and skill to drive tendency
     const freqFactor = Math.min(carrier.threeAttempts / 3, 1); // normalize ~3+ attempts to 1.0
@@ -549,10 +556,11 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     prob = realPct * 0.75 + skillAdj + (isOpen ? 0.06 : -0.04);
     prob = Math.max(0.03, Math.min(prob, 0.55));
   } else {
-    // Mid-range 2s: use real 2P% as base, blend with shooting skill
+    // Mid-range 2s: use real 2P% as base, blend with shooting skill and distance
     const realPct = shooter.twoPct || 0.45;
     const skillAdj = (shooter.shooting - 6) * 0.02;
-    prob = realPct * 0.55 + skillAdj + (isOpen ? 0.06 : -0.05);
+    const distAdj = d < 120 ? 0.06 : (d > 180 ? -0.04 : 0);
+    prob = realPct * 0.55 + skillAdj + distAdj + (isOpen ? 0.06 : -0.05);
     prob = Math.max(0.05, Math.min(prob, 0.6));
   }
 
