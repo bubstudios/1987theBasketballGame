@@ -10,6 +10,9 @@ function formatTime(seconds) {
 export default function Scoreboard({ gameState }) {
   if (!gameState) return null;
 
+  const teamFouls = (team) =>
+    gameState.players.filter(p => p.team === team).reduce((sum, p) => sum + (p.fouls || 0), 0);
+
   return (
     <div className="flex items-center justify-between bg-neutral-900 text-white rounded-xl px-4 py-3 shadow-lg border border-neutral-700">
       {/* Lakers */}
@@ -23,6 +26,7 @@ export default function Scoreboard({ gameState }) {
           <div className="text-2xl font-bold tabular-nums" style={{ color: TEAM_COLORS.lakers.secondary }}>
             {gameState.score.lakers}
           </div>
+          <div className="text-[9px] text-neutral-500">Team Fouls: {teamFouls('lakers')}</div>
         </div>
       </div>
 
@@ -47,6 +51,7 @@ export default function Scoreboard({ gameState }) {
           <div className="text-2xl font-bold tabular-nums text-right" style={{ color: TEAM_COLORS.celtics.primary }}>
             {gameState.score.celtics}
           </div>
+          <div className="text-[9px] text-neutral-500 text-right">Team Fouls: {teamFouls('celtics')}</div>
         </div>
         <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold"
              style={{ backgroundColor: TEAM_COLORS.celtics.primary, color: TEAM_COLORS.celtics.secondary }}>

@@ -16,8 +16,9 @@ function StatBar({ value, max = 10, color }) {
   );
 }
 
-export default function RosterPanel({ roster, teamKey }) {
+export default function RosterPanel({ roster, teamKey, gameState }) {
   const colors = TEAM_COLORS[teamKey];
+  const livePlayers = gameState?.players?.filter(p => p.team === teamKey) || [];
 
   return (
     <div className="bg-neutral-900 rounded-xl border border-neutral-700 p-3">
@@ -33,10 +34,14 @@ export default function RosterPanel({ roster, teamKey }) {
         </span>
       </div>
       <div className="space-y-2">
-        {roster.map((p, i) => (
+        {roster.map((p, i) => {
+          const live = livePlayers[i];
+          const fouls = live?.fouls || 0;
+          const fouledOut = live?.fouledOut;
+          return (
           <div key={i} className="flex items-center gap-2">
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${fouledOut ? 'opacity-40' : ''}`}
               style={{ backgroundColor: colors.primary, color: colors.text }}
             >
               {p.number}
@@ -45,6 +50,11 @@ export default function RosterPanel({ roster, teamKey }) {
               <div className="flex items-baseline gap-1.5">
                 <span className="text-xs text-white font-medium truncate">{p.name}</span>
                 <span className="text-[10px] text-neutral-500">{p.position} · {heightToString(p.height)}</span>
+                {fouls > 0 && (
+                  <span className={`text-[9px] font-bold ${fouledOut ? 'text-red-500' : 'text-amber-400'}`}>
+                    {fouledOut ? 'DQ' : `${fouls}F`}
+                  </span>
+                )}
               </div>
               <div className="grid grid-cols-6 gap-x-1.5 gap-y-0.5 mt-1">
                 <div>
@@ -74,7 +84,8 @@ export default function RosterPanel({ roster, teamKey }) {
               </div>
             </div>
           </div>
-        ))}
+        );
+        })}
       </div>
     </div>
   );

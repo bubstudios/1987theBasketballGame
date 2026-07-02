@@ -80,6 +80,8 @@ export function createGameState(lakersRoster, celticsRoster) {
       isCutting: false,
       isSettingScreen: false,
       shotClock: 0,
+      fouls: 0,
+      fouledOut: false,
     });
   });
 
@@ -103,6 +105,8 @@ export function createGameState(lakersRoster, celticsRoster) {
       isCutting: false,
       isSettingScreen: false,
       shotClock: 0,
+      fouls: 0,
+      fouledOut: false,
     });
   });
 
@@ -140,6 +144,7 @@ export function createGameState(lakersRoster, celticsRoster) {
     isPaused: false,
     gameSpeed: 1,
     turnoverCooldown: 0,
+    ftState: null,
   };
 }
 
@@ -173,7 +178,14 @@ export function updateGame(state, dt) {
   if (state.isPaused) return state;
   
   const effectiveDt = dt * state.gameSpeed;
-  
+
+  // Handle free throw state — play stops while the shooter is at the line
+  if (state.ftState) {
+    updateFreeThrows(state, effectiveDt);
+    updatePlayerMovement(state, effectiveDt);
+    return state;
+  }
+
   // Update clocks
   state.gameClock -= effectiveDt / 1000;
   state.shotClock -= effectiveDt / 1000;
@@ -425,7 +437,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   if (roll < shootChance && state.shotClock < 20) {
     // Foul detection: contested shots can draw fouls, weighted by FTA rate
     const foulChance = nearestDef.dist < 25 ? Math.min(0.08 + carrier.ftAttempts * 0.015, 0.28) : 0;
-    const fouledBy = (foulChance > 0 && Math.random() < foulChance) ? nearestDef.player : null;
+    const fouledBy = (foulChance > 0 && Math.random() < foulChance && !nearestDef.player.fouledOut) ? nearestDef.player : null;
     takeShot(state, carrier, isOpen, fouledBy, nearestDef);
     state.actionTimer = 1500;
   } else if (roll < shootChance + driveChance) {
@@ -636,40 +648,88 @@ function resolveShot(state) {
 
 function resolveFouledShot(state, result) {
   const shooter = result.shooter;
-  const ftPct = shooter.ftPct || 0.75;
-  const desc = result.type === 'three' ? 'three-pointer' : (result.type === 'layup' ? 'layup' : 'jumper');
+  const fouledBy = result.fouledBy;
 
-  if (result.made) {
-    // And-one: count the basket, then 1 free throw
-    state.score[shooter.team] += result.points;
-    const ftMade = Math.random() < ftPct;
-    if (ftMade) {
-      state.score[shooter.team] += 1;
-      state.shotResultDisplay = `${shooter.name} hits the ${desc} + foul! AND1! +${result.points + 1}`;
-      state.gameLog.unshift(`✓ ${shooter.name} AND1! ${desc} + foul → ${result.points + 1} pts`);
-    } else {
-      state.shotResultDisplay = `${shooter.name} gets the ${desc} and the foul, misses the FT. +${result.points}`;
-      state.gameLog.unshift(`✗ ${shooter.name} misses the FT`);
-      state.gameLog.unshift(`✓ ${shooter.name} ${desc} + foul! +${result.points}`);
-    }
-  } else {
-    // Missed shot: shoot 2 (or 3 for a 3-point attempt) free throws
-    const ftCount = result.points === 3 ? 3 : 2;
-    state.shotResultDisplay = `Foul on ${result.fouledBy.name}! ${shooter.name} to the line for ${ftCount}`;
-    state.gameLog.unshift(`${shooter.name} ${0}/${ftCount} FTs`);
-    let ftsMade = 0;
-    for (let i = 0; i < ftCount; i++) {
-      if (Math.random() < ftPct) ftsMade++;
-    }
-    state.score[shooter.team] += ftsMade;
-    // Replace the placeholder log entry
-    state.gameLog[0] = `${shooter.name} ${ftsMade}/${ftCount} FTs +${ftsMade}`;
-    state.gameLog.unshift(`🦵 Foul on ${result.fouledBy.name} — ${shooter.name} to the line`);
+  // Count the personal foul on the defender
+  fouledBy.fouls = (fouledBy.fouls || 0) + 1;
+
+  // Check for disqualification at 6 fouls
+  let fouledOut = false;
+  if (fouledBy.fouls >= 6) {
+    fouledBy.fouledOut = true;
+    fouledOut = true;
   }
 
-  state.shotResultTimer = 1800;
+  // If the shot was made (and-one), count the basket points now
+  if (result.made) {
+    state.score[shooter.team] += result.points;
+  }
+
+  // Free throw count: 1 for and-one, 2 for missed 2-pt, 3 for missed 3-pt
+  const ftCount = result.made ? 1 : (result.points === 3 ? 3 : 2);
+
+  // Move shooter to the free throw line for the FT sequence
+  const basket = getBasketPos(state.attackingRight);
+  const ftX = state.attackingRight ? basket.x - 120 : basket.x + 120;
+  shooter.targetX = ftX;
+  shooter.targetY = basket.y;
+  state.ball.carrier = shooter.id;
+  shooter.hasBall = true;
+
+  // Set up free throw state — play stops while shooter goes to the line
+  state.ftState = {
+    shooter: shooter,
+    fouledBy: fouledBy,
+    ftCount: ftCount,
+    ftsMade: 0,
+    currentFT: 0,
+    timer: 1200,
+    team: shooter.team,
+    madeShot: result.made,
+    fouledOut: fouledOut,
+  };
+
+  const desc = result.type === 'three' ? 'three-pointer' : (result.type === 'layup' ? 'layup' : 'jumper');
+  if (result.made) {
+    state.shotResultDisplay = `${shooter.name} hits the ${desc} + foul! AND1!`;
+    state.gameLog.unshift(`✓ ${shooter.name} ${desc} + foul on ${fouledBy.name} (${fouledBy.fouls})! +${result.points}`);
+  } else {
+    state.shotResultDisplay = `Foul on ${fouledBy.name} (${fouledBy.fouls})! ${shooter.name} to the line for ${ftCount}`;
+    state.gameLog.unshift(`🦵 Foul on ${fouledBy.name} (${fouledBy.fouls}) — ${shooter.name} to the line for ${ftCount}`);
+  }
   if (state.gameLog.length > 15) state.gameLog.pop();
-  switchPossession(state);
+}
+
+function updateFreeThrows(state, dt) {
+  const ft = state.ftState;
+  ft.timer -= dt;
+
+  if (ft.timer <= 0) {
+    if (ft.currentFT < ft.ftCount) {
+      // Shoot one free throw
+      const made = Math.random() < ft.shooter.ftPct;
+      if (made) {
+        state.score[ft.team] += 1;
+        ft.ftsMade++;
+      }
+      ft.currentFT++;
+
+      state.shotResultDisplay = `${ft.shooter.name} ${made ? 'makes' : 'misses'} FT ${ft.currentFT}/${ft.ftCount} (${ft.ftsMade}/${ft.ftCount})`;
+      state.gameLog.unshift(`${made ? '✓' : '✗'} ${ft.shooter.name} ${made ? 'makes' : 'misses'} FT ${ft.ftsMade}/${ft.ftCount}`);
+      if (state.gameLog.length > 15) state.gameLog.pop();
+
+      ft.timer = 1500;
+    } else {
+      // All free throws complete — resume play
+      if (ft.fouledOut) {
+        state.gameLog.unshift(`📤 ${ft.fouledBy.name} fouls out! (${ft.fouledBy.fouls} fouls)`);
+        if (state.gameLog.length > 15) state.gameLog.pop();
+      }
+      state.ftState = null;
+      state.shotResultTimer = 1200;
+      switchPossession(state);
+    }
+  }
 }
 
 function switchPossession(state) {

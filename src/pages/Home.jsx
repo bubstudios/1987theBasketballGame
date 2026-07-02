@@ -161,7 +161,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* Left roster */}
           <div className="hidden lg:block">
-            <RosterPanel roster={LAKERS_ROSTER} teamKey="lakers" />
+            <RosterPanel roster={LAKERS_ROSTER} teamKey="lakers" gameState={gameState} />
           </div>
 
           {/* Court */}
@@ -185,7 +185,7 @@ export default function Home() {
 
           {/* Right roster */}
           <div className="hidden lg:block">
-            <RosterPanel roster={CELTICS_ROSTER} teamKey="celtics" />
+            <RosterPanel roster={CELTICS_ROSTER} teamKey="celtics" gameState={gameState} />
           </div>
         </div>
 
@@ -196,8 +196,8 @@ export default function Home() {
 
         {/* Mobile Rosters */}
         <div className="lg:hidden mt-4 grid grid-cols-2 gap-3">
-          <RosterPanel roster={LAKERS_ROSTER} teamKey="lakers" />
-          <RosterPanel roster={CELTICS_ROSTER} teamKey="celtics" />
+          <RosterPanel roster={LAKERS_ROSTER} teamKey="lakers" gameState={gameState} />
+          <RosterPanel roster={CELTICS_ROSTER} teamKey="celtics" gameState={gameState} />
         </div>
       </div>
     </div>
