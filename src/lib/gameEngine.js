@@ -248,6 +248,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     },
     timeoutState: null,
     playCall: null,
+    userPlayCall: null,
   };
 }
 
@@ -576,6 +577,63 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
   });
 }
 
+// On-screen user play calls — override the CPU ball-carrier decision for one possession.
+// ISO PG: force the ball to the point guard and let him isolate.
+// Feed Post: pound it inside to the center for a close finish.
+// Shoot 3: find the best deep shooter and let it fly from beyond the arc.
+// Attack Rim: the current carrier drives hard and finishes at the basket.
+function applyUserPlayCall(state, carrier, teammates, basket, distToBasket, isOpen, threeZone, nearestDef) {
+  const playId = state.userPlayCall.type;
+
+  const passTo = (player) => {
+    if (!player || carrier.id === player.id) return false;
+    makePass(state, carrier, player);
+    state.passTimer = randomInRange(400, 700);
+    state.actionTimer = 800;
+    return true;
+  };
+  const shootNow = () => {
+    takeShot(state, carrier, isOpen, null, nearestDef);
+    state.actionTimer = 1200;
+    return true;
+  };
+  const driveTo = (factor) => {
+    carrier.targetX = lerp(carrier.x, basket.x, factor);
+    carrier.targetY = lerp(carrier.y, basket.y, factor);
+    state.actionTimer = randomInRange(350, 700);
+    return true;
+  };
+
+  if (playId === 'iso_pg') {
+    const pg = teammates.find(t => t.courtIndex === 0);
+    if (pg && carrier.id !== pg.id) return passTo(pg);
+    if (distToBasket < 90) return shootNow();
+    return driveTo(0.6);
+  }
+  if (playId === 'feed_post') {
+    const post = teammates.find(t => t.courtIndex === 4);
+    if (post && carrier.id !== post.id) return passTo(post);
+    if (distToBasket < 100) return shootNow();
+    return driveTo(0.4);
+  }
+  if (playId === 'shoot_3') {
+    const shooter = teammates.filter(t => t.threeAttempts > 0.5).sort((a, b) => b.threePct - a.threePct)[0];
+    if (shooter && carrier.id !== shooter.id) return passTo(shooter);
+    if (threeZone) return shootNow();
+    const spots = getOffenseSpots(state.attackingRight);
+    const spot = spots[Math.min(carrier.courtIndex || 0, spots.length - 1)];
+    carrier.targetX = spot.x;
+    carrier.targetY = spot.y;
+    state.actionTimer = randomInRange(400, 600);
+    return true;
+  }
+  if (playId === 'attack_rim') {
+    if (distToBasket < 75) return shootNow();
+    return driveTo(0.7);
+  }
+  return false;
+}
+
 function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   const basket = getBasketPos(state.attackingRight);
   const distToBasket = dist(carrier, basket);
@@ -590,6 +648,13 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   const isMidRange = distToBasket >= 150 && distToBasket < 220;
   const threeZone = isThreePointer(carrier.x, carrier.y, state.attackingRight);
   const isFastBreak = state.fastBreak && state.fastBreak.active;
+
+  // User's on-screen play call overrides the CPU for this single possession.
+  // It persists across passes and is consumed when a shot goes up or possession changes.
+  if (state.userPlayCall && state.userPlayCall.team === carrier.team) {
+    const handled = applyUserPlayCall(state, carrier, teammates, basket, distToBasket, isOpen, threeZone, nearestDef);
+    if (handled) return;
+  }
 
   // Decide: shoot, drive, or pass
   let shootChance = 0;
@@ -727,6 +792,7 @@ function makePass(state, passer, receiver) {
 function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   // A drawn-up play is consumed once the shot goes up
   if (state.playCall) state.playCall = null;
+  state.userPlayCall = null;
   const basket = getBasketPos(state.attackingRight);
   shooter.hasBall = false;
   state.ball.carrier = null;
@@ -1016,6 +1082,7 @@ function switchPossession(state, fastBreakInitiator = null) {
   state.attackingRight = state.possession === state.teamKeys.team1;
   state.shotClock = 24;
   state.turnoverCooldown = 1000;
+  state.userPlayCall = null;
 
   // Fast break check: live-ball transitions (steals, defensive rebounds, blocks)
   // can trigger a break instead of resetting to half-court sets

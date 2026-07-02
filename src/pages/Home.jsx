@@ -13,6 +13,7 @@ import MomentumChart from '@/components/game/MomentumChart';
 import SubstitutionLog from '@/components/game/SubstitutionLog';
 import SubstitutionCommentary from '@/components/game/SubstitutionCommentary';
 import CoachControls from '@/components/game/CoachControls';
+import PlayCallBar from '@/components/game/PlayCallBar';
 import { callTimeout } from '@/lib/timeoutEngine';
 
 export default function Home() {
@@ -116,6 +117,14 @@ export default function Home() {
     if (ok) setGameState({ ...gameRef.current });
   };
 
+  const handleCallPlay = (playId) => {
+    if (!gameRef.current) return;
+    if (gameRef.current.possession !== 'lakers') return;
+    if (gameRef.current.timeoutState || gameRef.current.ftState || gameRef.current.shotAnimating) return;
+    gameRef.current.userPlayCall = { team: 'lakers', type: playId };
+    setGameState({ ...gameRef.current });
+  };
+
   const isGameOver = gameState && gameState.quarter >= 4 && gameState.gameClock <= 0;
 
   return (
@@ -208,6 +217,9 @@ export default function Home() {
 
           {/* Court */}
           <div className="lg:col-span-2">
+            <div className="mb-3">
+              <PlayCallBar gameState={gameState} onCallPlay={handleCallPlay} />
+            </div>
             <CourtCanvas gameState={gameState} />
             <div className="mt-3 flex items-center justify-center gap-6 text-[10px] text-neutral-500">
               <div className="flex items-center gap-1.5">
