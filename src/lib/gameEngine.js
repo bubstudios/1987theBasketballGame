@@ -24,20 +24,22 @@ function randomInRange(min, max) {
 }
 
 // Motion offense positions (relative to basket, right side)
+// Spots 0-2 are beyond the 3-point arc (dist > 220); spots 3-4 are inside.
+// This spaces 3 perimeter shooters around the arc while bigs stay in the paint.
 const OFFENSE_SPOTS_RIGHT = [
-  { x: 635, y: 250 }, // top of key 3-pointer (dist ~250)
-  { x: 780, y: 130 }, // wing top mid-range (dist ~159)
-  { x: 780, y: 370 }, // wing bottom mid-range (dist ~159)
-  { x: 635, y: 100 }, // wing 3 top (dist ~292)
-  { x: 830, y: 250 }, // high post (dist ~55)
+  { x: 620, y: 250 }, // PG: top of key 3-pointer (dist ~265)
+  { x: 690, y: 95 },  // SG: right wing 3 (dist ~249)
+  { x: 690, y: 405 }, // SF: left wing 3 (dist ~249)
+  { x: 800, y: 140 }, // PF: short corner mid-range (dist ~139)
+  { x: 835, y: 250 }, // C: low post (dist ~50)
 ];
 
 const OFFENSE_SPOTS_LEFT = [
-  { x: 305, y: 250 }, // top of key 3-pointer (dist ~250)
-  { x: 160, y: 130 }, // wing top mid-range (dist ~159)
-  { x: 160, y: 370 }, // wing bottom mid-range (dist ~159)
-  { x: 305, y: 100 }, // wing 3 top (dist ~292)
-  { x: 110, y: 250 }, // high post (dist ~55)
+  { x: 320, y: 250 }, // PG: top of key 3-pointer (dist ~265)
+  { x: 250, y: 95 },  // SG: right wing 3 (dist ~249)
+  { x: 250, y: 405 }, // SF: left wing 3 (dist ~249)
+  { x: 140, y: 140 }, // PF: short corner mid-range (dist ~139)
+  { x: 105, y: 250 }, // C: low post (dist ~50)
 ];
 
 // Cutting lanes for motion offense
@@ -341,8 +343,8 @@ function updateMotionOffense(state, offensePlayers, ballCarrier, dt) {
         player.targetY = clamp(cut.y + randomInRange(-20, 20), 40, COURT.height - 40);
         player.cutTimer = randomInRange(800, 1500);
       } else {
-        // Relocate to a spot
-        const spot = spots[Math.floor(Math.random() * spots.length)];
+        // Relocate to assigned spot — keeps perimeter shooters beyond the arc
+        const spot = spots[i % spots.length];
         player.targetX = spot.x + randomInRange(-25, 25);
         player.targetY = clamp(spot.y + randomInRange(-25, 25), 40, COURT.height - 40);
         player.cutTimer = randomInRange(1500, 3000);
@@ -431,10 +433,16 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     // Mid-range (15-22 ft): bread-and-butter of 1980s basketball
     const freqFactor = Math.min(carrier.twoAttempts / 15, 1);
     shootChance = 0.14 + carrier.shooting * 0.035 + freqFactor * 0.12;
-  } else if (threeZone && isOpen) {
-    // Use real 3-point attempt frequency and skill to drive tendency
-    const freqFactor = Math.min(carrier.threeAttempts / 3, 1); // normalize ~3+ attempts to 1.0
-    shootChance = 0.06 + carrier.threePoint * 0.03 + freqFactor * 0.14;
+  } else if (threeZone) {
+    // 3-point attempt tendency driven by real 3PA frequency and shooting skill.
+    // Non-shooters (≤0.5 3PA) almost never pull the trigger from deep.
+    const freqFactor = Math.min(carrier.threeAttempts / 2, 1); // normalize ~2+ attempts to 1.0
+    if (isOpen && carrier.threeAttempts > 0.5) {
+      shootChance = 0.08 + carrier.threePoint * 0.03 + freqFactor * 0.18;
+    } else if (!isOpen && carrier.threeAttempts > 2) {
+      // Contested 3s — only frequent deep shooters take them
+      shootChance = freqFactor * 0.10;
+    }
   }
 
   if (isOpen && !threeZone) {
