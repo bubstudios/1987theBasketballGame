@@ -287,52 +287,6 @@ function celticsShotBias(state, player) {
   return m;
 }
 
-// Star protection — keeps Bird and McHale central without scripting the box
-// score. Boosts underused stars, suppresses over-shooting support players.
-// NEVER adjusts shooting %.
-function celticsStarProtection(state, player) {
-  const role = getRole(player);
-  if (!role) return 1.0;
-  const teamFga = getTeamFGA(state, player.team);
-  if (teamFga < 8) return 1.0;
-
-  let mult = 1.0;
-  const playerFga = (player.stats && player.stats.fga) || 0;
-  const mins = (player.minutesPlayed || 0) / 60;
-
-  // Bird / McHale below 70% of expected opportunities → boost action weight
-  if ((player.name === 'Larry Bird' || player.name === 'Kevin McHale') && mins >= 0.5 && role.fgaTarget) {
-    const expectedFga = role.fgaTarget * (mins / role.mpgExpected);
-    if (expectedFga >= 0.5 && playerFga / expectedFga < 0.70) {
-      mult *= player.name === 'Larry Bird' ? 1.20 : 1.18;
-    }
-  }
-
-  // After 12 team attempts: Bird+McHale combined <35% → boost both
-  if (teamFga >= 12 && (player.name === 'Larry Bird' || player.name === 'Kevin McHale')) {
-    const bird = state.players.find(p => p.name === 'Larry Bird' && p.team === player.team);
-    const mchale = state.players.find(p => p.name === 'Kevin McHale' && p.team === player.team);
-    const birdFga = (bird && bird.stats && bird.stats.fga) || 0;
-    const mchaleFga = (mchale && mchale.stats && mchale.stats.fga) || 0;
-    if ((birdFga + mchaleFga) / teamFga < 0.35) {
-      mult *= 1.25;
-    }
-  }
-
-  // Supporting player >35% of attempts → suppress (unless hot or a star rests)
-  if (player.name !== 'Larry Bird' && player.name !== 'Kevin McHale' && playerFga / teamFga > 0.35) {
-    const fgm = (player.stats && player.stats.fgm) || 0;
-    const isHot = playerFga >= 3 && fgm / playerFga >= 0.60;
-    const birdOn = state.players.some(p => p.name === 'Larry Bird' && p.team === player.team && p.onCourt);
-    const mchaleOn = state.players.some(p => p.name === 'Kevin McHale' && p.team === player.team && p.onCourt);
-    if (!isHot && (birdOn || mchaleOn)) {
-      mult *= 0.80;
-    }
-  }
-
-  return mult;
-}
-
 // Clutch: final 5 minutes, game within 8 — Bird and McHale dominate.
 function celticsClutchBoost(state, player) {
   if (!isClutch(state)) return 1.0;
@@ -381,7 +335,6 @@ export function getTouchWeight(state, player, openness) {
 
   if (player.team === 'celtics') {
     w *= celticsShotBias(state, player);
-    w *= celticsStarProtection(state, player);
     w *= celticsClutchBoost(state, player);
     w *= opportunityModifier(player);
     w *= earlyGameProtection(state, player);
@@ -398,8 +351,9 @@ export function getTouchWeight(state, player, openness) {
 
 // --- Scoring weight (ball-carrier shoot/drive decisions) ---
 // Scales the carrier's shootChance and driveChance. Role players pass more;
-// stars finish more. Celtics use the same shot-finisher hierarchy + star
-// protection that governs touch selection.
+// stars finish more. Both teams use the same finishing-rating hierarchy +
+// shared opportunity/early-game corrections — no team-specific scoring boost.
+// Celtics get a distinct touch-weight structure (Bird as hub) instead.
 export function getScoringWeight(state, player) {
   const role = getAdjustedRole(state, player);
   if (!role) return 1.0;
@@ -407,8 +361,6 @@ export function getScoringWeight(state, player) {
   let w = 0.6 + (role.finishing / 99) * 0.8; // ~0.8–1.4
 
   if (player.team === 'celtics') {
-    w *= celticsShotBias(state, player);
-    w *= celticsStarProtection(state, player);
     w *= celticsClutchBoost(state, player);
     w *= opportunityModifier(player);
     w *= earlyGameProtection(state, player);
