@@ -226,16 +226,16 @@ export default function Home() {
           <BoxScore gameState={gameState} />
         </div>
 
-        {/* Momentum Chart */}
-        <div className="mt-4 max-w-2xl mx-auto">
-          <MomentumChart gameState={gameState} />
-        </div>
-
         {/* Mobile Rosters */}
         <div className="lg:hidden mt-4 grid grid-cols-2 gap-3">
           <RosterPanel roster={LAKERS_ROSTER} bench={LAKERS_BENCH} teamKey="lakers" gameState={gameState} />
           <RosterPanel roster={opponentRoster} bench={oppBench} teamKey={opponent} gameState={gameState} />
         </div>
+      </div>
+
+      {/* Sticky bottom momentum & pace tracker */}
+      <div className="sticky bottom-0 z-20 max-w-6xl mx-auto px-4 pb-3 pt-2 bg-gradient-to-t from-neutral-950 via-neutral-950/95 to-transparent">
+        <MomentumChart gameState={gameState} />
       </div>
     </div>
   );
