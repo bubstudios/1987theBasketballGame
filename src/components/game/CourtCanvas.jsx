@@ -144,8 +144,8 @@ function drawPlayer(ctx, player, w, h, isBallCarrier) {
 
   // Name label
   ctx.fillStyle = '#000000';
-  ctx.font = `${Math.max(8, 10 * sx)}px sans-serif`;
-  ctx.fillText(player.name.split(' ').pop(), x, y - r - 6);
+  ctx.font = `bold ${Math.max(11, 14 * sx)}px "Arial Black", "Helvetica Neue", sans-serif`;
+  ctx.fillText(player.name.split(' ').pop(), x, y - r - 8);
 }
 
 function drawBall(ctx, ball, w, h) {
