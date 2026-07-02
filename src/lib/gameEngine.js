@@ -4,6 +4,7 @@ import { determineOffensiveRebound, computeReboundZone, selectRebounder, decideP
 import { isInPenalty, applyTeamFoul, foulDrawMult, defenderDisciplineMult, fatigueFoulMult, pickFoulingDefender, intentionalFoulIntent } from './foulEngine';
 import { getTouchWeight, getScoringWeight, getTransitionController, recordCelticsPass, finalizeCelticsPossession } from './starEngine';
 import { mergeDefenseRatings, recomputeMatchups, getPrimaryDefender, getMatchupFor, evaluateContest, computeBlockChance, resolveBlockOutcome, computeStealChance, computeInterceptionChance, decideHelpCommit } from './defenseEngine';
+import { TEAM_DEFENSE_TENDENCIES } from './defenseData';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -304,8 +305,10 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     },
     defensiveMatchups: {},
     helpCommitment: null,
+    pendingTurnover: null,
   };
   recomputeMatchups(state);
+  rollPossessionTurnover(state);
   return state;
 }
 
@@ -400,6 +403,17 @@ export function updateGame(state, dt) {
     }
   }
 
+  // Pre-determined turnover: one roll per possession fires at its scheduled time.
+  // Replaces the old per-frame steal checks + per-pass interception checks that
+  // stacked up to end ~60-80% of possessions before a shot could occur.
+  if (state.pendingTurnover && state.pendingTurnover.willOccur && !state.ball.inFlight && !state.shotAnimating && !state.ftState && !state.timeoutState && !state.quarterBreak) {
+    const elapsed = 24 - state.shotClock;
+    if (elapsed >= state.pendingTurnover.triggerElapsed) {
+      executePendingTurnover(state);
+      return state;
+    }
+  }
+
   // Momentum decay & pace normalization
   const momDecay = 0.05 * effectiveDt / 1000;
   state.momentum.lakers = clamp(state.momentum.lakers * (1 - momDecay), -6, 6);
@@ -484,15 +498,6 @@ export function updateGame(state, dt) {
     }
   }
 
-  // Check for turnovers (defender close to ball handler)
-  // Gated by a 500ms timer — per-frame checking inflated steal frequency
-  // ~60x because the on-ball defender is always within steal range.
-  state.stealCheckTimer -= effectiveDt;
-  if (state.turnoverCooldown <= 0 && state.stealCheckTimer <= 0 && ballCarrier) {
-    checkTurnover(state, ballCarrier, defensePlayers);
-    state.stealCheckTimer = 1000;
-  }
-
   return state;
 }
 
@@ -519,32 +524,7 @@ function updateBallFlight(state, dt) {
         return dist(p, { x: state.ball.targetX, y: state.ball.targetY }) < 30;
       });
       if (receiver && receiver.team === state.possession) {
-        // Passing-lane interception check (Lakers jump lanes more often)
-        const passer = state.players.find(p => p.id === state.ball.lastPasserId);
-        const defenseTeam = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
-        const defPlayers = getOnCourtPlayers(state, defenseTeam);
-        const intChance = computeInterceptionChance(state, passer || receiver, receiver, defPlayers);
-        if (intChance > 0 && Math.random() < intChance) {
-          let interceptor = null, id = Infinity;
-          defPlayers.forEach(d => {
-            const dd = dist(d, state.ball);
-            if (dd < id) { id = dd; interceptor = d; }
-          });
-          if (interceptor) {
-            interceptor.hasBall = true;
-            state.ball.carrier = interceptor.id;
-            state.ball.x = interceptor.x;
-            state.ball.y = interceptor.y;
-            if (passer) passer.stats.turnovers++;
-            interceptor.stats.steals++;
-            state.momentum[interceptor.team] += 2;
-            state.gameLog.unshift(`🏀 ${interceptor.name} intercepts ${passer ? passer.name : 'the pass'}!`);
-            state.turnoverCooldown = 2000;
-            switchPossession(state, interceptor);
-            state.ball.isShot = false;
-            return;
-          }
-        }
+        // Pass completed — turnovers are handled by the single per-possession roll
         state.ball.carrier = receiver.id;
         receiver.hasBall = true;
         state.ball.x = receiver.x;
@@ -1188,6 +1168,7 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   state.shotAnimating = true;
   state.fastBreak = null; // shot ends the fast break
   state.helpCommitment = null; // shot resolves any help commitment
+  state.pendingTurnover = null; // shot voids the pre-determined turnover
 }
 
 // Increment a player's personal foul + the team foul; disqualify at 6
@@ -1471,6 +1452,7 @@ function resolveShot(state) {
           pendingPutback = { rebounder, nearest, nd };
         } else {
           state.actionTimer = 500;
+          rollPossessionTurnover(state);
         }
       }
     }
@@ -1621,6 +1603,108 @@ function setupPossessionPacing(state, isFastBreak) {
   state.possessionTargetDuration = targetDur;
 }
 
+// --- Single per-possession turnover roll ---
+// Replaces the old per-frame steal checks and per-pass interception checks
+// that stacked up to end ~60-80% of possessions before a shot.
+// One roll at possession start: ~16% chance the possession ends in a turnover.
+function rollPossessionTurnover(state) {
+  const carrier = state.players.find(p => p.id === state.ball.carrier);
+  if (!carrier) { state.pendingTurnover = null; return; }
+  const defenseTeam = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
+
+  let chance = 0.16; // base: ~16 turnovers per 100 possessions
+
+  // Ball-handler modifier (TOV% relative to league avg ~0.13)
+  const tovRate = carrier.turnoverRate || 0.13;
+  chance += (tovRate - 0.13) * 0.5;
+
+  // Defense pressure modifier
+  const tend = TEAM_DEFENSE_TENDENCIES[defenseTeam];
+  if (tend) chance += (tend.stealAttemptFreq - 1.0) * 0.03;
+
+  // Fatigue modifier
+  const fat = carrier.fatigue || 0;
+  if (fat > 75) chance += 0.02;
+  else if (fat > 50) chance += 0.01;
+
+  // Fast breaks have slightly fewer turnovers
+  if (state.fastBreak && state.fastBreak.active) chance -= 0.03;
+
+  chance = clamp(chance, 0.08, 0.27);
+
+  if (Math.random() < chance) {
+    const types = [
+      { type: 'bad_pass',       isSteal: true,  weight: 30 },
+      { type: 'stolen_pass',    isSteal: true,  weight: 22 },
+      { type: 'stripped',       isSteal: true,  weight: 18 },
+      { type: 'offensive_foul', isSteal: false, weight: 12 },
+      { type: 'travel',         isSteal: false, weight: 8 },
+      { type: 'other',          isSteal: false, weight: 4 },
+    ];
+    const totalW = types.reduce((s, t) => s + t.weight, 0);
+    let r = Math.random() * totalW;
+    let chosen = types[0];
+    for (const t of types) { r -= t.weight; if (r <= 0) { chosen = t; break; } }
+
+    // Fire before the typical shot decision (half-court gate is ~15-21s)
+    const triggerElapsed = state.fastBreak && state.fastBreak.active
+      ? randomInRange(3, 8)
+      : randomInRange(4, 14);
+
+    state.pendingTurnover = {
+      willOccur: true,
+      triggerElapsed: triggerElapsed,
+      type: chosen.type,
+      isSteal: chosen.isSteal,
+    };
+  } else {
+    state.pendingTurnover = { willOccur: false };
+  }
+}
+
+function executePendingTurnover(state) {
+  const carrier = state.players.find(p => p.id === state.ball.carrier);
+  if (!carrier) { state.pendingTurnover = null; return; }
+  const defenseTeam = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
+  const defPlayers = getOnCourtPlayers(state, defenseTeam);
+  const type = state.pendingTurnover.type;
+  const isSteal = state.pendingTurnover.isSteal;
+
+  carrier.hasBall = false;
+  state.ball.carrier = null;
+  carrier.stats.turnovers++;
+
+  if (isSteal) {
+    let thief;
+    if (type === 'stripped') {
+      thief = getPrimaryDefender(state, carrier) || defPlayers[0];
+    } else {
+      thief = defPlayers.reduce((closest, d) =>
+        dist(carrier, d) < dist(carrier, closest) ? d : closest, defPlayers[0]);
+    }
+    if (thief) {
+      thief.stats.steals++;
+      state.momentum[thief.team] += 2;
+      state.momentum[carrier.team] -= 1;
+      const verb = type === 'stripped' ? 'strips' : 'steals from';
+      state.gameLog.unshift(`🏀 ${thief.name} ${verb} ${carrier.name}!`);
+      state.turnoverCooldown = 2000;
+      switchPossession(state, thief);
+    } else {
+      state.gameLog.unshift(`✗ Turnover by ${carrier.name}`);
+      state.turnoverCooldown = 2000;
+      switchPossession(state);
+    }
+  } else {
+    const desc = type === 'offensive_foul' ? 'Charge on' : (type === 'travel' ? 'Traveling on' : 'Turnover by');
+    state.gameLog.unshift(`✗ ${desc} ${carrier.name}!`);
+    state.turnoverCooldown = 2000;
+    switchPossession(state);
+  }
+
+  if (state.gameLog.length > 15) state.gameLog.pop();
+}
+
 function switchPossession(state, fastBreakInitiator = null) {
   finalizeCelticsPossession(state);
   state.possession = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
@@ -1669,6 +1753,7 @@ function switchPossession(state, fastBreakInitiator = null) {
     state.passTimer = 0;
     setupPossessionPacing(state, false);
   }
+  rollPossessionTurnover(state);
 }
 
 // End of an intermission — advance to the next quarter (called when user hits Continue)
@@ -1690,6 +1775,7 @@ export function advanceToNextQuarter(state) {
   setupPossessionPacing(state, false);
   recomputeMatchups(state);
   resetPositions(state);
+  rollPossessionTurnover(state);
 }
 
 export function resetPositions(state) {
