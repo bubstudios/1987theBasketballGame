@@ -345,7 +345,10 @@ function isThreePointer(x, y, attackingRight) {
 export function updateGame(state, dt) {
   if (state.isPaused) return state;
   
-  const effectiveDt = dt * state.gameSpeed;
+  // 0.5x is the baseline (regular) speed — simRate = 1.0 there.
+  // Higher speeds (1, 2, 3) fast-forward both the simulation and the clocks.
+  const simRate = state.gameSpeed / 0.5;
+  const effectiveDt = dt * simRate;
 
   // Active timeout — clock frozen while teams huddle
   if (state.timeoutState) {
@@ -371,11 +374,10 @@ export function updateGame(state, dt) {
     return state;
   }
 
-  // Clocks run at real-time rate regardless of simulation speed — the 48-minute
-  // game always takes the same wall-clock duration. Slower simulation speed means
-  // each possession consumes more game clock, yielding fewer possessions per game.
-  state.gameClock -= dt / 1000;
-  state.shotClock -= dt / 1000;
+  // Clocks scale with the simulation rate — real-time at 0.5x (the baseline),
+  // faster at 1x/2x/3x so you can fast-forward through the sim.
+  state.gameClock -= effectiveDt / 1000;
+  state.shotClock -= effectiveDt / 1000;
 
   if (state.gameClock <= 0) {
     state.gameClock = 0;
