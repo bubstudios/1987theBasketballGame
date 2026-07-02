@@ -8,6 +8,7 @@ import Scoreboard from '@/components/game/Scoreboard';
 import GameControls from '@/components/game/GameControls';
 import GameLog from '@/components/game/GameLog';
 import RosterPanel from '@/components/game/RosterPanel';
+import BoxScore from '@/components/game/BoxScore';
 
 export default function Home() {
   const [gameState, setGameState] = useState(null);
@@ -215,6 +216,11 @@ export default function Home() {
         {/* Game Log */}
         <div className="mt-4 max-w-2xl mx-auto">
           <GameLog log={gameState?.gameLog} />
+        </div>
+
+        {/* Box Score */}
+        <div className="mt-4 max-w-2xl mx-auto">
+          <BoxScore gameState={gameState} />
         </div>
 
         {/* Mobile Rosters */}

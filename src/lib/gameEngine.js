@@ -84,6 +84,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
       shotClock: 0,
       fouls: 0,
       fouledOut: false,
+      stats: { points: 0, rebounds: 0, offReb: 0, defReb: 0, assists: 0, steals: 0, blocks: 0, turnovers: 0, fgm: 0, fga: 0, ftm: 0, fta: 0 },
     });
   });
 
@@ -109,6 +110,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
       shotClock: 0,
       fouls: 0,
       fouledOut: false,
+      stats: { points: 0, rebounds: 0, offReb: 0, defReb: 0, assists: 0, steals: 0, blocks: 0, turnovers: 0, fgm: 0, fga: 0, ftm: 0, fta: 0 },
     });
   });
 
@@ -120,6 +122,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
       targetX: null,
       targetY: null,
       carrier: players[0].id,
+      lastPasserId: null,
       isLoose: false,
       inFlight: false,
       flightStart: null,
@@ -521,6 +524,7 @@ function makePass(state, passer, receiver) {
   state.ball.isMagicPass = passer.name === 'Magic Johnson' && d > 180;
   state.ball.isSkyhook = false;
   state.ball.isDunk = false;
+  state.ball.lastPasserId = passer.id;
 
   const passerData = passer;
   const logEntry = `${passerData.name} passes to ${receiver.name}`;
@@ -617,6 +621,8 @@ function resolveShot(state) {
   }
 
   if (result.blockedBy) {
+    result.shooter.stats.fga++;
+    result.blockedBy.stats.blocks++;
     state.shotResultDisplay = `${result.blockedBy.name} blocks ${result.shooter.name}!`;
     state.gameLog.unshift(`🚫 ${result.blockedBy.name} BLOCKS ${result.shooter.name}!`);
     state.shotResultTimer = 1500;
@@ -628,6 +634,15 @@ function resolveShot(state) {
 
   if (result.made) {
     state.score[result.shooter.team] += result.points;
+    result.shooter.stats.fgm++;
+    result.shooter.stats.fga++;
+    result.shooter.stats.points += result.points;
+    if (state.ball.lastPasserId) {
+      const passer = state.players.find(p => p.id === state.ball.lastPasserId);
+      if (passer && passer.team === result.shooter.team && passer.id !== result.shooter.id) {
+        passer.stats.assists++;
+      }
+    }
     if (result.type === 'dunk') {
       state.shotResultDisplay = `💥 ${result.shooter.name} SLAMS IT DOWN! +${result.points}`;
       state.gameLog.unshift(`💥 ${result.shooter.name} THROWS IT DOWN! — ${result.points} pts`);
@@ -637,6 +652,7 @@ function resolveShot(state) {
       state.gameLog.unshift(`✓ ${result.shooter.name} ${desc} — ${result.points} pts`);
     }
   } else {
+    result.shooter.stats.fga++;
     state.shotResultDisplay = `${result.shooter.name} misses!`;
     state.gameLog.unshift(`✗ ${result.shooter.name} misses`);
   }
@@ -662,6 +678,8 @@ function resolveShot(state) {
     });
     if (rebounder) {
       const isOffensive = rebounder.team === state.possession;
+      rebounder.stats.rebounds++;
+      if (isOffensive) rebounder.stats.offReb++; else rebounder.stats.defReb++;
       state.ball.carrier = rebounder.id;
       rebounder.hasBall = true;
       state.ball.x = rebounder.x;
@@ -696,6 +714,15 @@ function resolveFouledShot(state, result) {
   // If the shot was made (and-one), count the basket points now
   if (result.made) {
     state.score[shooter.team] += result.points;
+    shooter.stats.fgm++;
+    shooter.stats.fga++;
+    shooter.stats.points += result.points;
+    if (state.ball.lastPasserId) {
+      const passer = state.players.find(p => p.id === state.ball.lastPasserId);
+      if (passer && passer.team === shooter.team && passer.id !== shooter.id) {
+        passer.stats.assists++;
+      }
+    }
   }
 
   // Free throw count: 1 for and-one, 2 for missed 2-pt, 3 for missed 3-pt
@@ -741,8 +768,11 @@ function updateFreeThrows(state, dt) {
     if (ft.currentFT < ft.ftCount) {
       // Shoot one free throw
       const made = Math.random() < ft.shooter.ftPct;
+      ft.shooter.stats.fta++;
       if (made) {
         state.score[ft.team] += 1;
+        ft.shooter.stats.ftm++;
+        ft.shooter.stats.points++;
         ft.ftsMade++;
       }
       ft.currentFT++;
@@ -808,6 +838,8 @@ function checkTurnover(state, carrier, defenders) {
         carrier.hasBall = false;
         d.hasBall = true;
         state.ball.carrier = d.id;
+        carrier.stats.turnovers++;
+        d.stats.steals++;
         state.gameLog.unshift(`🏀 ${d.name} steals from ${carrier.name}!`);
         state.turnoverCooldown = 2000;
         switchPossession(state);
