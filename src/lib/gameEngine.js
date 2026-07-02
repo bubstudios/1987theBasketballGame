@@ -67,6 +67,57 @@ function randomInRange(min, max) {
   return min + Math.random() * (max - min);
 }
 
+// --- Shot contest grading (NBA tracking-style distance bands) ---
+// Court scale: 10 units = 1 foot. Contest level drives both the shot
+// make-probability (in takeShot) and CPU willingness to shoot (patience).
+const CONTEST_MOD = {
+  three: { wide_open: 0.03, open: 0.00, light_contest: -0.02, tight: -0.05, smothered: -0.09 },
+  mid:   { wide_open: 0.05, open: 0.02, light_contest: -0.02, tight: -0.06, smothered: -0.11 },
+  rim:   { wide_open: 0.20, open: 0.12, light_contest: 0.02, tight: -0.06, smothered: -0.13 },
+};
+
+const DUNK_FLOOR = { wide_open: 0.92, open: 0.88, light_contest: 0.80, tight: 0.68, smothered: 0.55 };
+
+function gradeContest(distUnits) {
+  if (distUnits >= 55) return 'wide_open';    // 5.5+ ft
+  if (distUnits >= 40) return 'open';          // 4-5.5 ft
+  if (distUnits >= 28) return 'light_contest'; // 2.8-4 ft
+  if (distUnits >= 18) return 'tight';         // 1.8-2.8 ft
+  return 'smothered';                          // < 1.8 ft
+}
+
+// Defender quality — modest modifier (contest matters more than the name)
+function getDefenderQualityMod(defender, isAtRim) {
+  const defRating = defender.defense || 5;
+  let mod = 0;
+  if (defRating <= 3) mod = 0.01;
+  else if (defRating >= 9) mod = isAtRim ? -0.03 : -0.02;
+  else if (defRating >= 7) mod = isAtRim ? -0.02 : -0.01;
+  if (isAtRim && (defender.blockRate || 0) > 0.03) mod -= 0.02;
+  return mod;
+}
+
+// CPU patience: how willing the ball carrier is to launch given the contest
+// level and the shot clock. Half-court only — fast breaks take the first good
+// look. Wide-open shots are always takeable; contested looks are deferred until
+// the clock forces the issue. Returns a multiplier on the base shoot chance.
+function getPatienceFactor(contestLevel, shotClock) {
+  if (contestLevel === 'wide_open') return 1.0;
+  const early = shotClock > 14;
+  const mid = shotClock > 8;
+  const late = shotClock > 4;
+  switch (contestLevel) {
+    case 'open':
+      return early ? 0.7 : (mid ? 0.9 : 1.0);
+    case 'light_contest':
+      return early ? 0.30 : (mid ? 0.60 : (late ? 0.90 : 1.2));
+    case 'tight':
+      return early ? 0.12 : (mid ? 0.35 : (late ? 0.70 : 1.3));
+    default: // smothered
+      return early ? 0.04 : (mid ? 0.12 : (late ? 0.45 : 1.4));
+  }
+}
+
 // Motion offense positions (relative to basket, right side)
 // Spots 0-2 are beyond the 3-point arc (dist > 220); spots 3-4 are inside.
 // This spaces 3 perimeter shooters around the arc while bigs stay in the paint.
@@ -801,7 +852,8 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     return dd < closest.dist ? { player: d, dist: dd } : closest;
   }, { player: null, dist: Infinity });
 
-  const isOpen = nearestDef.dist > 40;
+  const contestLevel = gradeContest(nearestDef.dist);
+  const isOpen = contestLevel === 'wide_open' || contestLevel === 'open';
   const isVeryClose = distToBasket < 80;
   const isShortMid = distToBasket >= 80 && distToBasket < 150;
   const isMidRange = distToBasket >= 150 && distToBasket < 220;
@@ -827,28 +879,35 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
       const fbTendency = TEAM_FAST_BREAK[carrier.team] || 5;
       shootChance += 0.08 + fbTendency * 0.015; // scaled by team pace tendency
     }
-  } else if (isShortMid && isOpen) {
+  } else if (isShortMid) {
     // Short mid-range (8-15 ft): pull-up jumpers and runners
     const freqFactor = Math.min(carrier.twoAttempts / 15, 1);
     shootChance = 0.12 + carrier.shooting * 0.03 + freqFactor * 0.1;
-  } else if (isMidRange && isOpen) {
+  } else if (isMidRange) {
     // Mid-range (15-22 ft): bread-and-butter of 1980s basketball
     const freqFactor = Math.min(carrier.twoAttempts / 15, 1);
     shootChance = 0.14 + carrier.shooting * 0.035 + freqFactor * 0.12;
-  } else if (threeZone) {
+  } else if (threeZone && carrier.threeAttempts > 0.5) {
     // 3-point attempt tendency driven by real 3PA frequency and shooting skill.
     // Non-shooters (≤0.5 3PA) almost never pull the trigger from deep.
     const freqFactor = Math.min(carrier.threeAttempts / 2, 1); // normalize ~2+ attempts to 1.0
-    if (isOpen && carrier.threeAttempts > 0.5) {
-      shootChance = 0.08 + carrier.threePoint * 0.03 + freqFactor * 0.18;
-    } else if (!isOpen && carrier.threeAttempts > 2) {
-      // Contested 3s — only frequent deep shooters take them
-      shootChance = freqFactor * 0.10;
-    }
+    shootChance = 0.08 + carrier.threePoint * 0.03 + freqFactor * 0.18;
   }
 
-  if (isOpen && !threeZone) {
+  if (!threeZone && contestLevel !== 'tight' && contestLevel !== 'smothered') {
     driveChance = 0.06 + (carrier.driveTendency || 5) * 0.04 + carrier.speed * 0.01;
+  }
+
+  // --- Shot-clock patience: in the half court the CPU defers contested looks
+  // and hunts a better shot, only bailing out as the clock expires ---
+  if (!isFastBreak) {
+    shootChance *= getPatienceFactor(contestLevel, state.shotClock);
+    if (state.shotClock < 6) {
+      // Late-clock urgency ramps up so the offense always gets a shot off
+      const urgency = (6 - state.shotClock) / 6;
+      shootChance += 0.35 * urgency;
+      driveChance += 0.25 * urgency;
+    }
   }
 
   // Coach's drawn-up play — tactical nudge for this possession
@@ -870,7 +929,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
 
   const roll = Math.random();
 
-  if (roll < shootChance && (isFastBreak || state.shotClock < 20)) {
+  if (roll < shootChance) {
     // Foul detection: contested shots can draw fouls, weighted by FTA rate
     const foulChance = nearestDef.dist < 25 ? Math.min(0.08 + carrier.ftAttempts * 0.015, 0.28) : 0;
     const fouledBy = (foulChance > 0 && Math.random() < foulChance && !nearestDef.player.fouledOut) ? nearestDef.player : null;
@@ -974,33 +1033,40 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   // Calculate make probability
   const d = dist(shooter, basket);
   const threePtr = isThreePointer(shooter.x, shooter.y, state.attackingRight);
+  const contestLevel = gradeContest(nearestDef ? nearestDef.dist : 999);
   let prob;
 
   if (d < 60) {
-    // Close shots: blend real 2P% with inside scoring for layup context
+    // Rim shots: contest matters most here — an uncontested layup/dunk is
+    // nearly automatic, while a rim protector can drastically cut the odds.
     const realPct = shooter.twoPct || 0.45;
     const insideAdj = (shooter.insideScoring - 6) * 0.03;
-    prob = realPct * 0.6 + insideAdj + (isOpen ? 0.08 : -0.05);
+    prob = realPct * 0.6 + insideAdj + CONTEST_MOD.rim[contestLevel];
     if (state.fastBreak && state.fastBreak.active) {
       // Scoring boost after a defensive stop, scaled by team pace tendency
       // Lakers (9): +0.186, Clippers (7): +0.158, Celtics (4): +0.116
       const fbTendency = TEAM_FAST_BREAK[shooter.team] || 5;
       prob += 0.06 + fbTendency * 0.014;
     }
-    prob = Math.max(0.05, Math.min(prob, 0.85));
+    prob = clamp(prob, 0.05, 0.97);
   } else if (threePtr) {
-    // Use real 3P% as the base, blend with skill rating for context (open vs. contested)
+    // 3-pointers: real 3P% blended with skill, then contest modifier
     const realPct = shooter.threePct || 0;
     const skillAdj = (shooter.threePoint - 5) * 0.02; // +/- relative to average skill
-    prob = realPct * 0.75 + skillAdj + (isOpen ? 0.06 : -0.04);
-    prob = Math.max(0.03, Math.min(prob, 0.55));
+    prob = realPct * 0.75 + skillAdj + CONTEST_MOD.three[contestLevel];
+    prob = clamp(prob, 0.03, 0.55);
   } else {
-    // Mid-range 2s: use real 2P% as base, blend with shooting skill and distance
+    // Mid-range 2s: real 2P% blended with shooting skill, distance, and contest
     const realPct = shooter.twoPct || 0.45;
     const skillAdj = (shooter.shooting - 6) * 0.02;
     const distAdj = d < 120 ? 0.06 : (d > 180 ? -0.04 : 0);
-    prob = realPct * 0.55 + skillAdj + distAdj + (isOpen ? 0.06 : -0.05);
-    prob = Math.max(0.05, Math.min(prob, 0.6));
+    prob = realPct * 0.55 + skillAdj + distAdj + CONTEST_MOD.mid[contestLevel];
+    prob = clamp(prob, 0.05, 0.6);
+  }
+
+  // Defender quality — modest modifier (contest matters more than the name)
+  if (nearestDef && nearestDef.player) {
+    prob += getDefenderQualityMod(nearestDef.player, d < 60);
   }
 
   // Fatigue reduces shooting accuracy (up to ~18% drop when exhausted)
@@ -1023,7 +1089,7 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   if (isDunk) {
     state.ball.flightDuration = 350;
     state.ball.shotArcPeak = 5;
-    prob = Math.max(prob, 0.68);
+    prob = Math.max(prob, DUNK_FLOOR[contestLevel]);
   }
 
   state.ball.shotResult = {
