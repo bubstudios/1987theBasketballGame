@@ -37,6 +37,9 @@ export default function Scoreboard({ gameState }) {
               <span className="text-red-400 font-bold">PEN</span>
             )}
           </div>
+          <div className="text-[8px] leading-none text-neutral-500">
+            Poss: {gameState.possessionCount?.[t1] ?? 0}
+          </div>
         </div>
       </div>
 
@@ -66,6 +69,9 @@ export default function Scoreboard({ gameState }) {
             {(gameState.teamFouls?.[t2] ?? 0) >= 5 && (
               <span className="text-red-400 font-bold">PEN</span>
             )}
+          </div>
+          <div className="text-[8px] text-right leading-none text-neutral-500">
+            Poss: {gameState.possessionCount?.[t2] ?? 0}
           </div>
         </div>
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold"

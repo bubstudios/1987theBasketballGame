@@ -279,7 +279,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     attackingRight: true, // lakers attack right basket
     lastUpdate: Date.now(),
     passTimer: 0,
-    actionTimer: 0,
+    actionTimer: 2500,
     shotAnimating: false,
     shotResultDisplay: null,
     shotResultTimer: 0,
@@ -308,6 +308,9 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     screenState: null,
     screenCooldown: 0,
     stealCheckTimer: 0,
+    possessionCount: { lakers: 1, [opponentKey]: 0 },
+    possessionType: 'halfcourt',
+    possessionTargetDuration: 18,
     celticsOffense: {
       possessionsSinceBirdTouch: 0,
       birdTouchedThisPossession: false,
@@ -936,6 +939,23 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   shootChance *= scoringWeight;
   driveChance *= scoringWeight;
 
+  // --- Possession time gate: half-court offense consumes realistic time
+  // (15-21s for normal sets) before looking to shoot. Willingness ramps from
+  // ~10% at possession start to 100% at the target duration. Fast breaks and
+  // late-clock urgency bypass this. Uses the shot clock as the elapsed proxy —
+  // it resets to 24 on possession change, offensive rebound, and non-shooting
+  // fouls, so the ramp correctly restarts for each new action.
+  if (!isFastBreak && state.shotClock > 6) {
+    const minTime = state.possessionTargetDuration || 16;
+    const elapsed = 24 - state.shotClock;
+    if (elapsed < minTime) {
+      const readiness = clamp(elapsed / minTime, 0, 1);
+      const gate = 0.10 + readiness * 0.90; // 0.10 → 1.0
+      shootChance *= gate;
+      driveChance *= gate;
+    }
+  }
+
   // --- Shot-clock patience: in the half court the CPU defers contested looks
   // and hunts a better shot, only bailing out as the clock expires ---
   if (!isFastBreak) {
@@ -987,7 +1007,7 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     if (passTarget) {
       makePass(state, carrier, passTarget);
     }
-    state.passTimer = randomInRange(600, 1200);
+    state.passTimer = randomInRange(1800, 3000);
   }
 }
 
@@ -1516,6 +1536,48 @@ function updateFreeThrows(state, dt) {
   }
 }
 
+// --- Pace & possession governor ---
+// Targets ~100 possessions per team over 48 minutes (1986-87 Lakers-Celtics).
+// Expected possessions at any point = 100 × elapsedGameTime ÷ 2880.
+function getPaceAdjustment(state) {
+  const totalElapsed = (state.quarter - 1) * 720 + (720 - state.gameClock);
+  const expected = 100 * totalElapsed / 2880;
+  const actual = state.possessionCount[state.possession] || 0;
+  const diff = actual - expected;
+  // Normalize to [-1, 1]: positive = ahead of pace (too fast), negative = behind
+  return clamp(diff / 10, -1, 1);
+}
+
+// Determine possession type and target duration. Drives the time gate that
+// prevents half-court offenses from shooting in the first few seconds.
+// Distribution: ~20% fast break, ~20% early, ~50% normal half-court, ~10% deliberate.
+function setupPossessionPacing(state, isFastBreak) {
+  if (isFastBreak) {
+    state.possessionType = 'fastbreak';
+    state.possessionTargetDuration = randomInRange(4, 9);
+    return;
+  }
+  const teamPace = TEAM_FAST_BREAK[state.possession] || 5;
+  const transitionBias = (teamPace - 5) * 0.015; // Lakers +6%, Celtics -1.5%
+  const roll = Math.random();
+  let pType, targetDur;
+  if (roll < 0.20 + transitionBias) {
+    pType = 'early';
+    targetDur = randomInRange(9, 14);
+  } else if (roll < 0.70 + transitionBias) {
+    pType = 'halfcourt';
+    targetDur = randomInRange(15, 21);
+  } else {
+    pType = 'deliberate';
+    targetDur = randomInRange(19, 24);
+  }
+  // Soft pace governor: if ahead of pace, lengthen possessions; if behind, shorten
+  const paceAdj = getPaceAdjustment(state);
+  targetDur *= (1 + paceAdj * 0.15);
+  state.possessionType = pType;
+  state.possessionTargetDuration = targetDur;
+}
+
 function switchPossession(state, fastBreakInitiator = null) {
   finalizeCelticsPossession(state);
   state.possession = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
@@ -1527,12 +1589,17 @@ function switchPossession(state, fastBreakInitiator = null) {
   state.ball.lastPasserId = null;
   state.players.forEach(p => { p.isSettingScreen = false; });
 
-  // Fast break check: live-ball transitions (steals, defensive rebounds, blocks)
-  // can trigger a break instead of resetting to half-court sets
+  // Count the new possession. Offensive rebounds do NOT reach here — they
+  // extend the same possession per the correct NBA possession definition.
+  state.possessionCount[state.possession] = (state.possessionCount[state.possession] || 0) + 1;
+
+  // Fast break check: ~20% of possessions are transition (Lakers slightly more,
+  // Celtics slightly less). Was far too high before (Lakers 90%, Celtics 40%).
   const tendency = TEAM_FAST_BREAK[state.possession] || 5;
   const initiator = fastBreakInitiator || state.players.find(p => p.id === state.ball.carrier);
+  const fastBreakChance = 0.15 + (tendency - 5) * 0.012;
 
-  if (initiator && initiator.team === state.possession && Math.random() < tendency * 0.1) {
+  if (initiator && initiator.team === state.possession && Math.random() < fastBreakChance) {
     // Outlet to the transition controller (Magic) when he didn't get the board
     const controller = getTransitionController(state, state.possession);
     const handler = (controller && controller.id !== initiator.id) ? controller : initiator;
@@ -1547,10 +1614,15 @@ function switchPossession(state, fastBreakInitiator = null) {
     state.ball.isShot = false;
     state.actionTimer = 0;
     state.passTimer = 0;
+    setupPossessionPacing(state, true);
     state.gameLog.unshift(`⚡ ${handler.name} leads the fast break!`);
     if (state.gameLog.length > 15) state.gameLog.pop();
   } else {
     resetPositions(state);
+    // Bring the ball up + initial set: consumes 2-3.5s before the first decision
+    state.actionTimer = randomInRange(2000, 3500);
+    state.passTimer = 0;
+    setupPossessionPacing(state, false);
   }
 }
 
@@ -1567,6 +1639,10 @@ export function advanceToNextQuarter(state) {
   state.teamFouls[state.teamKeys.team2] = 0;
   state.quarterBreak = null;
   state.fastBreak = null;
+  state.possessionCount[state.possession] = (state.possessionCount[state.possession] || 0) + 1;
+  state.actionTimer = randomInRange(2000, 3500);
+  state.passTimer = 0;
+  setupPossessionPacing(state, false);
   resetPositions(state);
 }
 
