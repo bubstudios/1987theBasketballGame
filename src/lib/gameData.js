@@ -18,6 +18,8 @@ export const LAKERS_ROSTER = [
     threePct: 0.200,      // 3P% (1986-87)
     twoAttempts: 17.3,    // 2PA per game (1986-87)
     twoPct: 0.480,        // 2P% (1986-87)
+    offensiveRebRate: 0.048,  // OReb% (1986-87)
+    defensiveRebRate: 0.165,  // DReb% (1986-87)
   },
   {
     name: "Byron Scott",
@@ -35,6 +37,8 @@ export const LAKERS_ROSTER = [
     threePct: 0.374,
     twoAttempts: 12.7,
     twoPct: 0.488,
+    offensiveRebRate: 0.029,
+    defensiveRebRate: 0.075,
   },
   {
     name: "James Worthy",
@@ -52,6 +56,8 @@ export const LAKERS_ROSTER = [
     threePct: 0.125,
     twoAttempts: 16.3,
     twoPct: 0.509,
+    offensiveRebRate: 0.057,
+    defensiveRebRate: 0.108,
   },
   {
     name: "A.C. Green",
@@ -69,6 +75,8 @@ export const LAKERS_ROSTER = [
     threePct: 0,
     twoAttempts: 7.9,
     twoPct: 0.519,
+    offensiveRebRate: 0.071,
+    defensiveRebRate: 0.132,
   },
   {
     name: "Kareem Abdul-Jabbar",
@@ -86,6 +94,8 @@ export const LAKERS_ROSTER = [
     threePct: 0,
     twoAttempts: 14.6,
     twoPct: 0.473,
+    offensiveRebRate: 0.050,
+    defensiveRebRate: 0.120,
   },
 ];
 
@@ -106,6 +116,8 @@ export const CELTICS_ROSTER = [
     threePct: 0.313,
     twoAttempts: 10.6,
     twoPct: 0.462,
+    offensiveRebRate: 0.023,
+    defensiveRebRate: 0.084,
   },
   {
     name: "Danny Ainge",
@@ -123,6 +135,8 @@ export const CELTICS_ROSTER = [
     threePct: 0.411,
     twoAttempts: 6.7,
     twoPct: 0.418,
+    offensiveRebRate: 0.020,
+    defensiveRebRate: 0.076,
   },
   {
     name: "Larry Bird",
@@ -140,6 +154,8 @@ export const CELTICS_ROSTER = [
     threePct: 0.400,
     twoAttempts: 18.4,
     twoPct: 0.489,
+    offensiveRebRate: 0.070,
+    defensiveRebRate: 0.205,
   },
   {
     name: "Kevin McHale",
@@ -157,6 +173,8 @@ export const CELTICS_ROSTER = [
     threePct: 0,
     twoAttempts: 17.0,
     twoPct: 0.506,
+    offensiveRebRate: 0.060,
+    defensiveRebRate: 0.150,
   },
   {
     name: "Robert Parish",
@@ -174,6 +192,8 @@ export const CELTICS_ROSTER = [
     threePct: 0,
     twoAttempts: 13.5,
     twoPct: 0.511,
+    offensiveRebRate: 0.090,
+    defensiveRebRate: 0.205,
   },
 ];
 

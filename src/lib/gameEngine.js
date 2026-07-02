@@ -564,21 +564,25 @@ function resolveShot(state) {
   if (result.made) {
     switchPossession(state);
   } else {
-    // Rebound — closest player to basket gets it
+    // Rebound — weighted by OReb%/DReb% and proximity to basket
     const basket = getBasketPos(state.attackingRight);
     let rebounder = null;
     let minD = Infinity;
     state.players.forEach(p => {
       const d = dist(p, basket);
-      const reboundChance = d - p.rebounding * 8;
+      const rate = p.team === state.possession
+        ? (p.offensiveRebRate || 0.05)
+        : (p.defensiveRebRate || 0.15);
+      const reboundChance = d - rate * 180 - p.rebounding * 4;
       if (reboundChance < minD) { minD = reboundChance; rebounder = p; }
     });
     if (rebounder) {
+      const isOffensive = rebounder.team === state.possession;
       state.ball.carrier = rebounder.id;
       rebounder.hasBall = true;
       state.ball.x = rebounder.x;
       state.ball.y = rebounder.y;
-      state.gameLog.unshift(`↑ ${rebounder.name} rebounds`);
+      state.gameLog.unshift(`↑ ${rebounder.name} ${isOffensive ? 'offensive' : 'defensive'} rebound`);
 
       if (rebounder.team !== state.possession) {
         switchPossession(state);
