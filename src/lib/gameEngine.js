@@ -1,6 +1,7 @@
 import { COURT, TEAM_FAST_BREAK, PLAYER_MPG, STAR_PLAYERS } from './gameData';
 import { TIMEOUTS_PER_GAME, updateTimeout, checkAutoTimeout } from './timeoutEngine';
 import { determineOffensiveRebound, computeReboundZone, selectRebounder, decidePutback } from './reboundEngine';
+import { isInPenalty, applyTeamFoul, foulDrawMult, defenderDisciplineMult, fatigueFoulMult, pickFoulingDefender, intentionalFoulIntent } from './foulEngine';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -299,6 +300,8 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
       [opponentKey]: { remaining: TIMEOUTS_PER_GAME, used: 0 },
     },
     timeoutState: null,
+    teamFouls: { lakers: 0, [opponentKey]: 0 },
+    quarterBreak: null,
     playCall: null,
     userPlayCall: null,
     screenState: null,
@@ -351,20 +354,31 @@ export function updateGame(state, dt) {
     return state;
   }
 
+  // End-of-quarter intermission — play stops between quarters
+  if (state.quarterBreak) {
+    state.quarterBreak.timer -= effectiveDt;
+    // Players catch their breath during the break
+    state.players.forEach(p => {
+      p.fatigue = clamp(p.fatigue - 0.6 * (effectiveDt / 1000), 0, 100);
+    });
+    updatePlayerMovement(state, effectiveDt);
+    if (state.quarterBreak.timer <= 0) {
+      finishQuarterBreak(state);
+    }
+    return state;
+  }
+
   // Update clocks
   state.gameClock -= effectiveDt / 1000;
   state.shotClock -= effectiveDt / 1000;
 
   if (state.gameClock <= 0) {
     state.gameClock = 0;
+    state.shotClock = 0;
     if (state.quarter < 4) {
-      state.quarter++;
-      state.gameClock = 720;
-      state.shotClock = 24;
-      // Swap possession each quarter
-      state.possession = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
-      state.attackingRight = state.possession === state.teamKeys.team1;
-      resetPositions(state);
+      // Stop play for a brief intermission between quarters
+      state.quarterBreak = { timer: 3500 };
+      return state;
     } else {
       state.isPaused = true;
       return state;
@@ -861,6 +875,12 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   const threeZone = isThreePointer(carrier.x, carrier.y, state.attackingRight);
   const isFastBreak = state.fastBreak && state.fastBreak.active;
 
+  // Late-game: a trailing defense intentionally fouls to stop the clock
+  if (!isFastBreak && checkIntentionalFoul(state, carrier, nearestDef.player)) {
+    state.actionTimer = 1500;
+    return;
+  }
+
   // User's on-screen play call overrides the CPU for this single possession.
   // It persists across passes and is consumed when a shot goes up or possession changes.
   if (state.userPlayCall && state.userPlayCall.side === 'offense' && state.userPlayCall.team === carrier.team) {
@@ -937,10 +957,13 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     takeShot(state, carrier, isOpen, fouledBy, nearestDef);
     state.actionTimer = 1500;
   } else if (roll < shootChance + driveChance) {
-    // Drive to basket
-    carrier.targetX = lerp(carrier.x, basket.x, 0.5);
-    carrier.targetY = lerp(carrier.y, basket.y, 0.5);
-    state.actionTimer = randomInRange(400, 800);
+    // Drive to basket — fouls are resolved before the drive resolves
+    const fouled = checkDriveFoul(state, carrier, nearestDef, defenders, isFastBreak);
+    if (!fouled) {
+      carrier.targetX = lerp(carrier.x, basket.x, 0.5);
+      carrier.targetY = lerp(carrier.y, basket.y, 0.5);
+      state.actionTimer = randomInRange(400, 800);
+    }
   } else {
     // Pass to open teammate
     const passTarget = findBestPassTarget(carrier, teammates, defenders, basket);
@@ -1106,6 +1129,156 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   state.fastBreak = null; // shot ends the fast break
 }
 
+// Increment a player's personal foul + the team foul; disqualify at 6
+function commitPersonalFoul(state, player) {
+  player.fouls = (player.fouls || 0) + 1;
+  applyTeamFoul(state, player.team);
+  let fouledOut = false;
+  if (player.fouls >= 6) {
+    player.fouledOut = true;
+    fouledOut = true;
+    if (player.onCourt) forceSubstitution(state, player);
+  }
+  return fouledOut;
+}
+
+// Force a substitution when a player fouls out (ignores fatigue gate)
+function forceSubstitution(state, outgoing) {
+  if (!outgoing.onCourt) return;
+  const bench = state.players.filter(p => p.team === outgoing.team && !p.onCourt && !p.fouledOut);
+  if (bench.length === 0) return;
+  let sub = bench[0];
+  bench.forEach(b => { if (b.fatigue < sub.fatigue) sub = b; });
+  executeSubstitution(state, outgoing, sub, 'foulout');
+  state.gameLog.unshift(`📤 ${outgoing.name} fouls out — ${sub.name} checks in.`);
+  if (state.gameLog.length > 15) state.gameLog.pop();
+}
+
+// Send a shooter to the line for a standalone (non-shooting) foul
+function setupFreeThrows(state, shooter, fouledBy, ftCount, fouledOut) {
+  const basket = getBasketPos(state.attackingRight);
+  const ftX = state.attackingRight ? basket.x - 120 : basket.x + 120;
+  shooter.targetX = ftX;
+  shooter.targetY = basket.y;
+  state.ball.carrier = shooter.id;
+  shooter.hasBall = true;
+  state.ftState = {
+    shooter: shooter,
+    fouledBy: fouledBy,
+    ftCount: ftCount,
+    ftsMade: 0,
+    currentFT: 0,
+    timer: 1200,
+    team: shooter.team,
+    madeShot: false,
+    fouledOut: fouledOut,
+  };
+}
+
+// Late-game intentional foul: a trailing defense fouls the carrier to stop the clock
+function checkIntentionalFoul(state, carrier, nearestDefPlayer) {
+  const intent = intentionalFoulIntent(state, carrier);
+  if (!intent) return false;
+  const fouler = nearestDefPlayer;
+  if (!fouler || fouler.fouledOut) return false;
+  const fouledOut = commitPersonalFoul(state, fouler);
+  // Intentional late-game foul → two free throws for the ball carrier
+  setupFreeThrows(state, carrier, fouler, 2, fouledOut);
+  state.shotResultDisplay = `Intentional foul! ${carrier.name} to the line`;
+  state.gameLog.unshift(`🎯 Intentional foul on ${fouler.name} (${fouler.fouls}) — ${carrier.name} shoots two!`);
+  state.shotResultTimer = 1500;
+  if (state.gameLog.length > 15) state.gameLog.pop();
+  return true;
+}
+
+// Drive foul check — returns true if a defensive or offensive foul occurred
+function checkDriveFoul(state, carrier, nearestDef, defenders, isFastBreak) {
+  const nearest = nearestDef.player;
+  if (!nearest || nearest.fouledOut) return false;
+  if (nearestDef.dist > 28) return false;
+
+  // Base drive foul chance (driving layup ~13-22%, lower on the break)
+  let baseFoulChance = isFastBreak ? 0.10 : 0.17;
+  if (nearestDef.dist < 18) baseFoulChance += 0.06; // heavy contact
+
+  const foulChance = baseFoulChance
+    * foulDrawMult(carrier)
+    * defenderDisciplineMult(nearest)
+    * fatigueFoulMult(nearest.fatigue || 0);
+
+  if (Math.random() >= foulChance) return false;
+
+  // ~15% of drive fouls are offensive (charges)
+  if (Math.random() < 0.15) {
+    carrier.hasBall = false;
+    state.ball.carrier = null;
+    const fouledOut = commitPersonalFoul(state, carrier);
+    state.shotResultDisplay = `Charge on ${carrier.name}!`;
+    state.gameLog.unshift(`🦵 Offensive foul on ${carrier.name} (${carrier.fouls})! Turnover.`);
+    if (state.gameLog.length > 15) state.gameLog.pop();
+    state.shotResultTimer = 1500;
+    switchPossession(state);
+    state.actionTimer = 1200;
+    return true;
+  }
+
+  // Defensive foul — usually the primary defender, sometimes help/rim protector
+  const fouler = pickFoulingDefender(defenders, carrier, nearest);
+  if (!fouler || fouler.fouledOut) return false;
+  const fouledOut = commitPersonalFoul(state, fouler);
+
+  if (isInPenalty(state, fouler.team)) {
+    // Penalty → two free throws
+    setupFreeThrows(state, carrier, fouler, 2, fouledOut);
+    state.shotResultDisplay = `Penalty! ${carrier.name} to the line`;
+    state.gameLog.unshift(`🦵 Foul on ${fouler.name} (${fouler.fouls}) — ${carrier.name} shoots two (penalty)!`);
+    state.actionTimer = 1500;
+  } else {
+    // Non-penalty → offense inbounds and keeps possession
+    state.shotClock = 24;
+    state.turnoverCooldown = 1200;
+    state.shotResultDisplay = `Foul on ${fouler.name}`;
+    state.gameLog.unshift(`🦵 Foul on ${fouler.name} (${fouler.fouls}) — ${carrier.team} keeps the ball.`);
+    state.actionTimer = 800;
+  }
+  state.shotResultTimer = 1500;
+  if (state.gameLog.length > 15) state.gameLog.pop();
+  return true;
+}
+
+// Rebound a missed final free throw — defensive team has the inside lane positions
+function resolveFreeThrowRebound(state, ft) {
+  const basket = getBasketPos(state.attackingRight);
+  const defenseTeam = ft.team === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
+  const offensePlayers = getOnCourtPlayers(state, ft.team);
+  const defensePlayers = getOnCourtPlayers(state, defenseTeam);
+  const zone = { x: basket.x, y: clamp(basket.y + randomInRange(-30, 30), 30, COURT.height - 30) };
+  const ftResult = { shooter: ft.shooter, type: 'layup' };
+  // FT misses rebound defensively far more often (lane positions favor the defense)
+  const isOffensive = determineOffensiveRebound(state, ftResult, offensePlayers, defensePlayers, false, { baseline: 0.14 });
+  const reboundTeam = isOffensive ? ft.team : defenseTeam;
+  const rebounder = selectRebounder(state, ftResult, zone, reboundTeam, isOffensive, defensePlayers);
+
+  if (rebounder) {
+    rebounder.stats.rebounds++;
+    if (isOffensive) rebounder.stats.offReb++; else rebounder.stats.defReb++;
+    state.ball.carrier = rebounder.id;
+    rebounder.hasBall = true;
+    state.ball.x = rebounder.x;
+    state.ball.y = rebounder.y;
+    state.gameLog.unshift(`↑ ${rebounder.name} ${isOffensive ? 'offensive' : 'defensive'} rebound (FT miss)`);
+    if (state.gameLog.length > 15) state.gameLog.pop();
+    if (!isOffensive) {
+      switchPossession(state, rebounder);
+    } else {
+      state.shotClock = 24;
+      state.actionTimer = 500;
+    }
+  } else {
+    switchPossession(state);
+  }
+}
+
 function resolveShot(state) {
   const result = state.ball.shotResult;
   if (!result) return;
@@ -1227,15 +1400,8 @@ function resolveFouledShot(state, result) {
   const shooter = result.shooter;
   const fouledBy = result.fouledBy;
 
-  // Count the personal foul on the defender
-  fouledBy.fouls = (fouledBy.fouls || 0) + 1;
-
-  // Check for disqualification at 6 fouls
-  let fouledOut = false;
-  if (fouledBy.fouls >= 6) {
-    fouledBy.fouledOut = true;
-    fouledOut = true;
-  }
+  // Count the personal foul on the defender (+ team foul, with DQ at 6)
+  const fouledOut = commitPersonalFoul(state, fouledBy);
 
   // If the shot was made (and-one), count the basket points now
   if (result.made) {
@@ -1302,6 +1468,8 @@ function updateFreeThrows(state, dt) {
         ft.ftsMade++;
       }
       ft.currentFT++;
+      // Only the final free throw is live for a rebound
+      if (ft.currentFT === ft.ftCount && !made) ft.finalMissed = true;
 
       state.shotResultDisplay = `${ft.shooter.name} ${made ? 'makes' : 'misses'} FT ${ft.currentFT}/${ft.ftCount} (${ft.ftsMade}/${ft.ftCount})`;
       state.gameLog.unshift(`${made ? '✓' : '✗'} ${ft.shooter.name} ${made ? 'makes' : 'misses'} FT ${ft.ftsMade}/${ft.ftCount}`);
@@ -1310,13 +1478,14 @@ function updateFreeThrows(state, dt) {
       ft.timer = 1500;
     } else {
       // All free throws complete — resume play
-      if (ft.fouledOut) {
-        state.gameLog.unshift(`📤 ${ft.fouledBy.name} fouls out! (${ft.fouledBy.fouls} fouls)`);
-        if (state.gameLog.length > 15) state.gameLog.pop();
-      }
       state.ftState = null;
       state.shotResultTimer = 1200;
-      switchPossession(state);
+      // A missed final FT is rebounded; otherwise the other team gets the ball
+      if (ft.finalMissed) {
+        resolveFreeThrowRebound(state, ft);
+      } else {
+        switchPossession(state);
+      }
     }
   }
 }
@@ -1352,6 +1521,22 @@ function switchPossession(state, fastBreakInitiator = null) {
   } else {
     resetPositions(state);
   }
+}
+
+// End of an intermission — advance to the next quarter
+function finishQuarterBreak(state) {
+  state.quarter++;
+  state.gameClock = 720;
+  state.shotClock = 24;
+  // Alternate possession each quarter
+  state.possession = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
+  state.attackingRight = state.possession === state.teamKeys.team1;
+  // Team fouls reset each quarter (penalty is per-quarter)
+  state.teamFouls[state.teamKeys.team1] = 0;
+  state.teamFouls[state.teamKeys.team2] = 0;
+  state.quarterBreak = null;
+  state.fastBreak = null;
+  resetPositions(state);
 }
 
 export function resetPositions(state) {
@@ -1440,13 +1625,20 @@ function checkTurnover(state, carrier, defenders) {
       }
       // Aggressive steal gamble that misses can draw a reach-in foul
       if (play === 'aggressive_steal' && dd < 22 && !d.fouledOut && Math.random() < 0.10) {
-        d.fouls = (d.fouls || 0) + 1;
-        if (d.fouls >= 6) d.fouledOut = true;
-        state.gameLog.unshift(`🦵 Reach-in foul on ${d.name} (${d.fouls})`);
+        const rfo = commitPersonalFoul(state, d);
+        if (isInPenalty(state, d.team)) {
+          // In the penalty — the carrier goes to the line for two
+          setupFreeThrows(state, carrier, d, 2, rfo);
+          state.gameLog.unshift(`🦵 Reach-in foul on ${d.name} (${d.fouls}) — ${carrier.name} shoots (penalty)!`);
+          state.actionTimer = 1500;
+        } else {
+          state.gameLog.unshift(`🦵 Reach-in foul on ${d.name} (${d.fouls})`);
+          state.shotClock = 24; // non-shooting foul resets the clock
+          state.turnoverCooldown = 1500;
+          state.actionTimer = 600;
+        }
         if (state.gameLog.length > 15) state.gameLog.pop();
-        state.shotClock = 24; // non-shooting foul resets the clock
-        state.turnoverCooldown = 1500;
-        state.actionTimer = 600;
+        return;
       }
     }
   });
@@ -1589,6 +1781,12 @@ function generateSubCommentary(state, outgoing, incoming, reason) {
     if (incoming.star) {
       msgs.push(`${incoming.name} is back and ready — coach wants his star on the floor.`);
     }
+  }
+
+  if (reason === 'foulout') {
+    msgs.push(`${outgoing.name} has fouled out — ${incoming.name} checks in.`);
+    msgs.push(`Six fouls on ${outgoing.name}. ${incoming.name} enters the game.`);
+    if (isClutch) msgs.push(`${outgoing.name} disqualified — ${incoming.name} finishes the game.`);
   }
 
   return msgs[Math.floor(Math.random() * msgs.length)];

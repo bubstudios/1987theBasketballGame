@@ -31,7 +31,12 @@ export default function Scoreboard({ gameState }) {
           <div className="text-xl font-bold tabular-nums leading-tight" style={{ color: c1.secondary }}>
             {gameState.score[t1]}
           </div>
-          <div className="text-[8px] text-neutral-500 leading-none">Fouls: {teamFouls(t1)}</div>
+          <div className="text-[8px] leading-none flex items-center gap-1">
+            <span className="text-neutral-500">Fouls: {gameState.teamFouls?.[t1] ?? 0}</span>
+            {(gameState.teamFouls?.[t1] ?? 0) >= 5 && (
+              <span className="text-red-400 font-bold">PEN</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -56,7 +61,12 @@ export default function Scoreboard({ gameState }) {
           <div className="text-xl font-bold tabular-nums text-right leading-tight" style={{ color: c2.primary }}>
             {gameState.score[t2]}
           </div>
-          <div className="text-[8px] text-neutral-500 text-right leading-none">Fouls: {teamFouls(t2)}</div>
+          <div className="text-[8px] text-right leading-none flex items-center justify-end gap-1">
+            <span className="text-neutral-500">Fouls: {gameState.teamFouls?.[t2] ?? 0}</span>
+            {(gameState.teamFouls?.[t2] ?? 0) >= 5 && (
+              <span className="text-red-400 font-bold">PEN</span>
+            )}
+          </div>
         </div>
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold"
              style={{ backgroundColor: c2.primary, color: c2.secondary }}>

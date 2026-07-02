@@ -422,6 +422,27 @@ export default function CourtCanvas({ gameState }) {
       ctx.fillStyle = accent;
       ctx.fillRect(px - 150, py + 28, 300 * Math.min(progress, 1), 6);
     }
+
+    // End-of-quarter intermission overlay
+    if (gameState.quarterBreak) {
+      const px2 = w / 2;
+      const py2 = h / 2;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(18, 18, 26, 0.94)';
+      ctx.fillRect(px2 - 200, py2 - 45, 400, 90);
+      ctx.strokeStyle = '#FDB927';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(px2 - 200, py2 - 45, 400, 90);
+      ctx.fillStyle = '#FDB927';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`END OF QUARTER ${gameState.quarter}`, px2, py2 - 8);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('Next quarter starting…', px2, py2 + 18);
+    }
   }, [gameState]);
 
   useEffect(() => {

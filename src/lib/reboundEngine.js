@@ -57,8 +57,8 @@ function lineupStrength(players, rateField) {
 }
 
 // --- Step 2: does the shooting team get the rebound back? ---
-export function determineOffensiveRebound(state, result, offensePlayers, defensePlayers, crashBoards) {
-  let orbChance = LEAGUE_ORB_BASELINE;
+export function determineOffensiveRebound(state, result, offensePlayers, defensePlayers, crashBoards, opts = {}) {
+  let orbChance = opts.baseline ?? LEAGUE_ORB_BASELINE;
 
   // Lineup strength — modest adjustment; each 0.05 of rate-diff ≈ 3% orb
   const offStrength = lineupStrength(offensePlayers, 'offensiveRebRate');
