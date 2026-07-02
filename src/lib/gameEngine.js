@@ -6,6 +6,49 @@ const POSSESSION_DURATION = 24000; // shot clock ms
 const PASS_SPEED = 12;
 const SHOT_ARC_DURATION = 800;
 
+const DUNK_PHRASES = [
+  { display: 'SLAMS IT DOWN!', log: 'THROWS IT DOWN!' },
+  { display: 'ROCKS THE RIM!', log: 'ROCKS THE RIM!' },
+  { display: 'HAMMERS IT HOME!', log: 'HAMMERS IT HOME!' },
+  { display: 'COCKS IT BACK!', log: 'COCKS IT BACK AND SLAMS!' },
+  { display: 'TOMAHAWK JAM!', log: 'TOMAHAWK JAM!' },
+  { display: 'POSTERIZES THE DEFENSE!', log: 'POSTERIZES THE DEFENSE!' },
+  { display: 'PUTS IT DOWN WITH AUTHORITY!', log: 'PUTS IT DOWN WITH AUTHORITY!' },
+  { display: 'BRINGS THE HOUSE DOWN!', log: 'BRINGS THE HOUSE DOWN!' },
+  { display: 'DENIES GRAVITY!', log: 'DENIES GRAVITY!' },
+  { display: 'SOARS FOR THE SLAM!', log: 'SOARS FOR THE SLAM!' },
+  { display: 'TAKES FLIGHT!', log: 'TAKES FLIGHT!' },
+  { display: 'PUNISHES THE RIM!', log: 'PUNISHES THE RIM!' },
+  { display: 'THUNDEROUS JAM!', log: 'THUNDEROUS JAM!' },
+  { display: 'MONSTER DUNK!', log: 'THROWS DOWN A MONSTER!' },
+  { display: 'VIOLENT SLAM!', log: 'VIOLENT SLAM!' },
+  { display: 'GOES UP STRONG!', log: 'GOES UP STRONG AND FINISHES!' },
+  { display: 'EMPHATIC SLAM!', log: 'EMPHATIC SLAM!' },
+  { display: 'RIPS THE RIM!', log: 'RIPS THE RIM DOWN!' },
+  { display: 'STUFFS IT HOME!', log: 'STUFFS IT HOME!' },
+  { display: 'BANGS IT DOWN!', log: 'BANGS IT DOWN!' },
+  { display: 'FINISHES WITH AUTHORITY!', log: 'FINISHES WITH AUTHORITY!' },
+  { display: 'SKIES FOR THE JAM!', log: 'SKIES FOR THE JAM!' },
+  { display: 'LAUNCHES INTO ORBIT!', log: 'LAUNCHES INTO ORBIT!' },
+  { display: 'DELIVERS THE HAMMER!', log: 'DELIVERS THE HAMMER!' },
+  { display: 'CRADLES AND CRASHES!', log: 'CRADLES AND CRASHES!' },
+  { display: 'OVERPOWERS THE DEFENSE!', log: 'OVERPOWERS THE DEFENSE!' },
+  { display: 'EATS THE RIM ALIVE!', log: 'EATS THE RIM ALIVE!' },
+  { display: 'ONE-HANDED JAM!', log: 'ONE-HANDED JAM!' },
+  { display: 'TWO-HANDED CRUSH!', log: 'TWO-HANDED CRUSH!' },
+  { display: 'RIDES THE RIM!', log: 'RIDES THE RIM!' },
+  { display: 'MAKES IT RAIN GLASS!', log: 'MAKES IT RAIN GLASS!' },
+  { display: 'THROWS DOWN A HAMMER!', log: 'THROWS DOWN A HAMMER!' },
+  { display: 'CLEANS THE GLASS!', log: 'CLEANS THE GLASS!' },
+  { display: 'JAMS IT HOME!', log: 'JAMS IT HOME!' },
+  { display: 'WINDMILL SLAM!', log: 'WINDMILL SLAM!' },
+  { display: 'DEFIES GRAVITY!', log: 'DEFIES GRAVITY!' },
+  { display: 'THROWS IT DOWN WITH MALICE!', log: 'THROWS IT DOWN WITH MALICE!' },
+  { display: 'DUNKS IT VIOLENTLY!', log: 'DUNKS IT VIOLENTLY!' },
+  { display: 'CRASHES DOWN ON THE RIM!', log: 'CRASHES DOWN ON THE RIM!' },
+  { display: 'FINISHES WITH FLAIR!', log: 'FINISHES WITH FLAIR!' },
+];
+
 // Helper functions
 function dist(a, b) {
   return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
@@ -742,8 +785,9 @@ function resolveShot(state) {
       }
     }
     if (result.type === 'dunk') {
-      state.shotResultDisplay = `💥 ${result.shooter.name} SLAMS IT DOWN! +${result.points}`;
-      state.gameLog.unshift(`💥 ${result.shooter.name} THROWS IT DOWN! — ${result.points} pts`);
+      const phrase = DUNK_PHRASES[Math.floor(Math.random() * DUNK_PHRASES.length)];
+      state.shotResultDisplay = `💥 ${result.shooter.name} ${phrase.display} +${result.points}`;
+      state.gameLog.unshift(`💥 ${result.shooter.name} ${phrase.log} — ${result.points} pts`);
     } else {
       const desc = result.type === 'three' ? 'three-pointer' : (result.type === 'layup' ? 'layup' : 'jumper');
       state.shotResultDisplay = `${result.shooter.name} hits the ${desc}! +${result.points}`;
