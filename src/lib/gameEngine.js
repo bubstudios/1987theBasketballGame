@@ -423,8 +423,10 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   const roll = Math.random();
 
   if (roll < shootChance && state.shotClock < 20) {
-    // Take shot
-    takeShot(state, carrier, isOpen);
+    // Foul detection: contested shots can draw fouls, weighted by FTA rate
+    const foulChance = nearestDef.dist < 25 ? Math.min(0.08 + carrier.ftAttempts * 0.015, 0.28) : 0;
+    const fouledBy = (foulChance > 0 && Math.random() < foulChance) ? nearestDef.player : null;
+    takeShot(state, carrier, isOpen, fouledBy);
     state.actionTimer = 1500;
   } else if (roll < shootChance + driveChance) {
     // Drive to basket
@@ -492,7 +494,7 @@ function makePass(state, passer, receiver) {
   if (state.gameLog.length > 15) state.gameLog.pop();
 }
 
-function takeShot(state, shooter, isOpen) {
+function takeShot(state, shooter, isOpen, fouledBy) {
   const basket = getBasketPos(state.attackingRight);
   shooter.hasBall = false;
   state.ball.carrier = null;
@@ -536,6 +538,7 @@ function takeShot(state, shooter, isOpen) {
     shooter: shooter,
     points: threePtr ? 3 : 2,
     type: d < 60 ? 'layup' : (threePtr ? 'three' : 'mid-range'),
+    fouledBy: fouledBy || null,
   };
 
   state.shotAnimating = true;
@@ -546,6 +549,12 @@ function resolveShot(state) {
   if (!result) return;
 
   state.shotAnimating = false;
+
+  if (result.fouledBy) {
+    resolveFouledShot(state, result);
+    state.ball.shotResult = null;
+    return;
+  }
 
   if (result.made) {
     state.score[result.shooter.team] += result.points;
@@ -593,6 +602,44 @@ function resolveShot(state) {
   }
 
   state.ball.shotResult = null;
+}
+
+function resolveFouledShot(state, result) {
+  const shooter = result.shooter;
+  const ftPct = shooter.ftPct || 0.75;
+  const desc = result.type === 'three' ? 'three-pointer' : (result.type === 'layup' ? 'layup' : 'jumper');
+
+  if (result.made) {
+    // And-one: count the basket, then 1 free throw
+    state.score[shooter.team] += result.points;
+    const ftMade = Math.random() < ftPct;
+    if (ftMade) {
+      state.score[shooter.team] += 1;
+      state.shotResultDisplay = `${shooter.name} hits the ${desc} + foul! AND1! +${result.points + 1}`;
+      state.gameLog.unshift(`✓ ${shooter.name} AND1! ${desc} + foul → ${result.points + 1} pts`);
+    } else {
+      state.shotResultDisplay = `${shooter.name} gets the ${desc} and the foul, misses the FT. +${result.points}`;
+      state.gameLog.unshift(`✗ ${shooter.name} misses the FT`);
+      state.gameLog.unshift(`✓ ${shooter.name} ${desc} + foul! +${result.points}`);
+    }
+  } else {
+    // Missed shot: shoot 2 (or 3 for a 3-point attempt) free throws
+    const ftCount = result.points === 3 ? 3 : 2;
+    state.shotResultDisplay = `Foul on ${result.fouledBy.name}! ${shooter.name} to the line for ${ftCount}`;
+    state.gameLog.unshift(`${shooter.name} ${0}/${ftCount} FTs`);
+    let ftsMade = 0;
+    for (let i = 0; i < ftCount; i++) {
+      if (Math.random() < ftPct) ftsMade++;
+    }
+    state.score[shooter.team] += ftsMade;
+    // Replace the placeholder log entry
+    state.gameLog[0] = `${shooter.name} ${ftsMade}/${ftCount} FTs +${ftsMade}`;
+    state.gameLog.unshift(`🦵 Foul on ${result.fouledBy.name} — ${shooter.name} to the line`);
+  }
+
+  state.shotResultTimer = 1800;
+  if (state.gameLog.length > 15) state.gameLog.pop();
+  switchPossession(state);
 }
 
 function switchPossession(state) {
