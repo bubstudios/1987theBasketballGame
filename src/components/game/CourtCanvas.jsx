@@ -3,6 +3,10 @@ import { COURT, TEAM_COLORS } from '@/lib/gameData';
 
 const SCALE = 1; // will be adjusted by canvas size
 
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
 function drawCourt(ctx, w, h) {
   const sx = w / COURT.width;
   const sy = h / COURT.height;
@@ -165,6 +169,29 @@ function drawBall(ctx, ball, w, h) {
     ctx.fill();
   }
 
+  // Magical pass trail — sparkle particles behind the ball
+  if (ball.isMagicPass && ball.inFlight) {
+    const elapsed = Date.now() - ball.flightStart;
+    const t = Math.min(elapsed / ball.flightDuration, 1);
+    for (let i = 1; i <= 8; i++) {
+      const trailT = Math.max(0, t - i * 0.05);
+      if (trailT <= 0) continue;
+      const tx = lerp(ball.startX, ball.targetX, trailT) * sx;
+      const ty = lerp(ball.startY, ball.targetY, trailT) * sy;
+      const alpha = (1 - i / 8) * 0.5;
+      ctx.fillStyle = `rgba(180, 140, 255, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(tx, ty, 3.5 - i * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255, 255, 210, ${alpha * 0.7})`;
+      ctx.beginPath();
+      ctx.arc(tx, ty, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.shadowColor = '#b48cff';
+    ctx.shadowBlur = 16;
+  }
+
   // Ball
   ctx.fillStyle = '#FF8C00';
   ctx.beginPath();
@@ -173,6 +200,7 @@ function drawBall(ctx, ball, w, h) {
   ctx.strokeStyle = '#8B4513';
   ctx.lineWidth = 1;
   ctx.stroke();
+  ctx.shadowBlur = 0;
 
   // Ball lines
   ctx.beginPath();
@@ -181,6 +209,28 @@ function drawBall(ctx, ball, w, h) {
   ctx.strokeStyle = '#8B4513';
   ctx.lineWidth = 0.8;
   ctx.stroke();
+
+  // Skyhook effect — golden sparkles orbiting the ball + label
+  if (ball.isSkyhook && ball.inFlight) {
+    const ballY = y - arcOffset;
+    const time = Date.now() * 0.004;
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2 + time;
+      const sr = 14 + Math.sin(time + i) * 4;
+      const px = x + Math.cos(angle) * sr;
+      const py = ballY + Math.sin(angle) * sr;
+      const alpha = 0.4 + Math.sin(time * 1.5 + i) * 0.3;
+      ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.95)';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SKYHOOK!', x, ballY - 18);
+  }
 }
 
 export default function CourtCanvas({ gameState }) {

@@ -488,6 +488,10 @@ function makePass(state, passer, receiver) {
   const d = dist(passer, receiver);
   state.ball.flightDuration = (d / PASS_SPEED) * (16.67); // roughly scale to frames
 
+  // Magic's special long passes get the magical trail effect
+  state.ball.isMagicPass = passer.name === 'Magic Johnson' && d > 180;
+  state.ball.isSkyhook = false;
+
   const passerData = passer;
   const logEntry = `${passerData.name} passes to ${receiver.name}`;
   state.gameLog.unshift(logEntry);
@@ -507,6 +511,11 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   state.ball.flightStart = Date.now();
   state.ball.flightDuration = SHOT_ARC_DURATION;
   state.ball.shotArcPeak = 40 + dist(shooter, basket) * 0.15;
+
+  // Skyhook animation for Kareem's inside shots
+  state.ball.isSkyhook = shooter.name === 'Kareem Abdul-Jabbar' && dist(shooter, basket) < 80;
+  state.ball.isMagicPass = false;
+  if (state.ball.isSkyhook) state.ball.shotArcPeak += 25;
 
   // Calculate make probability
   const d = dist(shooter, basket);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { LAKERS_ROSTER, CELTICS_ROSTER } from '@/lib/gameData';
 import { createGameState, updateGame } from '@/lib/gameEngine';
 import { useCourtSound } from '@/hooks/useCourtSound';
@@ -108,6 +109,12 @@ export default function Home() {
           <span style={{ color: '#007A33' }}>Celtics</span>
         </h1>
         <p className="text-xs text-neutral-500 mt-1 uppercase tracking-widest">1986-87 Season · NBA Sim</p>
+        <Link
+          to="/lakers-offense"
+          className="inline-block mt-2 text-xs text-amber-400 hover:text-amber-300 underline"
+        >
+          Lakers Offense Breakdown →
+        </Link>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 pb-8">
