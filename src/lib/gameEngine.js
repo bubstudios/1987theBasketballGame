@@ -1,5 +1,6 @@
 import { COURT, TEAM_FAST_BREAK, PLAYER_MPG, STAR_PLAYERS } from './gameData';
 import { TIMEOUTS_PER_GAME, updateTimeout, checkAutoTimeout } from './timeoutEngine';
+import { determineOffensiveRebound, computeReboundZone, selectRebounder, decidePutback } from './reboundEngine';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -1110,6 +1111,7 @@ function resolveShot(state) {
   if (!result) return;
 
   state.shotAnimating = false;
+  let pendingPutback = null;
 
   if (result.fouledBy) {
     resolveFouledShot(state, result);
@@ -1170,24 +1172,19 @@ function resolveShot(state) {
   if (result.made) {
     switchPossession(state);
   } else {
-    // Rebound — weighted by OReb%/DReb% and proximity to basket
+    // --- Two-stage rebound: decide which team wins, then which player ---
     const basket = getBasketPos(state.attackingRight);
     const defenseTeam = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
     const crashBoards = getActiveDefensePlay(state, defenseTeam) === 'crash_boards';
-    let rebounder = null;
-    let minD = Infinity;
-    state.players.forEach(p => {
-      if (!p.onCourt) return;
-      const d = dist(p, basket);
-      const isDefense = p.team !== state.possession;
-      const rate = isDefense
-        ? (p.defensiveRebRate || 0.15) * (crashBoards ? 1.7 : 1)
-        : (p.offensiveRebRate || 0.05);
-      const reboundChance = d - rate * 180 - p.rebounding * 4;
-      if (reboundChance < minD) { minD = reboundChance; rebounder = p; }
-    });
+    const offensePlayers = getOnCourtPlayers(state, state.possession);
+    const defensePlayers = getOnCourtPlayers(state, defenseTeam);
+
+    const zone = computeReboundZone(result.shooter, basket, result.type);
+    const isOffensive = determineOffensiveRebound(state, result, offensePlayers, defensePlayers, crashBoards);
+    const reboundTeam = isOffensive ? state.possession : defenseTeam;
+    const rebounder = selectRebounder(state, result, zone, reboundTeam, isOffensive, defensePlayers);
+
     if (rebounder) {
-      const isOffensive = rebounder.team === state.possession;
       rebounder.stats.rebounds++;
       state.momentum[rebounder.team] += isOffensive ? 1 : 0.5;
       if (isOffensive) rebounder.stats.offReb++; else rebounder.stats.defReb++;
@@ -1196,16 +1193,34 @@ function resolveShot(state) {
       state.ball.x = rebounder.x;
       state.ball.y = rebounder.y;
       state.gameLog.unshift(`↑ ${rebounder.name} ${isOffensive ? 'offensive' : 'defensive'} rebound`);
+      if (state.gameLog.length > 15) state.gameLog.pop();
 
-      if (rebounder.team !== state.possession) {
+      if (!isOffensive) {
+        // Defensive rebound → transition (may trigger a fast break)
         switchPossession(state, rebounder);
       } else {
+        // Offensive rebound → fresh shot clock, then consider an immediate putback
         state.shotClock = 24;
+        let nearest = null, nd = Infinity;
+        defensePlayers.forEach(def => {
+          const dd = dist(rebounder, def);
+          if (dd < nd) { nd = dd; nearest = def; }
+        });
+        if (decidePutback(rebounder, basket, nd, state.shotClock)) {
+          pendingPutback = { rebounder, nearest, nd };
+        } else {
+          state.actionTimer = 500;
+        }
       }
     }
   }
 
   state.ball.shotResult = null;
+
+  if (pendingPutback) {
+    takeShot(state, pendingPutback.rebounder, pendingPutback.nd > 50, null, { player: pendingPutback.nearest, dist: pendingPutback.nd });
+    state.actionTimer = 1200;
+  }
 }
 
 function resolveFouledShot(state, result) {
