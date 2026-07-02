@@ -1,4 +1,5 @@
 import { COURT, TEAM_FAST_BREAK, PLAYER_MPG, STAR_PLAYERS } from './gameData';
+import { TIMEOUTS_PER_GAME, updateTimeout, checkAutoTimeout } from './timeoutEngine';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -241,6 +242,12 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     subTimer: 3000,
     substitutionLog: [],
     substitutionCommentary: [],
+    timeouts: {
+      lakers: { remaining: TIMEOUTS_PER_GAME, used: 0 },
+      [opponentKey]: { remaining: TIMEOUTS_PER_GAME, used: 0 },
+    },
+    timeoutState: null,
+    playCall: null,
   };
 }
 
@@ -274,6 +281,13 @@ export function updateGame(state, dt) {
   if (state.isPaused) return state;
   
   const effectiveDt = dt * state.gameSpeed;
+
+  // Active timeout — clock frozen while teams huddle
+  if (state.timeoutState) {
+    updateTimeout(state, effectiveDt);
+    updatePlayerMovement(state, effectiveDt);
+    return state;
+  }
 
   // Handle free throw state — play stops while the shooter is at the line
   if (state.ftState) {
@@ -343,7 +357,9 @@ export function updateGame(state, dt) {
   state.subTimer -= effectiveDt;
   if (state.subTimer <= 0 && !state.shotAnimating) {
     checkSubstitutions(state);
+    checkAutoTimeout(state);
     state.subTimer = 3000;
+    if (state.timeoutState) return state;
   }
 
   // Handle ball in flight (pass or shot)
@@ -611,6 +627,23 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     driveChance = 0.06 + (carrier.driveTendency || 5) * 0.04 + carrier.speed * 0.01;
   }
 
+  // Coach's drawn-up play — tactical nudge for this possession
+  if (state.playCall && state.playCall.team === carrier.team) {
+    const pc = state.playCall.type;
+    if (pc === 'isolation') {
+      driveChance += 0.10;
+      if (isMidRange || isShortMid) shootChance += 0.10;
+      if (isVeryClose) shootChance += 0.06;
+    } else if (pc === 'post_up') {
+      if (isVeryClose) shootChance += 0.14;
+      else if (isShortMid) shootChance += 0.06;
+      if (threeZone) shootChance *= 0.4;
+    } else if (pc === 'three_point') {
+      if (threeZone && carrier.threeAttempts > 0.3) shootChance += 0.15;
+      if (isVeryClose) shootChance -= 0.04;
+    }
+  }
+
   const roll = Math.random();
 
   if (roll < shootChance && (isFastBreak || state.shotClock < 20)) {
@@ -692,6 +725,8 @@ function makePass(state, passer, receiver) {
 }
 
 function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
+  // A drawn-up play is consumed once the shot goes up
+  if (state.playCall) state.playCall = null;
   const basket = getBasketPos(state.attackingRight);
   shooter.hasBall = false;
   state.ball.carrier = null;
@@ -1006,7 +1041,7 @@ function switchPossession(state, fastBreakInitiator = null) {
   }
 }
 
-function resetPositions(state) {
+export function resetPositions(state) {
   const offSpots = getOffenseSpots(state.attackingRight);
   const offPlayers = getOnCourtPlayers(state, state.possession);
   const defPlayers = getOnCourtPlayers(state, state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1);
@@ -1290,7 +1325,7 @@ function executeSubstitution(state, outgoing, incoming, reason = 'fatigue') {
   if (state.substitutionCommentary.length > 12) state.substitutionCommentary.pop();
 }
 
-function checkSubstitutions(state) {
+export function checkSubstitutions(state) {
   const teams = [state.teamKeys.team1, state.teamKeys.team2];
 
   teams.forEach(team => {

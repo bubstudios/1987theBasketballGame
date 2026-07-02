@@ -12,6 +12,8 @@ import BoxScore from '@/components/game/BoxScore';
 import MomentumChart from '@/components/game/MomentumChart';
 import SubstitutionLog from '@/components/game/SubstitutionLog';
 import SubstitutionCommentary from '@/components/game/SubstitutionCommentary';
+import CoachControls from '@/components/game/CoachControls';
+import { callTimeout } from '@/lib/timeoutEngine';
 
 export default function Home() {
   const [gameState, setGameState] = useState(null);
@@ -108,6 +110,12 @@ export default function Home() {
     }
   };
 
+  const handleCallTimeout = (team, type, purpose, playCallType) => {
+    if (!gameRef.current) return;
+    const ok = callTimeout(gameRef.current, team, type, purpose, playCallType);
+    if (ok) setGameState({ ...gameRef.current });
+  };
+
   const isGameOver = gameState && gameState.quarter >= 4 && gameState.gameClock <= 0;
 
   return (
@@ -170,6 +178,11 @@ export default function Home() {
             soundMuted={muted}
             onToggleSound={toggleMute}
           />
+        </div>
+
+        {/* Coach timeout controls */}
+        <div className="mb-4">
+          <CoachControls gameState={gameState} opponent={opponent} onCallTimeout={handleCallTimeout} />
         </div>
 
         {/* Game Over */}

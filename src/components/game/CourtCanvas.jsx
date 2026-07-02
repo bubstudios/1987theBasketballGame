@@ -368,6 +368,42 @@ export default function CourtCanvas({ gameState }) {
       ctx.textBaseline = 'middle';
       ctx.fillText('⚡ FAST BREAK', w / 2, h - 18);
     }
+
+    // Timeout overlay — huddle break with coach's message
+    if (gameState.timeoutState) {
+      const t = gameState.timeoutState;
+      const progress = 1 - (t.timer / t.duration);
+      const colors = TEAM_COLORS[t.team] || { primary: '#888', secondary: '#fff' };
+      const accent = colors.secondary === '#FFFFFF' ? colors.primary : colors.secondary;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, 0, w, h);
+
+      const px = w / 2;
+      const py = h / 2;
+      ctx.fillStyle = 'rgba(18, 18, 26, 0.94)';
+      ctx.fillRect(px - 210, py - 55, 420, 110);
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(px - 210, py - 55, 420, 110);
+
+      ctx.fillStyle = accent;
+      ctx.font = 'bold 22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⏸ TIMEOUT', px, py - 25);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px sans-serif';
+      const msg = t.message.length > 62 ? t.message.slice(0, 59) + '…' : t.message;
+      ctx.fillText(msg, px, py + 2);
+
+      // Progress bar
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.fillRect(px - 150, py + 28, 300, 6);
+      ctx.fillStyle = accent;
+      ctx.fillRect(px - 150, py + 28, 300 * Math.min(progress, 1), 6);
+    }
   }, [gameState]);
 
   useEffect(() => {
