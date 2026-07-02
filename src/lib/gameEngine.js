@@ -285,7 +285,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     shotResultTimer: 0,
     gameLog: [],
     isPaused: false,
-    gameSpeed: 1,
+    gameSpeed: 0.5,
     turnoverCooldown: 0,
     ftState: null,
     fastBreak: null,
@@ -1673,6 +1673,7 @@ function checkTurnover(state, carrier, defenders) {
 
 function updatePlayerMovement(state, dt) {
   const speedScale = dt / 16.67; // normalize to ~60fps
+  const MOVEMENT_SCALE = 0.9; // players move 10% slower at baseline
   const isFastBreak = state.fastBreak && state.fastBreak.active;
 
   state.players.forEach(player => {
@@ -1682,7 +1683,7 @@ function updatePlayerMovement(state, dt) {
       const bdy = player.targetY - player.y;
       const bd = Math.sqrt(bdx * bdx + bdy * bdy);
       if (bd > 2) {
-        const speed = player.maxSpeed * 0.4 * speedScale;
+        const speed = player.maxSpeed * 0.4 * MOVEMENT_SCALE * speedScale;
         player.x += (bdx / bd) * Math.min(speed, bd);
         player.y += (bdy / bd) * Math.min(speed, bd);
       }
@@ -1700,7 +1701,7 @@ function updatePlayerMovement(state, dt) {
       // scaled by their speed rating (Worthy/Magic much quicker than Kareem)
       // Fatigue slows on-court players by up to 25% when exhausted
       const fatigueFactor = 1 - (player.fatigue || 0) / 100 * 0.25;
-      const speed = (isFastBreak ? (player.transitionSpeed || player.maxSpeed * 1.5) : player.maxSpeed) * fatigueFactor * speedScale;
+      const speed = (isFastBreak ? (player.transitionSpeed || player.maxSpeed * 1.5) : player.maxSpeed) * fatigueFactor * MOVEMENT_SCALE * speedScale;
       const moveX = (dx / d) * Math.min(speed, d);
       const moveY = (dy / d) * Math.min(speed, d);
       player.x += moveX;
