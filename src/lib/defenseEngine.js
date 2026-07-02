@@ -199,9 +199,9 @@ export function computeContainmentScore(state, carrier, primaryDef, helpDef, nea
 function adjustContestLevel(baseLevel, containment) {
   let idx = CONTEST_LEVELS.indexOf(baseLevel);
   if (idx < 0) idx = 2;
-  if (containment >= 72) idx = Math.min(4, idx + 2);
-  else if (containment >= 55) idx = Math.min(4, idx + 1);
-  else if (containment < 33) idx = Math.max(0, idx - 1);
+  if (containment >= 88) idx = Math.min(4, idx + 2);
+  else if (containment >= 72) idx = Math.min(4, idx + 1);
+  else if (containment < 40) idx = Math.max(0, idx - 1);
   return CONTEST_LEVELS[idx];
 }
 
@@ -250,10 +250,10 @@ export function computeStealChance(state, carrier, primaryDef, defensePlayers, p
   const tend = TEAM_DEFENSE_TENDENCIES[primaryDef.team] || TEAM_DEFENSE_TENDENCIES.lakers;
 
   const carrierFatigueMult = 1 + (carrier.fatigue || 0) / 100 * 0.5;
-  let base = (carrier.turnoverRate || 0.12) * 0.010 * carrierFatigueMult;
+  let base = (carrier.turnoverRate || 0.12) * 0.0035 * carrierFatigueMult;
 
   // On-ball steal ability of the primary defender
-  base += ((primaryDef.stealDef || 50) / 99) * 0.005;
+  base += ((primaryDef.stealDef || 50) / 99) * 0.0018;
 
   // Team steal attempt frequency
   base *= tend.stealAttemptFreq;
@@ -265,7 +265,7 @@ export function computeStealChance(state, carrier, primaryDef, defensePlayers, p
     laneSum += (d.stealDef || 50) / 99;
     laneCount++;
   });
-  if (laneCount > 0) base += (laneSum / laneCount) * 0.003 * tend.passingLaneDenial;
+  if (laneCount > 0) base += (laneSum / laneCount) * 0.001 * tend.passingLaneDenial;
 
   // Play call modifiers
   if (play === 'aggressive_steal') base *= 2.4;
@@ -296,7 +296,7 @@ export function computeInterceptionChance(state, passer, receiver, defensePlayer
 
   // Bad passers throw more pickable passes
   const passSkill = (passer.passing || 5) / 10;
-  return clamp(bestLane * 0.06 * tend.passingLaneDenial * (1.2 - passSkill * 0.4), 0, 0.15);
+  return clamp(bestLane * 0.02 * tend.passingLaneDenial * (1.2 - passSkill * 0.4), 0, 0.08);
 }
 
 // --- Help commitment decision (with cost: helper's man becomes open) ---

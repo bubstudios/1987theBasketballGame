@@ -490,7 +490,7 @@ export function updateGame(state, dt) {
   state.stealCheckTimer -= effectiveDt;
   if (state.turnoverCooldown <= 0 && state.stealCheckTimer <= 0 && ballCarrier) {
     checkTurnover(state, ballCarrier, defensePlayers);
-    state.stealCheckTimer = 500;
+    state.stealCheckTimer = 1000;
   }
 
   return state;
@@ -1130,7 +1130,7 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     // nearly automatic, while a rim protector can drastically cut the odds.
     const realPct = shooter.twoPct || 0.45;
     const insideAdj = (shooter.insideScoring - 6) * 0.03;
-    prob = realPct * 0.6 + insideAdj + CONTEST_MOD.rim[contestLevel];
+    prob = realPct + insideAdj + CONTEST_MOD.rim[contestLevel];
     if (state.fastBreak && state.fastBreak.active) {
       // Scoring boost after a defensive stop, scaled by team pace tendency
       // Lakers (9): +0.186, Clippers (7): +0.158, Celtics (4): +0.116
@@ -1142,14 +1142,14 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     // 3-pointers: real 3P% blended with skill, then contest modifier
     const realPct = shooter.threePct || 0;
     const skillAdj = (shooter.threePoint - 5) * 0.02; // +/- relative to average skill
-    prob = realPct * 0.75 + skillAdj + CONTEST_MOD.three[contestLevel];
+    prob = realPct + skillAdj + CONTEST_MOD.three[contestLevel];
     prob = clamp(prob, 0.03, 0.55);
   } else {
     // Mid-range 2s: real 2P% blended with shooting skill, distance, and contest
     const realPct = shooter.twoPct || 0.45;
     const skillAdj = (shooter.shooting - 6) * 0.02;
     const distAdj = d < 120 ? 0.06 : (d > 180 ? -0.04 : 0);
-    prob = realPct * 0.55 + skillAdj + distAdj + CONTEST_MOD.mid[contestLevel];
+    prob = realPct + skillAdj + distAdj + CONTEST_MOD.mid[contestLevel];
     prob = clamp(prob, 0.05, 0.6);
   }
 
