@@ -8,6 +8,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import LakersOffense from './pages/LakersOffense';
+import CelticsOffense from './pages/CelticsOffense';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -38,6 +39,7 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/lakers-offense" element={<LakersOffense />} />
+      <Route path="/celtics-offense" element={<CelticsOffense />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

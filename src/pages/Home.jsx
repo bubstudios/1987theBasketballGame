@@ -109,12 +109,20 @@ export default function Home() {
           <span style={{ color: '#007A33' }}>Celtics</span>
         </h1>
         <p className="text-xs text-neutral-500 mt-1 uppercase tracking-widest">1986-87 Season · NBA Sim</p>
-        <Link
-          to="/lakers-offense"
-          className="inline-block mt-2 text-xs text-amber-400 hover:text-amber-300 underline"
-        >
-          Lakers Offense Breakdown →
-        </Link>
+        <div className="flex items-center justify-center gap-3 mt-2">
+          <Link
+            to="/lakers-offense"
+            className="text-xs text-amber-400 hover:text-amber-300 underline"
+          >
+            Lakers Offense →
+          </Link>
+          <Link
+            to="/celtics-offense"
+            className="text-xs text-green-500 hover:text-green-400 underline"
+          >
+            Celtics Offense →
+          </Link>
+        </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 pb-8">
