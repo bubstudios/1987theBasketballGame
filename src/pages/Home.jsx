@@ -18,6 +18,7 @@ import SubstitutionCommentary from '@/components/game/SubstitutionCommentary';
 import CoachControls from '@/components/game/CoachControls';
 import PlayCallBar from '@/components/game/PlayCallBar';
 import { callTimeout } from '@/lib/timeoutEngine';
+import { useVoiceCommands } from '@/hooks/useVoiceCommands';
 
 export default function Home() {
   const [gameState, setGameState] = useState(null);
@@ -168,6 +169,44 @@ export default function Home() {
     }
   };
 
+  // Voice commands — single-word triggers that call the same handlers as the buttons.
+  // Tap the mic once (grants permission), then say a word anytime during play.
+  const voice = useVoiceCommands({
+    pause: () => handlePause(),
+    resume: () => handlePause(),
+    play: () => handlePause(),
+    iso: () => handleCallPlay('iso_hot', 'offense'),
+    post: () => handleCallPlay('feed_post', 'offense'),
+    three: () => handleCallPlay('shoot_3', 'offense'),
+    attack: () => handleCallPlay('attack_rim', 'offense'),
+    drive: () => handleCallPlay('attack_rim', 'offense'),
+    crash: () => handleCallPlay('crash_boards', 'defense'),
+    steal: () => handleCallPlay('aggressive_steal', 'defense'),
+    trap: () => handleCallPlay('double_post', 'defense'),
+    double: () => handleCallPlay('double_ball', 'defense'),
+    timeout: () => handleCallTimeout(userTeamKey, 'full', 'slow_momentum'),
+  });
+
+  const [voiceToast, setVoiceToast] = useState(null);
+  useEffect(() => {
+    if (!voice.lastMatch) return;
+    const labels = {
+      pause: '⏸ Pause', resume: '▶ Resume', play: '▶ Resume',
+      iso: '⚡ ISO', post: '⛰ Feed Post', three: '🎯 Shoot 3',
+      attack: '💥 Attack Rim', drive: '💥 Attack Rim',
+      crash: '📋 Crash Boards', steal: '✋ Aggressive Steal',
+      trap: '👥 Double Post', double: '👥 Double Ball',
+      timeout: '⏸ Timeout',
+    };
+    let label = labels[voice.lastMatch] || voice.lastMatch;
+    if (['pause', 'resume', 'play'].includes(voice.lastMatch) && gameRef.current) {
+      label = gameRef.current.isPaused ? '⏸ Paused' : '▶ Resumed';
+    }
+    setVoiceToast(label);
+    const t = setTimeout(() => setVoiceToast(null), 1500);
+    return () => clearTimeout(t);
+  }, [voice.lastMatch]);
+
   const isGameOver = gameState && gameState.quarter >= 4 && gameState.gameClock <= 0;
 
   return (
@@ -204,7 +243,23 @@ export default function Home() {
             onSpeedChange={handleSpeedChange}
             soundMuted={muted}
             onToggleSound={toggleMute}
+            voice={voice}
           />
+          {voice.supported && (
+            <div className="mt-2 text-center min-h-[20px]">
+              {voice.error === 'denied' ? (
+                <span className="text-[10px] text-red-400">🎤 Mic access denied — tap the mic button to retry</span>
+              ) : voiceToast ? (
+                <span className="inline-block px-3 py-0.5 rounded-full bg-green-500/20 border border-green-400/40 text-green-300 text-xs font-bold">
+                  ✓ {voiceToast}
+                </span>
+              ) : voice.listening ? (
+                <span className="text-[9px] text-neutral-500">
+                  🎤 Say: pause · resume · iso · post · three · attack · crash · steal · trap · double · timeout
+                </span>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {/* Quarter Break — user continues to next quarter */}

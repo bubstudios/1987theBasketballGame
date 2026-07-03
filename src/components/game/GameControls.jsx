@@ -1,8 +1,8 @@
 import React from 'react';
-import { Play, Pause, RotateCcw, Zap, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, RotateCcw, Zap, Volume2, VolumeX, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function GameControls({ gameState, onPause, onReset, onSpeedChange, soundMuted, onToggleSound }) {
+export default function GameControls({ gameState, onPause, onReset, onSpeedChange, soundMuted, onToggleSound, voice }) {
   if (!gameState) return null;
 
   const speeds = [0.5, 1, 2, 3];
@@ -36,6 +36,30 @@ export default function GameControls({ gameState, onPause, onReset, onSpeedChang
       >
         {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
       </Button>
+
+      {voice && voice.supported && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={voice.toggle}
+          className={`border-neutral-600 hover:bg-neutral-700 ${
+            voice.listening
+              ? 'bg-red-500/20 border-red-400 text-red-300 animate-pulse'
+              : voice.error === 'denied'
+              ? 'bg-red-900/30 border-red-600 text-red-400'
+              : 'bg-neutral-800 text-white'
+          }`}
+          title={
+            voice.error === 'denied'
+              ? 'Mic access denied — tap to retry'
+              : voice.listening
+              ? 'Listening for voice commands — tap to stop'
+              : 'Tap to start voice commands'
+          }
+        >
+          <Mic className="w-4 h-4" />
+        </Button>
+      )}
 
       <div className="flex items-center gap-1 ml-2">
         <Zap className="w-3 h-3 text-neutral-400" />
