@@ -3,7 +3,7 @@
 // Voice personalities match player personas:
 //   Kareem → "storm" (formal, authoritative, deep)
 //   Bird   → "spark" (energetic, quick, cocky)
-//   Magic  → "sunny" (bright, upbeat, charismatic)
+//   Magic  → "storm" (authoritative, charismatic)
 
 export const TRASH_TALK_CLIPS = {
   kareem: [
@@ -22,12 +22,12 @@ export const TRASH_TALK_CLIPS = {
     { text: "Try guarding me with someone who can actually move.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/af43ca9a5_speech.mp3" },
   ],
   magic: [
-    { text: "You were looking the wrong way.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/cef03ca9b_speech.mp3" },
-    { text: "Did you see that? Because I didn't even look.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/25913e263_speech.mp3" },
-    { text: "Showtime, baby!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/011232349_speech.mp3" },
-    { text: "Too easy for him.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/57966b58b_speech.mp3" },
-    { text: "I've got eyes in the back of my head.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/771065f43_speech.mp3" },
-    { text: "Check the replay on that one.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/4e7d7aaa4_speech.mp3" },
+    { text: "You were looking the wrong way.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/a7799a22b_speech.mp3" },
+    { text: "Did you see that? Because I didn't even look.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/b37ccbb68_speech.mp3" },
+    { text: "Showtime, baby!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/3514fccf5_speech.mp3" },
+    { text: "Too easy for him.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/cd4b2337d_speech.mp3" },
+    { text: "I've got eyes in the back of my head.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/a2c455ef5_speech.mp3" },
+    { text: "Check the replay on that one.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/53d53f842_speech.mp3" },
   ],
   // Akeem → "storm" (formal, authoritative) — triggered after Dream Shake scores
   akeem: [

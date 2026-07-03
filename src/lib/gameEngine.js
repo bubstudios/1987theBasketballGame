@@ -1006,6 +1006,12 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     shootChance = 0.08 + carrier.threePoint * 0.03 + freqFactor * 0.18;
   }
 
+  // Prevent full-court heaves in normal play — only the buzzer-beater
+  // override (under 2.5s) permits shots from extreme distance.
+  if (threeZone && distToBasket > 340 && state.gameClock > 3) {
+    shootChance = 0;
+  }
+
   if (!threeZone && contestLevel !== 'tight' && contestLevel !== 'smothered') {
     driveChance = 0.06 + (carrier.driveTendency || 5) * 0.04 + carrier.speed * 0.01;
   }
@@ -1346,6 +1352,13 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     const skillAdj = (shooter.threePoint - 5) * 0.02; // +/- relative to average skill
     prob = realPct + skillAdj + CONTEST_MOD.three[contestLevel];
     prob = clamp(prob, 0.03, 0.55);
+    // Beyond-the-arc heaves degrade sharply with distance — a full-court
+    // shot should have near-zero probability, not the same as a corner three.
+    if (d > 260) {
+      const excessDist = d - 237;
+      const distPenalty = Math.min(excessDist / 250, 0.98);
+      prob *= (1 - distPenalty);
+    }
   } else {
     // Mid-range 2s: real 2P% blended with shooting skill, distance, and contest
     const realPct = shooter.twoPct || 0.45;
@@ -1506,8 +1519,8 @@ function checkDriveFoul(state, carrier, nearestDef, defenders, isFastBreak) {
   if (isInPenalty(state, fouler.team)) {
     // Penalty → two free throws
     setupFreeThrows(state, carrier, fouler, 2, fouledOut);
-    state.shotResultDisplay = `Penalty! ${carrier.name} to the line`;
-    state.gameLog.unshift(`🦵 Foul on ${fouler.name} (${fouler.fouls}) — ${carrier.name} shoots two (penalty)!`);
+    state.shotResultDisplay = `Shooting foul! ${carrier.name} to the line`;
+    state.gameLog.unshift(`🦵 Foul on ${fouler.name} (${fouler.fouls}) — ${carrier.name} shoots two!`);
     state.actionTimer = 1500;
   } else {
     // Non-penalty → offense inbounds and keeps possession
@@ -2189,7 +2202,7 @@ function checkTurnover(state, carrier, defenders) {
     const rfo = commitPersonalFoul(state, primaryDef);
     if (isInPenalty(state, primaryDef.team)) {
       setupFreeThrows(state, carrier, primaryDef, 2, rfo);
-      state.gameLog.unshift(`🦵 Reach-in foul on ${primaryDef.name} (${primaryDef.fouls}) — ${carrier.name} shoots (penalty)!`);
+      state.gameLog.unshift(`🦵 Reach-in foul on ${primaryDef.name} (${primaryDef.fouls}) — ${carrier.name} to the line!`);
       state.actionTimer = 1500;
     } else {
       state.gameLog.unshift(`🦵 Reach-in foul on ${primaryDef.name} (${primaryDef.fouls})`);
