@@ -45,6 +45,21 @@ export const ROCKETS_DEFENSE = {
   'Buck Johnson':      { perimeterDef: 74, postDef: 72, helpDef: 79, screenNav: 68, stealDef: 73, blockDef: 76, dRebound: 69, discipline: 70, versatility: 80, transitionDef: 76 },
 };
 
+// 1986-87 Detroit Pistons — physical, disruptive, high-pressure Bad Boys defense.
+// More fouls/contact than Boston, more half-court toughness than LA.
+export const PISTONS_DEFENSE = {
+  'Isiah Thomas':    { perimeterDef: 88, postDef: 45, helpDef: 82, screenNav: 78, stealDef: 95, blockDef: 24, dRebound: 62, discipline: 72, versatility: 78, transitionDef: 88 },
+  'Joe Dumars':      { perimeterDef: 94, postDef: 62, helpDef: 86, screenNav: 88, stealDef: 82, blockDef: 24, dRebound: 50, discipline: 94, versatility: 86, transitionDef: 86 },
+  'Adrian Dantley':  { perimeterDef: 58, postDef: 70, helpDef: 62, screenNav: 70, stealDef: 54, blockDef: 20, dRebound: 58, discipline: 72, versatility: 62, transitionDef: 72 },
+  'Sidney Green':    { perimeterDef: 60, postDef: 78, helpDef: 76, screenNav: 68, stealDef: 55, blockDef: 68, dRebound: 90, discipline: 72, versatility: 70, transitionDef: 78 },
+  'Bill Laimbeer':   { perimeterDef: 52, postDef: 88, helpDef: 82, screenNav: 48, stealDef: 58, blockDef: 74, dRebound: 97, discipline: 70, versatility: 66, transitionDef: 50 },
+  'Vinnie Johnson':  { perimeterDef: 72, postDef: 44, helpDef: 66, screenNav: 74, stealDef: 78, blockDef: 24, dRebound: 48, discipline: 72, versatility: 70, transitionDef: 82 },
+  'Rick Mahorn':     { perimeterDef: 42, postDef: 91, helpDef: 82, screenNav: 50, stealDef: 55, blockDef: 76, dRebound: 90, discipline: 62, versatility: 62, transitionDef: 48 },
+  'Dennis Rodman':   { perimeterDef: 89, postDef: 82, helpDef: 92, screenNav: 82, stealDef: 78, blockDef: 78, dRebound: 94, discipline: 78, versatility: 97, transitionDef: 88 },
+  'John Salley':     { perimeterDef: 58, postDef: 84, helpDef: 90, screenNav: 58, stealDef: 62, blockDef: 94, dRebound: 80, discipline: 58, versatility: 78, transitionDef: 68 },
+  'Tony Campbell':   { perimeterDef: 68, postDef: 58, helpDef: 66, screenNav: 68, stealDef: 60, blockDef: 34, dRebound: 55, discipline: 66, versatility: 70, transitionDef: 74 },
+};
+
 // Team defensive tendency multipliers (1.0 = league baseline).
 // Lakers: active, opportunistic, gambling, fast-break-creating.
 // Celtics: structured, physical, disciplined, rim-protecting.
@@ -84,6 +99,19 @@ export const TEAM_DEFENSE_TENDENCIES = {
     foulAggression: 1.00,
     halfcourtDiscipline: 1.05,
   },
+  // Pistons: Bad Boys — high pressure, high physicality, high foul risk.
+  // Isiah/Dumars pressure the ball; Laimbeer/Mahorn provide body contact.
+  pistons: {
+    stealAttemptFreq: 1.15,
+    passingLaneDenial: 1.12,
+    hardDoubleFreq: 1.00,
+    helpAtRim: 1.05,
+    fullSwitching: 0.85,
+    dropCoverageCenter: 1.05,
+    defRebEmphasis: 1.10,
+    foulAggression: 1.15, // foul more than Boston, more contact than LA
+    halfcourtDiscipline: 0.95, // aggressive but less disciplined than Boston
+  },
 };
 
 // Default man-to-man matchups: defenseTeam → { offenseName: defenderName }
@@ -101,6 +129,12 @@ export const DEFAULT_MATCHUPS = {
     'Rodney McCray': 'Larry Bird',
     'Robert Reid': 'Danny Ainge',
     'Dirk Minniefield': 'Dennis Johnson',
+    // vs Pistons
+    'Isiah Thomas': 'Dennis Johnson',
+    'Joe Dumars': 'Danny Ainge',
+    'Adrian Dantley': 'Larry Bird',
+    'Sidney Green': 'Kevin McHale',
+    'Bill Laimbeer': 'Robert Parish',
   },
   // Lakers defending Celtics
   lakers: {
@@ -115,6 +149,12 @@ export const DEFAULT_MATCHUPS = {
     'Rodney McCray': 'James Worthy',
     'Robert Reid': 'Byron Scott',
     'Dirk Minniefield': 'Magic Johnson',
+    // vs Pistons
+    'Isiah Thomas': 'Byron Scott',
+    'Joe Dumars': 'Magic Johnson',
+    'Adrian Dantley': 'Michael Cooper',
+    'Sidney Green': 'A.C. Green',
+    'Bill Laimbeer': 'Kareem Abdul-Jabbar',
   },
   // Rockets defending (covers both Lakers and Celtics offenses)
   rockets: {
@@ -130,6 +170,33 @@ export const DEFAULT_MATCHUPS = {
     'Larry Bird': 'Rodney McCray',
     'Kevin McHale': 'Ralph Sampson',
     'Robert Parish': 'Akeem Olajuwon',
+    // vs Pistons
+    'Isiah Thomas': 'Dirk Minniefield',
+    'Joe Dumars': 'Robert Reid',
+    'Adrian Dantley': 'Rodney McCray',
+    'Sidney Green': 'Ralph Sampson',
+    'Bill Laimbeer': 'Akeem Olajuwon',
+  },
+  // Pistons defending (covers Lakers, Celtics, Rockets offenses)
+  pistons: {
+    // vs Lakers
+    'Magic Johnson': 'Joe Dumars',
+    'Byron Scott': 'Isiah Thomas',
+    'James Worthy': 'Adrian Dantley',
+    'A.C. Green': 'Sidney Green',
+    'Kareem Abdul-Jabbar': 'Bill Laimbeer',
+    // vs Celtics
+    'Dennis Johnson': 'Isiah Thomas',
+    'Danny Ainge': 'Joe Dumars',
+    'Larry Bird': 'Adrian Dantley',
+    'Kevin McHale': 'Rick Mahorn',
+    'Robert Parish': 'Bill Laimbeer',
+    // vs Rockets
+    'Dirk Minniefield': 'Isiah Thomas',
+    'Robert Reid': 'Joe Dumars',
+    'Rodney McCray': 'Adrian Dantley',
+    'Ralph Sampson': 'Rick Mahorn',
+    'Akeem Olajuwon': 'Bill Laimbeer',
   },
 };
 
@@ -147,4 +214,5 @@ export const TEAM_DEFENSE_MAP = {
   lakers: LAKERS_DEFENSE,
   celtics: CELTICS_DEFENSE,
   rockets: ROCKETS_DEFENSE,
+  pistons: PISTONS_DEFENSE,
 };

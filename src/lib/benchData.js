@@ -401,3 +401,137 @@ export const ROCKETS_BENCH = [
     blockRate: 0.015,
   },
 ];
+
+// 1986-87 Detroit Pistons bench (Bad Boys era)
+export const PISTONS_BENCH = [
+  {
+    name: "Vinnie Johnson",
+    number: 15,
+    position: "SG",
+    height: 74, // 6'2"
+    speed: 7,
+    driveTendency: 9, // aggressive bench scorer, attacks gaps
+    dunkTendency: 2, // rare dunker
+    shooting: 9, // elite midrange — "The Microwave"
+    passing: 8,
+    defense: 6,
+    rebounding: 5,
+    insideScoring: 9,
+    threePoint: 3,
+    threeAttempts: 0.6,
+    threePct: 0.222,
+    twoAttempts: 12.9,
+    twoPct: 0.474,
+    offensiveRebRate: 0.030,
+    defensiveRebRate: 0.070,
+    stealRate: 0.020,
+    turnoverRate: 0.110,
+    ftAttempts: 2.0,
+    ftPct: 0.786,
+    blockRate: 0.005,
+  },
+  {
+    name: "Rick Mahorn",
+    number: 44,
+    position: "C",
+    height: 82, // 6'10"
+    speed: 5,
+    driveTendency: 3, // interior enforcer
+    dunkTendency: 3, // power finishes
+    shooting: 4,
+    passing: 2,
+    defense: 8, // physical post defender, enforcer
+    rebounding: 9,
+    insideScoring: 5,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 5.5,
+    twoPct: 0.521,
+    offensiveRebRate: 0.075,
+    defensiveRebRate: 0.165,
+    stealRate: 0.013,
+    turnoverRate: 0.140,
+    ftAttempts: 2.0,
+    ftPct: 0.821,
+    blockRate: 0.040,
+  },
+  {
+    name: "Dennis Rodman",
+    number: 10,
+    position: "SF",
+    height: 79, // 6'7"
+    speed: 7, // high motor
+    driveTendency: 8, // athletic cutter
+    dunkTendency: 4, // energy finishes
+    shooting: 4, // almost no jumpers
+    passing: 2,
+    defense: 9, // elite versatile defender even as a rookie
+    rebounding: 9, // elite rebound rate
+    insideScoring: 5,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 5.0,
+    twoPct: 0.546,
+    offensiveRebRate: 0.090,
+    defensiveRebRate: 0.140,
+    stealRate: 0.020,
+    turnoverRate: 0.130,
+    ftAttempts: 1.5,
+    ftPct: 0.587,
+    blockRate: 0.025,
+  },
+  {
+    name: "John Salley",
+    number: 22,
+    position: "C",
+    height: 83, // 6'11"
+    speed: 6, // mobile long big
+    driveTendency: 6, // face-up runner
+    dunkTendency: 5, // lob/rim finisher
+    shooting: 4,
+    passing: 3,
+    defense: 8, // elite shot blocker (team-high 125 BLK)
+    rebounding: 7,
+    insideScoring: 6,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 5.0,
+    twoPct: 0.522,
+    offensiveRebRate: 0.060,
+    defensiveRebRate: 0.110,
+    stealRate: 0.015,
+    turnoverRate: 0.130,
+    ftAttempts: 1.5,
+    ftPct: 0.614,
+    blockRate: 0.045,
+  },
+  {
+    name: "Tony Campbell",
+    number: 24,
+    position: "SF",
+    height: 78, // 6'6"
+    speed: 7,
+    driveTendency: 8, // athletic slasher
+    dunkTendency: 4,
+    shooting: 6,
+    passing: 4,
+    defense: 6,
+    rebounding: 6,
+    insideScoring: 6,
+    threePoint: 1,
+    threeAttempts: 0.1,
+    threePct: 0.200,
+    twoAttempts: 3.9,
+    twoPct: 0.450,
+    offensiveRebRate: 0.040,
+    defensiveRebRate: 0.070,
+    stealRate: 0.016,
+    turnoverRate: 0.140,
+    ftAttempts: 1.0,
+    ftPct: 0.615,
+    blockRate: 0.015,
+  },
+];

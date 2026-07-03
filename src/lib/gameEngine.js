@@ -6,55 +6,14 @@ import { getTouchWeight, getScoringWeight, getTransitionController, recordCeltic
 import { mergeDefenseRatings, recomputeMatchups, getPrimaryDefender, getMatchupFor, evaluateContest, computeBlockChance, resolveBlockOutcome, computeStealChance, computeInterceptionChance, decideHelpCommit } from './defenseEngine';
 import { TEAM_DEFENSE_TENDENCIES } from './defenseData';
 import { selectShotVariation } from './shotLexicon';
+import { DUNK_PHRASES } from './dunkPhrases';
+import { checkDreamShake, checkZekeSplit, checkPumpFakeParade, improveContestLevel, updateMicrowaveMode, tickMicrowaveMode } from './signatureMoves';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
 const POSSESSION_DURATION = 24000; // shot clock ms
 const PASS_SPEED = 12;
 const SHOT_ARC_DURATION = 800;
-
-const DUNK_PHRASES = [
-  { display: 'SLAMS IT DOWN!', log: 'THROWS IT DOWN!' },
-  { display: 'ROCKS THE RIM!', log: 'ROCKS THE RIM!' },
-  { display: 'HAMMERS IT HOME!', log: 'HAMMERS IT HOME!' },
-  { display: 'COCKS IT BACK!', log: 'COCKS IT BACK AND SLAMS!' },
-  { display: 'TOMAHAWK JAM!', log: 'TOMAHAWK JAM!' },
-  { display: 'POSTERIZES THE DEFENSE!', log: 'POSTERIZES THE DEFENSE!' },
-  { display: 'PUTS IT DOWN WITH AUTHORITY!', log: 'PUTS IT DOWN WITH AUTHORITY!' },
-  { display: 'BRINGS THE HOUSE DOWN!', log: 'BRINGS THE HOUSE DOWN!' },
-  { display: 'DENIES GRAVITY!', log: 'DENIES GRAVITY!' },
-  { display: 'SOARS FOR THE SLAM!', log: 'SOARS FOR THE SLAM!' },
-  { display: 'TAKES FLIGHT!', log: 'TAKES FLIGHT!' },
-  { display: 'PUNISHES THE RIM!', log: 'PUNISHES THE RIM!' },
-  { display: 'THUNDEROUS JAM!', log: 'THUNDEROUS JAM!' },
-  { display: 'MONSTER DUNK!', log: 'THROWS DOWN A MONSTER!' },
-  { display: 'VIOLENT SLAM!', log: 'VIOLENT SLAM!' },
-  { display: 'GOES UP STRONG!', log: 'GOES UP STRONG AND FINISHES!' },
-  { display: 'EMPHATIC SLAM!', log: 'EMPHATIC SLAM!' },
-  { display: 'RIPS THE RIM!', log: 'RIPS THE RIM DOWN!' },
-  { display: 'STUFFS IT HOME!', log: 'STUFFS IT HOME!' },
-  { display: 'BANGS IT DOWN!', log: 'BANGS IT DOWN!' },
-  { display: 'FINISHES WITH AUTHORITY!', log: 'FINISHES WITH AUTHORITY!' },
-  { display: 'SKIES FOR THE JAM!', log: 'SKIES FOR THE JAM!' },
-  { display: 'LAUNCHES INTO ORBIT!', log: 'LAUNCHES INTO ORBIT!' },
-  { display: 'DELIVERS THE HAMMER!', log: 'DELIVERS THE HAMMER!' },
-  { display: 'CRADLES AND CRASHES!', log: 'CRADLES AND CRASHES!' },
-  { display: 'OVERPOWERS THE DEFENSE!', log: 'OVERPOWERS THE DEFENSE!' },
-  { display: 'EATS THE RIM ALIVE!', log: 'EATS THE RIM ALIVE!' },
-  { display: 'ONE-HANDED JAM!', log: 'ONE-HANDED JAM!' },
-  { display: 'TWO-HANDED CRUSH!', log: 'TWO-HANDED CRUSH!' },
-  { display: 'RIDES THE RIM!', log: 'RIDES THE RIM!' },
-  { display: 'MAKES IT RAIN GLASS!', log: 'MAKES IT RAIN GLASS!' },
-  { display: 'THROWS DOWN A HAMMER!', log: 'THROWS DOWN A HAMMER!' },
-  { display: 'CLEANS THE GLASS!', log: 'CLEANS THE GLASS!' },
-  { display: 'JAMS IT HOME!', log: 'JAMS IT HOME!' },
-  { display: 'WINDMILL SLAM!', log: 'WINDMILL SLAM!' },
-  { display: 'DEFIES GRAVITY!', log: 'DEFIES GRAVITY!' },
-  { display: 'THROWS IT DOWN WITH MALICE!', log: 'THROWS IT DOWN WITH MALICE!' },
-  { display: 'DUNKS IT VIOLENTLY!', log: 'DUNKS IT VIOLENTLY!' },
-  { display: 'CRASHES DOWN ON THE RIM!', log: 'CRASHES DOWN ON THE RIM!' },
-  { display: 'FINISHES WITH FLAIR!', log: 'FINISHES WITH FLAIR!' },
-];
 
 // Helper functions
 function dist(a, b) {
@@ -327,6 +286,7 @@ export function createGameState(team1Key, team1Roster, team2Key, team2Roster) {
     helpCommitment: null,
     pendingTurnover: null,
     pendingTrashTalk: null,
+    microwaveMode: null,
   };
   recomputeMatchups(state);
   rollPossessionTurnover(state);
@@ -1246,6 +1206,8 @@ function makePass(state, passer, receiver) {
   state.ball.isBirdThree = false;
   state.ball.isDunk = false;
   state.ball.isDreamShake = false;
+  state.ball.isZekeSplit = false;
+  state.ball.isPumpFake = false;
   state.ball.lastPasserId = passer.id;
   recordCelticsPass(state, receiver);
 
@@ -1253,50 +1215,8 @@ function makePass(state, passer, receiver) {
   if (state.gameLog.length > 15) state.gameLog.pop();
 }
 
-// Contest levels ordered best→worst for the offense (used by Dream Shake)
-const CONTEST_ORDER = ['wide_open', 'open', 'light_contest', 'tight', 'smothered'];
-
-function improveContestLevel(level, steps) {
-  const idx = CONTEST_ORDER.indexOf(level);
-  if (idx < 0) return level;
-  return CONTEST_ORDER[Math.max(0, idx - steps)];
-}
-
-// Akeem Olajuwon's Dream Shake — signature post-move decision tree.
-// Not one fixed animation, but a sequence of fakes, pivots, and spins that
-// reacts to the defender. Triggers on ~18% of Akeem's post scoring actions
-// (6-12 ft, half-court only). Improves shot quality by 1-2 contest levels
-// (defender bites), boosts foul-drawing, and slightly raises block risk.
-function checkDreamShake(shooter, distToBasket, nearestDef, isFastBreak) {
-  if (shooter.name !== 'Akeem Olajuwon') return null;
-  if (isFastBreak) return null;
-  // Low/mid post only (6-12 ft ≈ 55-125 px). Excludes dunks (d < 55).
-  if (distToBasket < 55 || distToBasket > 125) return null;
-
-  if (Math.random() > 0.18) return null;
-
-  // Defender quality determines how badly he bites on the fakes
-  const defPostRating = (nearestDef && nearestDef.player && nearestDef.player.postDef) || 50;
-  let contestBoost;
-  let defenderBit;
-  if (defPostRating >= 85) {
-    // Elite post defender stays balanced — only 1 level improvement
-    contestBoost = 1;
-    defenderBit = false;
-  } else if (defPostRating < 65) {
-    // Poor/aggressive defender bites hard — 2 levels, high foul chance
-    contestBoost = 2;
-    defenderBit = true;
-  } else {
-    contestBoost = Math.random() < 0.5 ? 1 : 2;
-    defenderBit = contestBoost === 2;
-  }
-
-  const variants = ['baseline_spin', 'middle_hook', 'up_and_under', 'turnaround', 'step_through'];
-  const variant = variants[Math.floor(Math.random() * variants.length)];
-
-  return { contestBoost, variant, defenderBit };
-}
+// Signature-move decision trees (Dream Shake, Zeke Split, Pump-Fake Parade)
+// and Microwave Mode tracking live in signatureMoves.js.
 
 function takeShot(state, shooter, isOpen, fouledBy, nearestDef, options = {}) {
   // A drawn-up play is consumed once the shot goes up
@@ -1321,6 +1241,8 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef, options = {}) {
 
   state.ball.isMagicPass = false;
   state.ball.isDreamShake = false;
+  state.ball.isZekeSplit = false;
+  state.ball.isPumpFake = false;
 
   // Calculate make probability
   const d = dist(shooter, basket);
@@ -1342,11 +1264,31 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef, options = {}) {
     state.ball.dreamShakeVariant = dreamShake.variant;
   }
 
+  // --- Zeke Split: Isiah's signature perimeter split move ---
+  const zekeSplit = checkZekeSplit(shooter, d, nearestDef, isFb, state.shotClock);
+  if (zekeSplit) {
+    contestLevel = improveContestLevel(contestLevel, zekeSplit.contestBoost);
+    state.ball.isZekeSplit = true;
+    state.ball.zekeSplitVariant = zekeSplit.variant;
+  }
+
+  // --- Pump-Fake Parade: Dantley's signature foul-drawing post package ---
+  const pumpFake = checkPumpFakeParade(shooter, d, nearestDef, isFb);
+  if (pumpFake) {
+    contestLevel = improveContestLevel(contestLevel, pumpFake.contestBoost);
+    state.ball.isPumpFake = true;
+    state.ball.pumpFakeVariant = pumpFake.variant;
+  }
+
   // --- Shot variation: pick a descriptive shot type from the player's package ---
+  let sigVariant = null, sigFamily = 'dream';
+  if (dreamShake) { sigVariant = dreamShake.variant; sigFamily = 'dream'; }
+  else if (zekeSplit) { sigVariant = zekeSplit.variant; sigFamily = 'zeke'; }
+  else if (pumpFake) { sigVariant = pumpFake.variant; sigFamily = 'pumpfake'; }
   const variation = selectShotVariation(shooter, {
     distToBasket: d, isThree: threePtr, isFastBreak: isFb,
     isPutback: !!(options && options.isPutback), shotClock: state.shotClock, gameClock: state.gameClock,
-  }, dreamShake ? dreamShake.variant : null);
+  }, sigVariant, sigFamily);
 
   // Signature move visual flags
   state.ball.isSkyhook = variation.isKareemSignature || variation.isMagicSignature;
@@ -1410,6 +1352,20 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef, options = {}) {
   if (dreamShake && !fouledBy && !blockedBy && nearestDef && nearestDef.player && !nearestDef.player.fouledOut) {
     const dsFoulChance = dreamShake.defenderBit ? 0.28 : 0.14;
     if (Math.random() < dsFoulChance) {
+      fouledBy = nearestDef.player;
+    }
+  }
+  // Zeke Split foul boost — Isiah draws contact splitting the defense
+  if (zekeSplit && !fouledBy && !blockedBy && nearestDef && nearestDef.player && !nearestDef.player.fouledOut) {
+    const zsFoulChance = zekeSplit.defenderBit ? 0.22 : 0.12;
+    if (Math.random() < zsFoulChance) {
+      fouledBy = nearestDef.player;
+    }
+  }
+  // Pump-Fake Parade foul boost — Dantley's signature foul-drawing package
+  if (pumpFake && !fouledBy && !blockedBy && nearestDef && nearestDef.player && !nearestDef.player.fouledOut) {
+    const pfFoulChance = pumpFake.defenderBit ? 0.38 : 0.22;
+    if (Math.random() < pfFoulChance) {
       fouledBy = nearestDef.player;
     }
   }
@@ -1596,7 +1552,7 @@ function resolveFreeThrowRebound(state, ft) {
 // Star trash talk: ~2-3 times per game after a signature move (skyhook, deep three, no-look dime).
 function maybeTriggerTrashTalk(state, playerKey) {
   if (state.pendingTrashTalk) return;
-  const chances = { kareem: 0.14, bird: 0.45, magic: 0.12, akeem: 0.30 };
+  const chances = { kareem: 0.14, bird: 0.45, magic: 0.12, akeem: 0.30, isiah: 0.30 };
   if (Math.random() < (chances[playerKey] || 0.15)) {
     state.pendingTrashTalk = playerKey;
   }
@@ -1668,6 +1624,7 @@ function resolveShot(state) {
     if (varData && varData.isKareemSignature) maybeTriggerTrashTalk(state, 'kareem');
     else if (varData && varData.isMagicSignature) maybeTriggerTrashTalk(state, 'magic');
     else if (state.ball.isDreamShake) maybeTriggerTrashTalk(state, 'akeem');
+    else if (state.ball.isZekeSplit) maybeTriggerTrashTalk(state, 'isiah');
     else if (result.shooter.name === 'Larry Bird' && result.type === 'three') maybeTriggerTrashTalk(state, 'bird');
     if (state.ball.lastPasserId) {
       const passer = state.players.find(p => p.id === state.ball.lastPasserId);
@@ -1681,6 +1638,10 @@ function resolveShot(state) {
     if (varData && varData.family === 'DUNK' && Math.random() < 0.35) {
       const phrase = DUNK_PHRASES[Math.floor(Math.random() * DUNK_PHRASES.length)];
       state.shotResultDisplay = `💥 ${result.shooter.name} ${phrase.display} +${result.points}`;
+    } else if (state.ball.isZekeSplit) {
+      state.shotResultDisplay = `⚡ ${result.shooter.name} ZEKE SPLIT! +${result.points}`;
+    } else if (state.ball.isPumpFake) {
+      state.shotResultDisplay = `🎭 ${result.shooter.name} PUMP-FAKE PARADE! +${result.points}`;
     } else if (state.ball.isDreamShake) {
       state.shotResultDisplay = `✨ ${result.shooter.name} DREAM SHAKE — ${varData ? varData.make : 'scores'}! +${result.points}`;
     } else {
@@ -1695,6 +1656,9 @@ function resolveShot(state) {
     state.gameLog.unshift(`✗ ${result.shooter.name} misses the ${varData ? varData.miss : 'shot'}`);
   }
   state.shotResultTimer = 1500;
+
+  // Microwave Mode: track Vinnie's makes/misses for the heating-up trait
+  updateMicrowaveMode(state, result.shooter, result.made);
 
   if (state.gameLog.length > 15) state.gameLog.pop();
 
@@ -1783,6 +1747,7 @@ function resolveFouledShot(state, result) {
     if (varData && varData.isKareemSignature) maybeTriggerTrashTalk(state, 'kareem');
     else if (varData && varData.isMagicSignature) maybeTriggerTrashTalk(state, 'magic');
     else if (state.ball.isDreamShake) maybeTriggerTrashTalk(state, 'akeem');
+    else if (state.ball.isZekeSplit) maybeTriggerTrashTalk(state, 'isiah');
     else if (shooter.name === 'Larry Bird' && result.type === 'three') maybeTriggerTrashTalk(state, 'bird');
     if (state.ball.lastPasserId) {
       const passer = state.players.find(p => p.id === state.ball.lastPasserId);
@@ -1797,6 +1762,9 @@ function resolveFouledShot(state, result) {
 
   // Free throw count: 1 for and-one, 2 for missed 2-pt, 3 for missed 3-pt
   const ftCount = result.made ? 1 : (result.points === 3 ? 3 : 2);
+
+  // Microwave Mode: track Vinnie's makes/misses (fouled shots count too)
+  updateMicrowaveMode(state, shooter, result.made);
 
   // Move shooter to the free throw line for the FT sequence
   const basket = getBasketPos(state.attackingRight);
@@ -2060,6 +2028,7 @@ function switchPossession(state, fastBreakInitiator = null, reason = 'unknown') 
   // Count the new possession. Offensive rebounds do NOT reach here — they
   // extend the same possession per the correct NBA possession definition.
   state.possessionCount[state.possession] = (state.possessionCount[state.possession] || 0) + 1;
+  tickMicrowaveMode(state);
 
   // Fast break check: ~20% of possessions are transition (Lakers slightly more,
   // Celtics slightly less). Was far too high before (Lakers 90%, Celtics 40%).

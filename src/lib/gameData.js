@@ -1,8 +1,8 @@
 // 1986-87 Lakers and Celtics rosters with real attributes
 // Speed: 1-10 scale, Height in inches, Skills rated 1-10
 
-import { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH } from './benchData';
-export { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH };
+import { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH, PISTONS_BENCH } from './benchData';
+export { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH, PISTONS_BENCH };
 
 export const LAKERS_ROSTER = [
   {
@@ -404,6 +404,140 @@ export const ROCKETS_ROSTER = [
   },
 ];
 
+// 1986-87 Detroit Pistons (Bad Boys era — forming identity)
+export const PISTONS_ROSTER = [
+  {
+    name: "Isiah Thomas",
+    number: 11,
+    position: "PG",
+    height: 72, // 6'0"
+    speed: 9, // elite quickness
+    driveTendency: 9, // relentless rim-attacking guard
+    dunkTendency: 2, // rare dunker
+    shooting: 8,
+    passing: 10,
+    defense: 7,
+    rebounding: 4,
+    insideScoring: 9,
+    threePoint: 3,
+    threeAttempts: 0.9,
+    threePct: 0.275,
+    twoAttempts: 16.1,
+    twoPct: 0.488,
+    offensiveRebRate: 0.030,
+    defensiveRebRate: 0.075,
+    stealRate: 0.030,
+    turnoverRate: 0.150,
+    ftAttempts: 5.5,
+    ftPct: 0.768,
+    blockRate: 0.006,
+  },
+  {
+    name: "Joe Dumars",
+    number: 4,
+    position: "SG",
+    height: 75, // 6'3"
+    speed: 7,
+    driveTendency: 6, // efficient secondary guard
+    dunkTendency: 2,
+    shooting: 8,
+    passing: 9,
+    defense: 9, // elite perimeter defender
+    rebounding: 4,
+    insideScoring: 8,
+    threePoint: 5,
+    threeAttempts: 0.6,
+    threePct: 0.300,
+    twoAttempts: 8.9,
+    twoPct: 0.485,
+    offensiveRebRate: 0.020,
+    defensiveRebRate: 0.060,
+    stealRate: 0.024,
+    turnoverRate: 0.110,
+    ftAttempts: 2.5,
+    ftPct: 0.748,
+    blockRate: 0.005,
+  },
+  {
+    name: "Adrian Dantley",
+    number: 45,
+    position: "SF",
+    height: 77, // 6'5"
+    speed: 6, // not fast, crafty
+    driveTendency: 8, // draws contact constantly
+    dunkTendency: 1, // rarely dunked
+    shooting: 9,
+    passing: 7,
+    defense: 6, // more scorer than stopper
+    rebounding: 5,
+    insideScoring: 10, // elite post scorer, foul-drawing machine
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 15.5,
+    twoPct: 0.543,
+    offensiveRebRate: 0.055,
+    defensiveRebRate: 0.090,
+    stealRate: 0.018,
+    turnoverRate: 0.110,
+    ftAttempts: 8.0, // elite foul drawer
+    ftPct: 0.812,
+    blockRate: 0.005,
+  },
+  {
+    name: "Sidney Green",
+    number: 32,
+    position: "PF",
+    height: 81, // 6'9"
+    speed: 6,
+    driveTendency: 4, // rebounder/finisher, not a driver
+    dunkTendency: 3,
+    shooting: 6,
+    passing: 3,
+    defense: 7,
+    rebounding: 9,
+    insideScoring: 6,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 7.0,
+    twoPct: 0.496,
+    offensiveRebRate: 0.075,
+    defensiveRebRate: 0.150,
+    stealRate: 0.015,
+    turnoverRate: 0.130,
+    ftAttempts: 1.5,
+    ftPct: 0.672,
+    blockRate: 0.018,
+  },
+  {
+    name: "Bill Laimbeer",
+    number: 40,
+    position: "C",
+    height: 83, // 6'11"
+    speed: 5,
+    driveTendency: 3, // face-up/set shooter, not a driver
+    dunkTendency: 2,
+    shooting: 9, // elite set jumper for a center
+    passing: 5,
+    defense: 7,
+    rebounding: 10, // elite rebounder
+    insideScoring: 8,
+    threePoint: 5, // rare top-of-key three
+    threeAttempts: 0.5,
+    threePct: 0.348,
+    twoAttempts: 11.0,
+    twoPct: 0.462,
+    offensiveRebRate: 0.080,
+    defensiveRebRate: 0.205,
+    stealRate: 0.016,
+    turnoverRate: 0.090,
+    ftAttempts: 2.5,
+    ftPct: 0.894, // excellent FT shooter for a center
+    blockRate: 0.035,
+  },
+];
+
 // Court dimensions (scaled for canvas)
 export const COURT = {
   width: 940,   // 94 feet * 10
@@ -441,6 +575,13 @@ export const TEAM_COLORS = {
     name: "Rockets",
     abbr: "HOU",
   },
+  pistons: {
+    primary: "#C8102E",
+    secondary: "#1D42BA",
+    text: "#FFFFFF",
+    name: "Pistons",
+    abbr: "DET",
+  },
 };
 
 // Team-level fast break tendency (1-10 scale)
@@ -453,6 +594,7 @@ export const TEAM_FAST_BREAK = {
   lakers: 9,
   celtics: 4,
   rockets: 5,
+  pistons: 7, // Isiah pushes tempo, but Dantley post-ups slow the half-court
 };
 
 // Central team registry — the single source of truth for the team selection page.
@@ -477,6 +619,12 @@ export const TEAMS = {
     roster: ROCKETS_ROSTER,
     bench: ROCKETS_BENCH,
   },
+  pistons: {
+    colors: TEAM_COLORS.pistons,
+    fastBreak: TEAM_FAST_BREAK.pistons,
+    roster: PISTONS_ROSTER,
+    bench: PISTONS_BENCH,
+  },
 };
 
 // Minutes per game (1986-87 regular season) — drives fatigue & stamina
@@ -496,6 +644,11 @@ export const PLAYER_MPG = {
   'Robert Reid': 31, 'Dirk Minniefield': 24, 'Jim Petersen': 22,
   'Allen Leavell': 20, 'Lewis Lloyd': 16, 'Mitchell Wiggins': 16,
   'Buck Johnson': 8,
+  // Pistons
+  'Isiah Thomas': 37, 'Joe Dumars': 31, 'Adrian Dantley': 34,
+  'Sidney Green': 22, 'Bill Laimbeer': 35,
+  'Vinnie Johnson': 28, 'Rick Mahorn': 20, 'Dennis Rodman': 15,
+  'John Salley': 18, 'Tony Campbell': 8,
 };
 
 // Franchise stars — tolerate more fatigue, stay on the floor longer
@@ -503,4 +656,5 @@ export const STAR_PLAYERS = new Set([
   'Magic Johnson', 'Kareem Abdul-Jabbar', 'James Worthy',
   'Larry Bird', 'Kevin McHale', 'Robert Parish',
   'Akeem Olajuwon', 'Ralph Sampson', 'Rodney McCray',
+  'Isiah Thomas', 'Adrian Dantley', 'Bill Laimbeer',
 ]);

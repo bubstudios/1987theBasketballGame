@@ -39,4 +39,12 @@ export const TRASH_TALK_CLIPS = {
     { text: "Too quick for your feet.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/ec8c54bb2_speech.mp3" },
     { text: "You're just watching the show now.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/593b8a1bb_speech.mp3" },
   ],
+  // Isiah → "spark" (energetic, quick, cocky) — triggered after Zeke Split scores
+  isiah: [
+    { text: "Split you right down the middle.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/c5a28c768_speech.mp3" },
+    { text: "You can't guard me with two.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/83ff3696f_speech.mp3" },
+    { text: "Too quick for your feet.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/963372070_speech.mp3" },
+    { text: "See ya.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/84c9a1967_speech.mp3" },
+    { text: "Zeke does it again.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/2423f5bc7_speech.mp3" },
+  ],
 };

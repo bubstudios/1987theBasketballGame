@@ -8,6 +8,8 @@
 //   2. Early-game protection — after 8+ team attempts, boost underused primary
 //      options and suppress players hogging >45% of attempts.
 
+import { microwaveWeightBoost } from './signatureMoves';
+
 // Per-player role profiles. Ratings are 0-99 — they translate to opportunity
 // WEIGHTS, not direct percentages. fgaTarget / mpgExpected drive the soft
 // opportunity correction.
@@ -206,6 +208,75 @@ const PLAYER_ROLES = {
     creation: 38, offReb: 78,
     fgaTarget: 3.0, mpgExpected: 8,
   },
+  // --- Pistons ---
+  // Detroit: Isiah is the offensive engine (quarterback), Dantley is the
+  // half-court scoring machine (foul-drawing post iso), Laimbeer rebounds and
+  // pops, Dumars stabilizes as secondary guard, Vinnie is instant bench offense.
+  // Ratings out of 99.
+  'Isiah Thomas': {
+    team: 'pistons', starRole: 'quarterback',
+    initiation: 99, finishing: 90, offBall: 82, transition: 96,
+    creation: 99, offReb: 45, clutchPriority: 95,
+    fgaTarget: 16.5, mpgExpected: 37,
+  },
+  'Adrian Dantley': {
+    team: 'pistons', starRole: 'post_star',
+    initiation: 58, finishing: 98, offBall: 72, transition: 40,
+    creation: 72, offReb: 62, clutchPriority: 90,
+    fgaTarget: 15.5, mpgExpected: 34,
+    shotWeight: 26,
+  },
+  'Bill Laimbeer': {
+    team: 'pistons',
+    initiation: 38, finishing: 84, offBall: 84, transition: 30,
+    creation: 54, offReb: 94,
+    fgaTarget: 11.5, mpgExpected: 35,
+    shotWeight: 18,
+  },
+  'Joe Dumars': {
+    team: 'pistons', starRole: 'organizer',
+    initiation: 82, finishing: 76, offBall: 86, transition: 84,
+    creation: 86, offReb: 28,
+    fgaTarget: 9.5, mpgExpected: 31,
+    shotWeight: 16,
+  },
+  'Vinnie Johnson': {
+    team: 'pistons',
+    initiation: 74, finishing: 93, offBall: 78, transition: 84,
+    creation: 78, offReb: 52,
+    fgaTarget: 13.5, mpgExpected: 28,
+    shotWeight: 22,
+  },
+  'Sidney Green': {
+    team: 'pistons',
+    initiation: 18, finishing: 58, offBall: 58, transition: 44,
+    creation: 24, offReb: 88,
+    fgaTarget: 7.0, mpgExpected: 22,
+  },
+  'Rick Mahorn': {
+    team: 'pistons',
+    initiation: 12, finishing: 52, offBall: 50, transition: 34,
+    creation: 18, offReb: 86,
+    fgaTarget: 5.5, mpgExpected: 20,
+  },
+  'Dennis Rodman': {
+    team: 'pistons',
+    initiation: 18, finishing: 54, offBall: 78, transition: 78,
+    creation: 22, offReb: 96,
+    fgaTarget: 5.0, mpgExpected: 15,
+  },
+  'John Salley': {
+    team: 'pistons',
+    initiation: 22, finishing: 62, offBall: 72, transition: 64,
+    creation: 28, offReb: 82,
+    fgaTarget: 5.0, mpgExpected: 18,
+  },
+  'Tony Campbell': {
+    team: 'pistons',
+    initiation: 35, finishing: 58, offBall: 58, transition: 76,
+    creation: 42, offReb: 58,
+    fgaTarget: 4.0, mpgExpected: 8,
+  },
 };
 
 function getRole(player) {
@@ -287,6 +358,24 @@ function getAdjustedRole(state, player) {
     if (!akeemOn && !sampsonOn && player.name === 'Lewis Lloyd') {
       adjusted.finishing = 94;
       adjusted.initiation = 78;
+    }
+  }
+
+  if (team === 'pistons') {
+    const isiahOn = state.players.some(p => p.name === 'Isiah Thomas' && p.team === team && p.onCourt);
+    const dumarsOn = state.players.some(p => p.name === 'Joe Dumars' && p.team === team && p.onCourt);
+    // When Isiah rests, Vinnie and Dumars step up as initiators
+    if (!isiahOn && player.name === 'Vinnie Johnson') {
+      adjusted.initiation = 90;
+      adjusted.creation = 88;
+    }
+    // Both Isiah and Dumars out — Vinnie becomes the primary initiator
+    if (!isiahOn && !dumarsOn && player.name === 'Vinnie Johnson') {
+      adjusted.initiation = 95;
+      adjusted.creation = 90;
+    }
+    if (!isiahOn && !dumarsOn && player.name === 'Adrian Dantley') {
+      adjusted.initiation = 72;
     }
   }
 
@@ -466,6 +555,7 @@ export function getScoringWeight(state, player) {
     w *= clutchBoost(state, player);
   }
 
+  w *= microwaveWeightBoost(state, player); // Vinnie Johnson — Microwave Mode
   return Math.max(0.15, w);
 }
 

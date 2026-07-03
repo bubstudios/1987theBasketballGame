@@ -143,6 +143,22 @@ export const DREAM_SHAKE_VARIATIONS = {
   step_through: ['STEP_THROUGH_LAYUP'],
 };
 
+// --- Zeke Split branch → variation mapping (Isiah Thomas) ---
+export const ZEKE_SPLIT_VARIATIONS = {
+  scoop: ['SCOOP_LAYUP', 'FINGER_ROLL'],
+  runner: ['RUNNING_JUMPER', 'STOP_AND_POP'],
+  pull_up: ['PULL_UP_JUMPER', 'ONE_DRIBBLE_PULL_UP'],
+  finger_roll: ['FINGER_ROLL', 'SCOOP_LAYUP'],
+};
+
+// --- Pump-Fake Parade branch → variation mapping (Adrian Dantley) ---
+export const PUMP_FAKE_VARIATIONS = {
+  short_jumper: ['SHORT_BANKER', 'FACE_UP_JUMPER'],
+  step_through: ['STEP_THROUGH_LAYUP', 'POWER_LAYUP'],
+  up_and_under: ['STEP_THROUGH_LAYUP', 'SCOOP_LAYUP'],
+  baseline_turnaround: ['BASELINE_FADEAWAY', 'TURNAROUND_JUMPER'],
+};
+
 // --- Per-player shot packages (zone → [variationKey, tier]) ---
 const PLAYER_PACKAGES = {
   // ===== LAKERS =====
@@ -330,6 +346,68 @@ const PLAYER_PACKAGES = {
     mid: [['SPOT_UP_JUMPER','secondary']],
     three: [],
   },
+
+  // ===== PISTONS =====
+  'Isiah Thomas': {
+    rim: [['SCOOP_LAYUP','primary'],['FINGER_ROLL','primary'],['DRIVING_LAYUP','primary'],['FAST_BREAK_LAYUP','primary'],['REVERSE_LAYUP','secondary'],['POWER_LAYUP','secondary']],
+    short_mid: [['STOP_AND_POP','primary'],['RUNNING_JUMPER','primary'],['SHORT_BANKER','secondary']],
+    mid: [['PULL_UP_JUMPER','primary'],['ONE_DRIBBLE_PULL_UP','primary'],['STOP_AND_POP','secondary'],['ELBOW_PULL_UP','secondary']],
+    three: [['SPOT_UP_THREE','rare']],
+  },
+  'Joe Dumars': {
+    rim: [['DRIVING_LAYUP','primary'],['CUTTING_LAYUP','secondary'],['SCOOP_LAYUP','secondary']],
+    short_mid: [['STOP_AND_POP','secondary'],['RUNNING_JUMPER','secondary']],
+    mid: [['SPOT_UP_JUMPER','primary'],['PULL_UP_JUMPER','primary'],['ELBOW_JUMPER','secondary'],['BASELINE_JUMPER','secondary']],
+    three: [['CORNER_THREE','secondary'],['SPOT_UP_THREE','secondary']],
+  },
+  'Adrian Dantley': {
+    rim: [['STEP_THROUGH_LAYUP','primary'],['POWER_LAYUP','primary'],['SCOOP_LAYUP','secondary']],
+    short_mid: [['SHORT_BANKER','primary'],['TURNAROUND_JUMPER','primary'],['BASELINE_FADEAWAY','secondary'],['FACE_UP_JUMPER','secondary']],
+    mid: [['TURNAROUND_JUMPER','secondary'],['BASELINE_FADEAWAY','secondary']],
+    three: [],
+  },
+  'Bill Laimbeer': {
+    rim: [['PUTBACK_LAYUP','primary'],['TIP_IN','secondary'],['STANDING_LAYUP','secondary']],
+    short_mid: [['SHORT_BANKER','primary'],['TURNAROUND_JUMPER','secondary']],
+    mid: [['PICK_AND_POP_JUMPER','primary'],['TRAIL_JUMPER','primary'],['BASELINE_JUMPER','secondary'],['SPOT_UP_JUMPER','secondary']],
+    three: [['TOP_OF_KEY_THREE','rare']],
+  },
+  'Sidney Green': {
+    rim: [['PUTBACK_LAYUP','primary'],['CUTTING_LAYUP','primary'],['DROP_STEP_LAYUP','primary'],['TIP_IN','secondary']],
+    short_mid: [['SHORT_BANKER','secondary'],['FACE_UP_JUMPER','secondary']],
+    mid: [['SPOT_UP_JUMPER','rare']],
+    three: [],
+  },
+  'Vinnie Johnson': {
+    rim: [['DRIVING_LAYUP','primary'],['SCOOP_LAYUP','secondary'],['FAST_BREAK_LAYUP','secondary']],
+    short_mid: [['STOP_AND_POP','primary'],['SHORT_BANKER','secondary'],['RUNNING_JUMPER','secondary']],
+    mid: [['PULL_UP_JUMPER','primary'],['ONE_DRIBBLE_PULL_UP','primary'],['TRANSITION_PULL_UP','secondary'],['SPOT_UP_JUMPER','secondary'],['BASELINE_JUMPER','secondary']],
+    three: [['SPOT_UP_THREE','rare'],['TRANSITION_THREE','rare']],
+  },
+  'Rick Mahorn': {
+    rim: [['PUTBACK_LAYUP','primary'],['POWER_LAYUP','primary'],['DROP_STEP_LAYUP','secondary'],['SHORT_HOOK','secondary']],
+    short_mid: [['SHORT_BANKER','secondary'],['HALF_HOOK','secondary']],
+    mid: [],
+    three: [],
+  },
+  'Dennis Rodman': {
+    rim: [['CUTTING_LAYUP','primary'],['PUTBACK_LAYUP','primary'],['TIP_IN','primary'],['FAST_BREAK_LAYUP','primary'],['RUNNING_DUNK','secondary'],['TAP_IN','secondary']],
+    short_mid: [],
+    mid: [],
+    three: [],
+  },
+  'John Salley': {
+    rim: [['STANDING_DUNK','primary'],['PUTBACK_LAYUP','primary'],['TIP_IN','secondary'],['CUTTING_DUNK','secondary'],['DROP_STEP_LAYUP','secondary']],
+    short_mid: [['SHORT_HOOK','secondary'],['SHORT_BANKER','secondary']],
+    mid: [],
+    three: [],
+  },
+  'Tony Campbell': {
+    rim: [['CUTTING_LAYUP','primary'],['FAST_BREAK_LAYUP','primary'],['DRIVING_LAYUP','secondary']],
+    short_mid: [['FACE_UP_JUMPER','secondary'],['SHORT_BANKER','secondary']],
+    mid: [['SPOT_UP_JUMPER','secondary'],['PULL_UP_JUMPER','secondary']],
+    three: [],
+  },
 };
 
 const DEFAULT_PACKAGE = {
@@ -379,7 +457,7 @@ function resolveVariation(key) {
 
 // Main selection: picks a descriptive variation for the shot.
 // dreamShakeVariant overrides normal selection with a Dream Shake branch.
-export function selectShotVariation(shooter, ctx, dreamShakeVariant) {
+export function selectShotVariation(shooter, ctx, sigVariant, sigFamily = 'dream') {
   const { distToBasket, isThree, isFastBreak, isPutback, shotClock, gameClock } = ctx;
   const zone = getShotZone(distToBasket, isThree);
 
@@ -390,14 +468,20 @@ export function selectShotVariation(shooter, ctx, dreamShakeVariant) {
     return resolveVariation(pickWeightedRaw(pool));
   }
 
-  // 2. Dream Shake override — Akeem's signature branches into specific shots
-  if (dreamShakeVariant) {
-    const dsKeys = (DREAM_SHAKE_VARIATIONS[dreamShakeVariant] || ['TURNAROUND_JUMPER'])
+  // 2. Signature-move override — branches into specific shot variations
+  if (sigVariant) {
+    const variantMap = sigFamily === 'zeke' ? ZEKE_SPLIT_VARIATIONS
+                     : sigFamily === 'pumpfake' ? PUMP_FAKE_VARIATIONS
+                     : DREAM_SHAKE_VARIATIONS;
+    const fallback = sigFamily === 'zeke' ? 'PULL_UP_JUMPER'
+                   : sigFamily === 'pumpfake' ? 'SHORT_BANKER'
+                   : 'TURNAROUND_JUMPER';
+    const sigKeys = (variantMap[sigVariant] || [fallback])
       .filter(k => VARIATIONS[k].zones.includes(zone));
-    const dsKey = dsKeys.length > 0
-      ? dsKeys[Math.floor(Math.random() * dsKeys.length)]
-      : 'TURNAROUND_JUMPER';
-    return resolveVariation(dsKey);
+    const sigKey = sigKeys.length > 0
+      ? sigKeys[Math.floor(Math.random() * sigKeys.length)]
+      : fallback;
+    return resolveVariation(sigKey);
   }
 
   // 3. Desperation — end of shot clock or game clock
