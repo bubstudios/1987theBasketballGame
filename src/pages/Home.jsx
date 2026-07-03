@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useCourtSound } from '@/hooks/useCourtSound';
 import { TRASH_TALK_CLIPS } from '@/lib/trashTalkData';
 import CourtCanvas from '@/components/game/CourtCanvas';
+import TrashTalkBubble from '@/components/game/TrashTalkBubble';
 import Scoreboard from '@/components/game/Scoreboard';
 import GameControls from '@/components/game/GameControls';
 import GameLog from '@/components/game/GameLog';
@@ -26,6 +27,7 @@ export default function Home() {
   const prevVelRef = useRef({});
   const prevStoppedRef = useRef(false);
   const { playSqueak, playWhistle, playTrashTalk, muted, toggleMute } = useCourtSound();
+  const [trashBubble, setTrashBubble] = useState(null);
 
   const urlParams = new URLSearchParams(window.location.search);
   const userTeamKey = urlParams.get('user') || 'lakers';
@@ -46,6 +48,13 @@ export default function Home() {
   useEffect(() => {
     initGame();
   }, [initGame]);
+
+  // Auto-clear the trash-talk bubble after it shows
+  useEffect(() => {
+    if (!trashBubble) return;
+    const t = setTimeout(() => setTrashBubble(null), 2800);
+    return () => clearTimeout(t);
+  }, [trashBubble]);
 
   useEffect(() => {
     const loop = (timestamp) => {
@@ -90,15 +99,17 @@ export default function Home() {
       if (stopped && !prevStoppedRef.current) playWhistle();
       prevStoppedRef.current = stopped;
 
-      // Star trash talk: play a pre-generated clip when a signature move lands
+      // Personality-driven trash talk: show a bubble + play audio if available
       if (updated.pendingTrashTalk) {
-        const clips = TRASH_TALK_CLIPS[updated.pendingTrashTalk];
+        const tt = updated.pendingTrashTalk;
+        setTrashBubble({ ...tt, id: Date.now() });
+        const clips = tt.playerKey && TRASH_TALK_CLIPS[tt.playerKey];
         if (clips && clips.length > 0) {
           const clip = clips[Math.floor(Math.random() * clips.length)];
           playTrashTalk(clip.url);
-          updated.gameLog.unshift(`💬 ${clip.text}`);
-          if (updated.gameLog.length > 15) updated.gameLog.pop();
         }
+        updated.gameLog.unshift(`💬 ${tt.playerName}: "${tt.bubble}"`);
+        if (updated.gameLog.length > 15) updated.gameLog.pop();
         updated.pendingTrashTalk = null;
       }
 
@@ -222,7 +233,14 @@ export default function Home() {
         {/* Zoomed court + compact control sidebar (score/time, play calls, timeouts) */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           <div className="lg:col-span-3">
-            <CourtCanvas gameState={gameState} />
+            <div className="relative">
+              <CourtCanvas gameState={gameState} />
+              {trashBubble && (
+                <div className="absolute top-3 left-0 right-0 z-30 flex justify-center px-4 pointer-events-none">
+                  <TrashTalkBubble key={trashBubble.id} trashTalk={trashBubble} />
+                </div>
+              )}
+            </div>
             <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[10px] text-neutral-500">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: userTeam.colors.primary, border: `1.5px solid ${userAccent}` }} />

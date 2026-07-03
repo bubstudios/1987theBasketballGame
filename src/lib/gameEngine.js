@@ -8,6 +8,7 @@ import { TEAM_DEFENSE_TENDENCIES } from './defenseData';
 import { selectShotVariation } from './shotLexicon';
 import { DUNK_PHRASES } from './dunkPhrases';
 import { checkDreamShake, checkZekeSplit, checkPumpFakeParade, improveContestLevel, updateMicrowaveMode, tickMicrowaveMode } from './signatureMoves';
+import { rollTrashTalk } from './personalityEngine';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -1481,6 +1482,7 @@ function checkDriveFoul(state, carrier, nearestDef, defenders, isFastBreak) {
     carrier.hasBall = false;
     state.ball.carrier = null;
     const fouledOut = commitPersonalFoul(state, carrier);
+    rollTrashTalk(state, nearest, 'charge_drawn');
     state.shotResultDisplay = `Charge on ${carrier.name}!`;
     state.gameLog.unshift(`🦵 Offensive foul on ${carrier.name} (${carrier.fouls})! Turnover.`);
     if (state.gameLog.length > 15) state.gameLog.pop();
@@ -1549,14 +1551,9 @@ function resolveFreeThrowRebound(state, ft) {
   }
 }
 
-// Star trash talk: ~2-3 times per game after a signature move (skyhook, deep three, no-look dime).
-function maybeTriggerTrashTalk(state, playerKey) {
-  if (state.pendingTrashTalk) return;
-  const chances = { kareem: 0.14, bird: 0.45, magic: 0.12, akeem: 0.30, isiah: 0.30 };
-  if (Math.random() < (chances[playerKey] || 0.15)) {
-    state.pendingTrashTalk = playerKey;
-  }
-}
+// Trash talk is personality-driven — see personalityEngine.rollTrashTalk.
+// Decoupled from special moves: a player can have a signature and not talk
+// (Dumars), or be a primary agitator without a scoring special (Mahorn).
 
 function resolveShot(state) {
   const result = state.ball.shotResult;
@@ -1575,6 +1572,7 @@ function resolveShot(state) {
     result.shooter.stats.fga++;
     result.blockedBy.stats.blocks++;
     state.momentum[result.blockedBy.team] += 2;
+    rollTrashTalk(state, result.blockedBy, 'blocked_shot');
     state.ball.lastPasserId = null; // a block voids the potential assist
     const blockOutcome = resolveBlockOutcome(state, result.blockedBy);
     if (blockOutcome.outcome === 'defense_recover') {
@@ -1621,17 +1619,18 @@ function resolveShot(state) {
     result.shooter.stats.fga++;
     result.shooter.stats.points += result.points;
     const varData = result.shotVariation;
-    if (varData && varData.isKareemSignature) maybeTriggerTrashTalk(state, 'kareem');
-    else if (varData && varData.isMagicSignature) maybeTriggerTrashTalk(state, 'magic');
-    else if (state.ball.isDreamShake) maybeTriggerTrashTalk(state, 'akeem');
-    else if (state.ball.isZekeSplit) maybeTriggerTrashTalk(state, 'isiah');
-    else if (result.shooter.name === 'Larry Bird' && result.type === 'three') maybeTriggerTrashTalk(state, 'bird');
+    const isSigScore = !!(varData && (varData.isKareemSignature || varData.isMagicSignature))
+      || state.ball.isDreamShake || state.ball.isZekeSplit
+      || (result.shooter.name === 'Larry Bird' && result.type === 'three');
+    if (isSigScore) rollTrashTalk(state, result.shooter, 'signature_score');
+    else if (result.type === 'dunk') rollTrashTalk(state, result.shooter, 'poster_dunk');
+    else if (result.type === 'three') rollTrashTalk(state, result.shooter, 'big_shot');
     if (state.ball.lastPasserId) {
       const passer = state.players.find(p => p.id === state.ball.lastPasserId);
       if (passer && passer.team === result.shooter.team && passer.id !== result.shooter.id
           && shouldAwardAssist(result.holdTime || 0, result.type)) {
         passer.stats.assists++;
-        if (passer.name === 'Magic Johnson') maybeTriggerTrashTalk(state, 'magic');
+        rollTrashTalk(state, passer, 'signature_score');
       }
     }
     state.ball.lastPasserId = null;
@@ -1658,7 +1657,11 @@ function resolveShot(state) {
   state.shotResultTimer = 1500;
 
   // Microwave Mode: track Vinnie's makes/misses for the heating-up trait
+  const mwWasActive = !!(state.microwaveMode && state.microwaveMode.active);
   updateMicrowaveMode(state, result.shooter, result.made);
+  if (!mwWasActive && state.microwaveMode && state.microwaveMode.active) {
+    rollTrashTalk(state, result.shooter, 'microwave_activate');
+  }
 
   if (state.gameLog.length > 15) state.gameLog.pop();
 
@@ -1700,6 +1703,7 @@ function resolveShot(state) {
       state.ball.carrierHoldTime = 0;
       state.gameLog.unshift(`↑ ${rebounder.name} ${isOffensive ? 'offensive' : 'defensive'} rebound`);
       if (state.gameLog.length > 15) state.gameLog.pop();
+      if (isOffensive) rollTrashTalk(state, rebounder, 'off_rebound_traffic');
 
       if (!isOffensive) {
         // Defensive rebound → transition (may trigger a fast break)
@@ -1736,6 +1740,8 @@ function resolveFouledShot(state, result) {
 
   // Count the personal foul on the defender (+ team foul, with DQ at 6)
   const fouledOut = commitPersonalFoul(state, fouledBy);
+  // Hard foul → the agitator who committed it may run his mouth
+  rollTrashTalk(state, fouledBy, 'hard_foul');
 
   // If the shot was made (and-one), count the basket points now
   if (result.made) {
@@ -1744,17 +1750,18 @@ function resolveFouledShot(state, result) {
     shooter.stats.fga++;
     shooter.stats.points += result.points;
     const varData = result.shotVariation;
-    if (varData && varData.isKareemSignature) maybeTriggerTrashTalk(state, 'kareem');
-    else if (varData && varData.isMagicSignature) maybeTriggerTrashTalk(state, 'magic');
-    else if (state.ball.isDreamShake) maybeTriggerTrashTalk(state, 'akeem');
-    else if (state.ball.isZekeSplit) maybeTriggerTrashTalk(state, 'isiah');
-    else if (shooter.name === 'Larry Bird' && result.type === 'three') maybeTriggerTrashTalk(state, 'bird');
+    const isSigScore = !!(varData && (varData.isKareemSignature || varData.isMagicSignature))
+      || state.ball.isDreamShake || state.ball.isZekeSplit
+      || (shooter.name === 'Larry Bird' && result.type === 'three');
+    if (isSigScore) rollTrashTalk(state, shooter, 'signature_score');
+    else if (result.type === 'dunk') rollTrashTalk(state, shooter, 'poster_dunk');
+    else if (result.type === 'three') rollTrashTalk(state, shooter, 'big_shot');
     if (state.ball.lastPasserId) {
       const passer = state.players.find(p => p.id === state.ball.lastPasserId);
       if (passer && passer.team === shooter.team && passer.id !== shooter.id
           && shouldAwardAssist(result.holdTime || 0, result.type)) {
         passer.stats.assists++;
-        if (passer.name === 'Magic Johnson') maybeTriggerTrashTalk(state, 'magic');
+        rollTrashTalk(state, passer, 'signature_score');
       }
     }
     state.ball.lastPasserId = null;
@@ -1990,6 +1997,7 @@ function executePendingTurnover(state) {
       state.momentum[carrier.team] -= 1;
       const verb = type === 'stripped' ? 'strips' : 'steals from';
       state.gameLog.unshift(`🏀 ${thief.name} ${verb} ${carrier.name}!`);
+      rollTrashTalk(state, thief, 'steal_fastbreak');
       state.turnoverCooldown = 2000;
       switchPossession(state, thief, 'recorded_turnover');
     } else {
