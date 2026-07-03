@@ -5,6 +5,7 @@ import { isInPenalty, applyTeamFoul, foulDrawMult, defenderDisciplineMult, fatig
 import { getTouchWeight, getScoringWeight, getTransitionController, recordCelticsPass, finalizeCelticsPossession } from './starEngine';
 import { mergeDefenseRatings, recomputeMatchups, getPrimaryDefender, getMatchupFor, evaluateContest, computeBlockChance, resolveBlockOutcome, computeStealChance, computeInterceptionChance, decideHelpCommit } from './defenseEngine';
 import { TEAM_DEFENSE_TENDENCIES } from './defenseData';
+import { selectShotVariation } from './shotLexicon';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -1284,7 +1285,7 @@ function checkDreamShake(shooter, distToBasket, nearestDef, isFastBreak) {
   return { contestBoost, variant, defenderBit };
 }
 
-function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
+function takeShot(state, shooter, isOpen, fouledBy, nearestDef, options = {}) {
   // A drawn-up play is consumed once the shot goes up
   if (state.playCall) state.playCall = null;
   // Defensive play calls survive the shot so Crash Boards still affects the rebound
@@ -1305,11 +1306,8 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   state.ball.flightDuration = SHOT_ARC_DURATION;
   state.ball.shotArcPeak = 40 + dist(shooter, basket) * 0.15;
 
-  // Skyhook animation for Kareem's inside shots
-  state.ball.isSkyhook = shooter.name === 'Kareem Abdul-Jabbar' && dist(shooter, basket) < 80;
   state.ball.isMagicPass = false;
   state.ball.isDreamShake = false;
-  if (state.ball.isSkyhook) state.ball.shotArcPeak += 25;
 
   // Calculate make probability
   const d = dist(shooter, basket);
@@ -1330,6 +1328,16 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     state.ball.isDreamShake = true;
     state.ball.dreamShakeVariant = dreamShake.variant;
   }
+
+  // --- Shot variation: pick a descriptive shot type from the player's package ---
+  const variation = selectShotVariation(shooter, {
+    distToBasket: d, isThree: threePtr, isFastBreak: isFb,
+    isPutback: !!(options && options.isPutback), shotClock: state.shotClock, gameClock: state.gameClock,
+  }, dreamShake ? dreamShake.variant : null);
+
+  // Signature move visual flags
+  state.ball.isSkyhook = variation.isKareemSignature || variation.isMagicSignature;
+  if (state.ball.isSkyhook) state.ball.shotArcPeak += 25;
 
   let prob;
 
@@ -1371,12 +1379,13 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   // Fatigue reduces shooting accuracy (up to ~18% drop when exhausted)
   const fatigueFactor = 1 - (shooter.fatigue || 0) / 100 * 0.18;
   prob *= fatigueFactor;
+  prob += variation.probMod;
 
   // Block detection: enhanced — interior defenders + help-side blockers
   let blockedBy = null;
   const helpCommitted = !!(state.helpCommitment);
   if (!fouledBy) {
-    let blockChance = computeBlockChance(d, threePtr, nearestDef && nearestDef.player, shotHelpDef, helpCommitted);
+    let blockChance = computeBlockChance(d, threePtr, nearestDef && nearestDef.player, shotHelpDef, helpCommitted) + variation.blockChanceMod;
     // Dream Shake: extra pivots and ball exposure slightly raise strip risk
     if (dreamShake) blockChance += 0.04;
     if (Math.random() < blockChance) {
@@ -1392,8 +1401,8 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     }
   }
 
-  // Dunk detection: close, uncontested shots can be dunks, weighted by dunkTendency
-  const isDunk = d < 55 && !threePtr && !blockedBy && Math.random() < (shooter.dunkTendency || 3) * 0.08;
+  // Dunk detection: determined by the shot variation's family (DUNK zone only)
+  const isDunk = variation.family === 'DUNK' && d < 65 && !threePtr && !blockedBy;
   state.ball.isDunk = isDunk;
   if (isDunk) {
     state.ball.flightDuration = 350;
@@ -1409,6 +1418,7 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
     fouledBy: fouledBy || null,
     blockedBy: blockedBy || null,
     holdTime: state.ball.carrierHoldTime || 0,
+    shotVariation: variation,
   };
   state.ball.carrierHoldTime = 0;
 
@@ -1641,7 +1651,9 @@ function resolveShot(state) {
     result.shooter.stats.fgm++;
     result.shooter.stats.fga++;
     result.shooter.stats.points += result.points;
-    if (state.ball.isSkyhook) maybeTriggerTrashTalk(state, 'kareem');
+    const varData = result.shotVariation;
+    if (varData && varData.isKareemSignature) maybeTriggerTrashTalk(state, 'kareem');
+    else if (varData && varData.isMagicSignature) maybeTriggerTrashTalk(state, 'magic');
     else if (state.ball.isDreamShake) maybeTriggerTrashTalk(state, 'akeem');
     else if (result.shooter.name === 'Larry Bird' && result.type === 'three') maybeTriggerTrashTalk(state, 'bird');
     if (state.ball.lastPasserId) {
@@ -1653,25 +1665,21 @@ function resolveShot(state) {
       }
     }
     state.ball.lastPasserId = null;
-    if (result.type === 'dunk') {
+    if (varData && varData.family === 'DUNK' && Math.random() < 0.35) {
       const phrase = DUNK_PHRASES[Math.floor(Math.random() * DUNK_PHRASES.length)];
       state.shotResultDisplay = `💥 ${result.shooter.name} ${phrase.display} +${result.points}`;
-      state.gameLog.unshift(`💥 ${result.shooter.name} ${phrase.log} — ${result.points} pts`);
+    } else if (state.ball.isDreamShake) {
+      state.shotResultDisplay = `✨ ${result.shooter.name} DREAM SHAKE — ${varData ? varData.make : 'scores'}! +${result.points}`;
     } else {
-      const desc = result.type === 'three' ? 'three-pointer' : (result.type === 'layup' ? 'layup' : 'jumper');
-      if (state.ball.isDreamShake) {
-        state.shotResultDisplay = `✨ ${result.shooter.name} DREAM SHAKE! +${result.points}`;
-        state.gameLog.unshift(`✨ ${result.shooter.name} Dream Shake! — ${result.points} pts`);
-      } else {
-        state.shotResultDisplay = `${result.shooter.name} hits the ${desc}! +${result.points}`;
-        state.gameLog.unshift(`✓ ${result.shooter.name} ${desc} — ${result.points} pts`);
-      }
+      state.shotResultDisplay = `${result.shooter.name} ${varData ? varData.make : 'scores'}! +${result.points}`;
     }
+    state.gameLog.unshift(`${varData && varData.family === 'DUNK' ? '💥' : '✓'} ${result.shooter.name} ${varData ? varData.log : 'scores'} — ${result.points} pts`);
   } else {
     result.shooter.stats.fga++;
     state.momentum[result.shooter.team] -= 0.5;
-    state.shotResultDisplay = `${result.shooter.name} misses!`;
-    state.gameLog.unshift(`✗ ${result.shooter.name} misses`);
+    const varData = result.shotVariation;
+    state.shotResultDisplay = `${result.shooter.name} misses the ${varData ? varData.miss : 'shot'}`;
+    state.gameLog.unshift(`✗ ${result.shooter.name} misses the ${varData ? varData.miss : 'shot'}`);
   }
   state.shotResultTimer = 1500;
 
@@ -1740,7 +1748,7 @@ function resolveShot(state) {
   state.ball.shotResult = null;
 
   if (pendingPutback) {
-    takeShot(state, pendingPutback.rebounder, pendingPutback.nd > 50, null, { player: pendingPutback.nearest, dist: pendingPutback.nd });
+    takeShot(state, pendingPutback.rebounder, pendingPutback.nd > 50, null, { player: pendingPutback.nearest, dist: pendingPutback.nd }, { isPutback: true });
     state.actionTimer = 1200;
   }
 }
@@ -1758,7 +1766,9 @@ function resolveFouledShot(state, result) {
     shooter.stats.fgm++;
     shooter.stats.fga++;
     shooter.stats.points += result.points;
-    if (state.ball.isSkyhook) maybeTriggerTrashTalk(state, 'kareem');
+    const varData = result.shotVariation;
+    if (varData && varData.isKareemSignature) maybeTriggerTrashTalk(state, 'kareem');
+    else if (varData && varData.isMagicSignature) maybeTriggerTrashTalk(state, 'magic');
     else if (state.ball.isDreamShake) maybeTriggerTrashTalk(state, 'akeem');
     else if (shooter.name === 'Larry Bird' && result.type === 'three') maybeTriggerTrashTalk(state, 'bird');
     if (state.ball.lastPasserId) {
@@ -1796,10 +1806,10 @@ function resolveFouledShot(state, result) {
     fouledOut: fouledOut,
   };
 
-  const desc = result.type === 'three' ? 'three-pointer' : (result.type === 'layup' ? 'layup' : 'jumper');
+  const varData = result.shotVariation;
   if (result.made) {
-    state.shotResultDisplay = `${shooter.name} hits the ${desc} + foul! AND1!`;
-    state.gameLog.unshift(`✓ ${shooter.name} ${desc} + foul on ${fouledBy.name} (${fouledBy.fouls})! +${result.points}`);
+    state.shotResultDisplay = `${shooter.name} ${varData ? varData.make : 'scores'} + foul! AND1!`;
+    state.gameLog.unshift(`✓ ${shooter.name} ${varData ? varData.log : 'basket'} + foul on ${fouledBy.name} (${fouledBy.fouls})! +${result.points}`);
   } else {
     state.shotResultDisplay = `Foul on ${fouledBy.name} (${fouledBy.fouls})! ${shooter.name} to the line for ${ftCount}`;
     state.gameLog.unshift(`🦵 Foul on ${fouledBy.name} (${fouledBy.fouls}) — ${shooter.name} to the line for ${ftCount}`);
