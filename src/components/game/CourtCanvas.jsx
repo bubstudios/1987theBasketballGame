@@ -236,6 +236,20 @@ function drawBall(ctx, ball, tf) {
       ctx.arc(tx, ty, 1.2, 0, Math.PI * 2);
       ctx.fill();
     }
+    // No-look pass — floating "NO-LOOK! 👀" label that rides the trail
+    if (ball.isNoLookPass && ball.inFlight) {
+      const elapsed = Date.now() - ball.flightStart;
+      const t = Math.min(elapsed / ball.flightDuration, 1);
+      const labelT = clamp(t - 0.15, 0, 1);
+      const lx = sx_of(tf, lerp(ball.startX, ball.targetX, labelT));
+      const ly = sy_of(tf, lerp(ball.startY, ball.targetY, labelT));
+      const floatY = ly - 16 - Math.sin(Date.now() * 0.004) * 3;
+      ctx.fillStyle = 'rgba(180, 140, 255, 0.95)';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('NO-LOOK! 👀', lx, floatY);
+    }
     ctx.shadowColor = '#b48cff';
     ctx.shadowBlur = 16;
   }
@@ -278,6 +292,30 @@ function drawBall(ctx, ball, tf) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('SKYHOOK!', x, ballY - 18);
+  }
+
+  // Bird's signature deep three — green three-point burst + "FROM DOWNTOWN!" label
+  if (ball.isBirdThree && ball.inFlight) {
+    const ballY = y - arcOffset;
+    const time = Date.now() * 0.005;
+    // Expanding green ring + sparkles
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + time * 0.5;
+      const sr = 18 + Math.sin(time * 2 + i) * 5;
+      const px = x + Math.cos(angle) * sr;
+      const py = ballY + Math.sin(angle) * sr;
+      const alpha = 0.5 + Math.sin(time * 2 + i) * 0.3;
+      ctx.fillStyle = `rgba(34, 197, 94, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // "3" emoji halo
+    ctx.fillStyle = 'rgba(34, 197, 94, 0.95)';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('FROM DOWNTOWN! 3️⃣', x, ballY - 20);
   }
 
   // Dunk effect — motion trail + rim flash on impact

@@ -597,6 +597,7 @@ function updateBallFlight(state, dt) {
   state.ball.passerId = null;
   state.ball.flightElapsed = 0;
   state.ball.isShot = false;
+  state.ball.isNoLookPass = false;
 }
 
 function updateMotionOffense(state, offensePlayers, ballCarrier, dt) {
@@ -1169,9 +1170,11 @@ function makePass(state, passer, receiver) {
   const d = dist(passer, receiver);
   state.ball.flightDuration = Math.max(180, (d / PASS_SPEED) * 16.67);
 
-  // Magic's special long passes get the magical trail effect
+  // Magic's special long passes get the magical trail effect + no-look label
   state.ball.isMagicPass = passer.name === 'Magic Johnson' && d > 180;
+  state.ball.isNoLookPass = state.ball.isMagicPass && Math.random() < 0.5;
   state.ball.isSkyhook = false;
+  state.ball.isBirdThree = false;
   state.ball.isDunk = false;
   state.ball.lastPasserId = passer.id;
   recordCelticsPass(state, receiver);
@@ -1203,6 +1206,8 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
 
   // Skyhook animation for Kareem's inside shots
   state.ball.isSkyhook = shooter.name === 'Kareem Abdul-Jabbar' && dist(shooter, basket) < 80;
+  // Bird's signature deep three — triggers the downtown burst
+  state.ball.isBirdThree = shooter.name === 'Larry Bird' && threePtr;
   state.ball.isMagicPass = false;
   if (state.ball.isSkyhook) state.ball.shotArcPeak += 25;
 
