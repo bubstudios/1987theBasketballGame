@@ -31,6 +31,20 @@ export const CELTICS_DEFENSE = {
   'Greg Kite':            { perimeterDef: 31, postDef: 86, helpDef: 77, screenNav: 40, stealDef: 39, blockDef: 75, dRebound: 87, discipline: 58, versatility: 45, transitionDef: 45 },
 };
 
+// 1986-87 Houston Rockets — elite interior length, rim protection, help defense.
+export const ROCKETS_DEFENSE = {
+  'Akeem Olajuwon':    { perimeterDef: 70, postDef: 97, helpDef: 99, screenNav: 45, stealDef: 92, blockDef: 99, dRebound: 96, discipline: 74, versatility: 95, transitionDef: 55 },
+  'Ralph Sampson':     { perimeterDef: 65, postDef: 90, helpDef: 92, screenNav: 48, stealDef: 69, blockDef: 90, dRebound: 92, discipline: 70, versatility: 84, transitionDef: 60 },
+  'Rodney McCray':     { perimeterDef: 95, postDef: 88, helpDef: 95, screenNav: 88, stealDef: 84, blockDef: 78, dRebound: 89, discipline: 95, versatility: 99, transitionDef: 92 },
+  'Robert Reid':       { perimeterDef: 88, postDef: 82, helpDef: 87, screenNav: 84, stealDef: 80, blockDef: 54, dRebound: 72, discipline: 89, versatility: 93, transitionDef: 82 },
+  'Dirk Minniefield':  { perimeterDef: 82, postDef: 38, helpDef: 75, screenNav: 80, stealDef: 86, blockDef: 24, dRebound: 45, discipline: 74, versatility: 70, transitionDef: 84 },
+  'Allen Leavell':     { perimeterDef: 80, postDef: 34, helpDef: 74, screenNav: 78, stealDef: 87, blockDef: 28, dRebound: 32, discipline: 86, versatility: 68, transitionDef: 80 },
+  'Lewis Lloyd':       { perimeterDef: 76, postDef: 68, helpDef: 72, screenNav: 72, stealDef: 67, blockDef: 42, dRebound: 42, discipline: 74, versatility: 79, transitionDef: 84 },
+  'Mitchell Wiggins':  { perimeterDef: 89, postDef: 58, helpDef: 83, screenNav: 82, stealDef: 93, blockDef: 24, dRebound: 77, discipline: 77, versatility: 86, transitionDef: 90 },
+  'Jim Petersen':      { perimeterDef: 56, postDef: 85, helpDef: 89, screenNav: 50, stealDef: 58, blockDef: 88, dRebound: 92, discipline: 78, versatility: 69, transitionDef: 58 },
+  'Buck Johnson':      { perimeterDef: 74, postDef: 72, helpDef: 79, screenNav: 68, stealDef: 73, blockDef: 76, dRebound: 69, discipline: 70, versatility: 80, transitionDef: 76 },
+};
+
 // Team defensive tendency multipliers (1.0 = league baseline).
 // Lakers: active, opportunistic, gambling, fast-break-creating.
 // Celtics: structured, physical, disciplined, rim-protecting.
@@ -57,6 +71,19 @@ export const TEAM_DEFENSE_TENDENCIES = {
     foulAggression: 0.94,
     halfcourtDiscipline: 1.15,
   },
+  // Rockets: elite rim protection, high help defense, strong defensive rebounding,
+  // moderate pressure and switching. Funnel drives toward the Twin Towers.
+  rockets: {
+    stealAttemptFreq: 1.05,
+    passingLaneDenial: 1.00,
+    hardDoubleFreq: 0.95,
+    helpAtRim: 1.20,
+    fullSwitching: 0.80,
+    dropCoverageCenter: 1.15,
+    defRebEmphasis: 1.10,
+    foulAggression: 1.00,
+    halfcourtDiscipline: 1.05,
+  },
 };
 
 // Default man-to-man matchups: defenseTeam → { offenseName: defenderName }
@@ -68,6 +95,12 @@ export const DEFAULT_MATCHUPS = {
     'James Worthy': 'Larry Bird',
     'A.C. Green': 'Kevin McHale',
     'Kareem Abdul-Jabbar': 'Robert Parish',
+    // vs Rockets
+    'Akeem Olajuwon': 'Robert Parish',
+    'Ralph Sampson': 'Kevin McHale',
+    'Rodney McCray': 'Larry Bird',
+    'Robert Reid': 'Danny Ainge',
+    'Dirk Minniefield': 'Dennis Johnson',
   },
   // Lakers defending Celtics
   lakers: {
@@ -76,6 +109,27 @@ export const DEFAULT_MATCHUPS = {
     'Larry Bird': 'Michael Cooper',
     'Kevin McHale': 'A.C. Green',
     'Robert Parish': 'Kareem Abdul-Jabbar',
+    // vs Rockets
+    'Akeem Olajuwon': 'Kareem Abdul-Jabbar',
+    'Ralph Sampson': 'A.C. Green',
+    'Rodney McCray': 'James Worthy',
+    'Robert Reid': 'Byron Scott',
+    'Dirk Minniefield': 'Magic Johnson',
+  },
+  // Rockets defending (covers both Lakers and Celtics offenses)
+  rockets: {
+    // vs Lakers
+    'Magic Johnson': 'Robert Reid',
+    'Byron Scott': 'Dirk Minniefield',
+    'James Worthy': 'Rodney McCray',
+    'A.C. Green': 'Ralph Sampson',
+    'Kareem Abdul-Jabbar': 'Akeem Olajuwon',
+    // vs Celtics
+    'Dennis Johnson': 'Dirk Minniefield',
+    'Danny Ainge': 'Robert Reid',
+    'Larry Bird': 'Rodney McCray',
+    'Kevin McHale': 'Ralph Sampson',
+    'Robert Parish': 'Akeem Olajuwon',
   },
 };
 
@@ -85,4 +139,12 @@ export const SCHEME_WEIGHTS = {
   help: 0.20,
   scheme: 0.15,
   matchup: 0.10,
+};
+
+// Registry mapping team key → defensive rating profiles.
+// Extensible: add a new team's defense map here.
+export const TEAM_DEFENSE_MAP = {
+  lakers: LAKERS_DEFENSE,
+  celtics: CELTICS_DEFENSE,
+  rockets: ROCKETS_DEFENSE,
 };

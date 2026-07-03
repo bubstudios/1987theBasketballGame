@@ -1,8 +1,8 @@
 // 1986-87 Lakers and Celtics rosters with real attributes
 // Speed: 1-10 scale, Height in inches, Skills rated 1-10
 
-import { LAKERS_BENCH, CELTICS_BENCH } from './benchData';
-export { LAKERS_BENCH, CELTICS_BENCH };
+import { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH } from './benchData';
+export { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH };
 
 export const LAKERS_ROSTER = [
   {
@@ -270,6 +270,140 @@ export const CELTICS_ROSTER = [
   },
 ];
 
+// 1986-87 Houston Rockets (full-strength exhibition roster)
+export const ROCKETS_ROSTER = [
+  {
+    name: "Dirk Minniefield",
+    number: 10,
+    position: "PG",
+    height: 73, // 6'1"
+    speed: 8,
+    driveTendency: 6, // drive-to-pass point guard, organizes Twin Towers
+    dunkTendency: 1, // too short to dunk
+    shooting: 6,
+    passing: 9,
+    defense: 6,
+    rebounding: 3,
+    insideScoring: 4,
+    threePoint: 5,
+    threeAttempts: 0.8,
+    threePct: 0.300,
+    twoAttempts: 6.2,
+    twoPct: 0.442,
+    offensiveRebRate: 0.015,
+    defensiveRebRate: 0.060,
+    stealRate: 0.024,
+    turnoverRate: 0.140,
+    ftAttempts: 1.5,
+    ftPct: 0.709,
+    blockRate: 0.003,
+  },
+  {
+    name: "Robert Reid",
+    number: 33,
+    position: "SG",
+    height: 80, // 6'8"
+    speed: 7,
+    driveTendency: 5, // veteran secondary handler, midrange shooter
+    dunkTendency: 4, // occasional dunker
+    shooting: 8,
+    passing: 8,
+    defense: 7,
+    rebounding: 5,
+    insideScoring: 7,
+    threePoint: 7, // period-appropriate open threes, occasional weapon
+    threeAttempts: 1.0,
+    threePct: 0.320,
+    twoAttempts: 11.5,
+    twoPct: 0.460,
+    offensiveRebRate: 0.030,
+    defensiveRebRate: 0.100,
+    stealRate: 0.018,
+    turnoverRate: 0.100,
+    ftAttempts: 2.0,
+    ftPct: 0.768,
+    blockRate: 0.006,
+  },
+  {
+    name: "Rodney McCray",
+    number: 22,
+    position: "SF",
+    height: 79, // 6'7"
+    speed: 8,
+    driveTendency: 7, // point-forward, drives when lanes overplay
+    dunkTendency: 5, // athletic finisher
+    shooting: 6,
+    passing: 9,
+    defense: 9, // All-Defensive Second Team
+    rebounding: 8,
+    insideScoring: 7,
+    threePoint: 3,
+    threeAttempts: 0.2,
+    threePct: 0.250,
+    twoAttempts: 9.3,
+    twoPct: 0.474,
+    offensiveRebRate: 0.060,
+    defensiveRebRate: 0.170,
+    stealRate: 0.024,
+    turnoverRate: 0.130,
+    ftAttempts: 5.0,
+    ftPct: 0.779,
+    blockRate: 0.012,
+  },
+  {
+    name: "Ralph Sampson",
+    number: 50,
+    position: "PF",
+    height: 88, // 7'4"
+    speed: 6, // unusually mobile for his size
+    driveTendency: 5, // face-up attacker from the high post
+    dunkTendency: 6, // lob threat and rim finisher
+    shooting: 8,
+    passing: 6,
+    defense: 8,
+    rebounding: 9,
+    insideScoring: 9,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 13.5,
+    twoPct: 0.486,
+    offensiveRebRate: 0.085,
+    defensiveRebRate: 0.220,
+    stealRate: 0.013,
+    turnoverRate: 0.140,
+    ftAttempts: 5.0,
+    ftPct: 0.624,
+    blockRate: 0.025,
+  },
+  {
+    name: "Akeem Olajuwon",
+    number: 34,
+    position: "C",
+    height: 84, // 7'0"
+    speed: 7, // remarkably agile for a center
+    driveTendency: 7, // face-up and post attacker
+    dunkTendency: 9, // powerful rim finisher
+    shooting: 8, // excellent mid-range touch for a big
+    passing: 5,
+    defense: 9, // All-Defensive First Team
+    rebounding: 10,
+    insideScoring: 10,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 18.0,
+    twoPct: 0.523,
+    offensiveRebRate: 0.120,
+    defensiveRebRate: 0.255,
+    stealRate: 0.029,
+    turnoverRate: 0.125,
+    ftAttempts: 8.0,
+    ftPct: 0.702,
+    blockRate: 0.045,
+  },
+];
+
 // Court dimensions (scaled for canvas)
 export const COURT = {
   width: 940,   // 94 feet * 10
@@ -300,15 +434,25 @@ export const TEAM_COLORS = {
     name: "Celtics",
     abbr: "BOS",
   },
+  rockets: {
+    primary: "#C8102E",
+    secondary: "#FFB81C",
+    text: "#FFFFFF",
+    name: "Rockets",
+    abbr: "HOU",
+  },
 };
 
 // Team-level fast break tendency (1-10 scale)
 // Based on 1986-87 pace, steals, and transition play research:
 // - Lakers: Showtime — elite transition team (Pace 101.6, 8.9 SPG, Magic-led)
 // - Celtics: deliberate half-court offense (Pace 98.6, 6.8 SPG, K.C. Jones system)
+// - Rockets: moderate pace (Pace ~99.9), Twin Towers interior offense,
+//   strong offensive rebounding — not a transition-first team
 export const TEAM_FAST_BREAK = {
   lakers: 9,
   celtics: 4,
+  rockets: 5,
 };
 
 // Central team registry — the single source of truth for the team selection page.
@@ -327,6 +471,12 @@ export const TEAMS = {
     roster: CELTICS_ROSTER,
     bench: CELTICS_BENCH,
   },
+  rockets: {
+    colors: TEAM_COLORS.rockets,
+    fastBreak: TEAM_FAST_BREAK.rockets,
+    roster: ROCKETS_ROSTER,
+    bench: ROCKETS_BENCH,
+  },
 };
 
 // Minutes per game (1986-87 regular season) — drives fatigue & stamina
@@ -341,10 +491,16 @@ export const PLAYER_MPG = {
   'Kevin McHale': 39.7, 'Robert Parish': 37.4,
   'Jerry Sichting': 20.1, 'Bill Walton': 11.2, 'Fred Roberts': 14.8,
   'Darren Daye': 11.9, 'Greg Kite': 10.1,
+  // Rockets (full-strength 10-man rotation targets)
+  'Akeem Olajuwon': 36, 'Ralph Sampson': 31, 'Rodney McCray': 36,
+  'Robert Reid': 31, 'Dirk Minniefield': 24, 'Jim Petersen': 22,
+  'Allen Leavell': 20, 'Lewis Lloyd': 16, 'Mitchell Wiggins': 16,
+  'Buck Johnson': 8,
 };
 
 // Franchise stars — tolerate more fatigue, stay on the floor longer
 export const STAR_PLAYERS = new Set([
   'Magic Johnson', 'Kareem Abdul-Jabbar', 'James Worthy',
   'Larry Bird', 'Kevin McHale', 'Robert Parish',
+  'Akeem Olajuwon', 'Ralph Sampson', 'Rodney McCray',
 ]);

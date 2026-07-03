@@ -141,6 +141,71 @@ const PLAYER_ROLES = {
     creation: 15, offReb: 80,
     fgaTarget: 1.5, mpgExpected: 10.1,
   },
+  // --- Rockets ---
+  // Houston: Akeem is the unquestioned primary scorer (Twin Towers interior
+  // offense). McCray is the point-forward who connects the offense and defense
+  // without high shot volume. Minniefield/Leavell organize; Reid is the veteran
+  // secondary handler. Lloyd supplies bench scoring. Ratings out of 99.
+  'Akeem Olajuwon': {
+    team: 'rockets', starRole: 'post_star',
+    initiation: 30, finishing: 99, offBall: 90, transition: 45,
+    creation: 58, offReb: 99, clutchPriority: 96,
+    fgaTarget: 18.0, mpgExpected: 36,
+  },
+  'Ralph Sampson': {
+    team: 'rockets', starRole: 'post_star',
+    initiation: 45, finishing: 91, offBall: 88, transition: 70,
+    creation: 64, offReb: 87, clutchPriority: 90,
+    fgaTarget: 13.5, mpgExpected: 31,
+  },
+  'Rodney McCray': {
+    team: 'rockets', starRole: 'organizer',
+    initiation: 92, finishing: 76, offBall: 90, transition: 92,
+    creation: 94, offReb: 82, clutchPriority: 88,
+    fgaTarget: 9.5, mpgExpected: 36,
+  },
+  'Robert Reid': {
+    team: 'rockets',
+    initiation: 84, finishing: 82, offBall: 88, transition: 84,
+    creation: 84, offReb: 36,
+    fgaTarget: 12.5, mpgExpected: 31,
+  },
+  'Dirk Minniefield': {
+    team: 'rockets', starRole: 'organizer',
+    initiation: 96, finishing: 58, offBall: 60, transition: 88,
+    creation: 91, offReb: 22,
+    fgaTarget: 7.0, mpgExpected: 24,
+  },
+  'Allen Leavell': {
+    team: 'rockets',
+    initiation: 93, finishing: 68, offBall: 70, transition: 82,
+    creation: 89, offReb: 18,
+    fgaTarget: 6.0, mpgExpected: 20,
+  },
+  'Lewis Lloyd': {
+    team: 'rockets',
+    initiation: 66, finishing: 90, offBall: 85, transition: 88,
+    creation: 66, offReb: 28,
+    fgaTarget: 7.5, mpgExpected: 16,
+  },
+  'Mitchell Wiggins': {
+    team: 'rockets',
+    initiation: 60, finishing: 83, offBall: 88, transition: 90,
+    creation: 62, offReb: 92,
+    fgaTarget: 7.0, mpgExpected: 16,
+  },
+  'Jim Petersen': {
+    team: 'rockets',
+    initiation: 24, finishing: 72, offBall: 75, transition: 50,
+    creation: 36, offReb: 89,
+    fgaTarget: 7.0, mpgExpected: 22,
+  },
+  'Buck Johnson': {
+    team: 'rockets',
+    initiation: 24, finishing: 58, offBall: 78, transition: 82,
+    creation: 38, offReb: 78,
+    fgaTarget: 3.0, mpgExpected: 8,
+  },
 };
 
 function getRole(player) {
@@ -191,6 +256,37 @@ function getAdjustedRole(state, player) {
     if (!birdOn && player.name === 'Darren Daye') {
       adjusted.offBall = 90;
       adjusted.finishing = 70;
+    }
+  }
+
+  if (team === 'rockets') {
+    const minniefieldOn = state.players.some(p => p.name === 'Dirk Minniefield' && p.team === team && p.onCourt);
+    const leavellOn = state.players.some(p => p.name === 'Allen Leavell' && p.team === team && p.onCourt);
+    const akeemOn = state.players.some(p => p.name === 'Akeem Olajuwon' && p.team === team && p.onCourt);
+    const sampsonOn = state.players.some(p => p.name === 'Ralph Sampson' && p.team === team && p.onCourt);
+
+    // Leavell becomes the primary organizer when Minniefield rests
+    if (!minniefieldOn && player.name === 'Allen Leavell') {
+      adjusted.initiation = 96;
+      adjusted.creation = 92;
+    }
+
+    // Both point guards out — McCray and Reid take over initiation
+    if (!minniefieldOn && !leavellOn) {
+      if (player.name === 'Rodney McCray') {
+        adjusted.initiation = 96;
+        adjusted.creation = 95;
+      }
+      if (player.name === 'Robert Reid') {
+        adjusted.initiation = 90;
+        adjusted.creation = 88;
+      }
+    }
+
+    // Both Twin Towers resting — Lloyd becomes a major second-unit finisher
+    if (!akeemOn && !sampsonOn && player.name === 'Lewis Lloyd') {
+      adjusted.finishing = 94;
+      adjusted.initiation = 78;
     }
   }
 

@@ -9,7 +9,7 @@
 
 import { COURT } from './gameData';
 import {
-  LAKERS_DEFENSE, CELTICS_DEFENSE,
+  TEAM_DEFENSE_MAP,
   TEAM_DEFENSE_TENDENCIES, DEFAULT_MATCHUPS, SCHEME_WEIGHTS,
 } from './defenseData';
 
@@ -43,7 +43,7 @@ function getTeamTendency(team, key) {
 
 // Merge defensive ratings into roster player objects at game init.
 export function mergeDefenseRatings(players, teamKey) {
-  const defMap = teamKey === 'lakers' ? LAKERS_DEFENSE : CELTICS_DEFENSE;
+  const defMap = TEAM_DEFENSE_MAP[teamKey] || {};
   players.forEach(p => {
     const d = defMap[p.name];
     if (d) Object.assign(p, d);

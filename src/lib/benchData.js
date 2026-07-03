@@ -267,3 +267,137 @@ export const CELTICS_BENCH = [
     blockRate: 0.048,
   },
 ];
+
+// 1986-87 Houston Rockets bench (full-strength exhibition roster)
+export const ROCKETS_BENCH = [
+  {
+    name: "Allen Leavell",
+    number: 30,
+    position: "PG",
+    height: 73, // 6'1"
+    speed: 7,
+    driveTendency: 6, // penetrate-and-pass, ball-security specialist
+    dunkTendency: 1, // too short to dunk
+    shooting: 7,
+    passing: 9,
+    defense: 6,
+    rebounding: 2,
+    insideScoring: 4,
+    threePoint: 5,
+    threeAttempts: 0.7,
+    threePct: 0.290,
+    twoAttempts: 5.3,
+    twoPct: 0.460,
+    offensiveRebRate: 0.010,
+    defensiveRebRate: 0.040,
+    stealRate: 0.024,
+    turnoverRate: 0.110,
+    ftAttempts: 2.0,
+    ftPct: 0.840,
+    blockRate: 0.003,
+  },
+  {
+    name: "Lewis Lloyd",
+    number: 32,
+    position: "SG",
+    height: 78, // 6'6"
+    speed: 8,
+    driveTendency: 8, // aggressive bench scorer, attacks gaps
+    dunkTendency: 6, // athletic finisher
+    shooting: 8,
+    passing: 6,
+    defense: 6,
+    rebounding: 4,
+    insideScoring: 7,
+    threePoint: 2,
+    threeAttempts: 0.1,
+    threePct: 0.200,
+    twoAttempts: 7.4,
+    twoPct: 0.475,
+    offensiveRebRate: 0.025,
+    defensiveRebRate: 0.060,
+    stealRate: 0.018,
+    turnoverRate: 0.120,
+    ftAttempts: 2.0,
+    ftPct: 0.756,
+    blockRate: 0.005,
+  },
+  {
+    name: "Mitchell Wiggins",
+    number: 15,
+    position: "SG",
+    height: 77, // 6'5"
+    speed: 8,
+    driveTendency: 8, // athletic slasher and transition threat
+    dunkTendency: 5, // explosive leaper
+    shooting: 7,
+    passing: 6,
+    defense: 7,
+    rebounding: 7, // exceptional guard rebounder (Guard Crasher)
+    insideScoring: 7,
+    threePoint: 1,
+    threeAttempts: 0.1,
+    threePct: 0.200,
+    twoAttempts: 6.9,
+    twoPct: 0.489,
+    offensiveRebRate: 0.060, // crashes the offensive glass far more than a typical guard
+    defensiveRebRate: 0.100,
+    stealRate: 0.025,
+    turnoverRate: 0.120,
+    ftAttempts: 2.0,
+    ftPct: 0.754,
+    blockRate: 0.003,
+  },
+  {
+    name: "Jim Petersen",
+    number: 43,
+    position: "C",
+    height: 83, // 6'11"
+    speed: 5,
+    driveTendency: 3, // interior support scorer, not a driver
+    dunkTendency: 4, // put-back dunks
+    shooting: 7,
+    passing: 4,
+    defense: 7,
+    rebounding: 8,
+    insideScoring: 7,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 7.0,
+    twoPct: 0.463,
+    offensiveRebRate: 0.075,
+    defensiveRebRate: 0.180,
+    stealRate: 0.012,
+    turnoverRate: 0.130,
+    ftAttempts: 2.0,
+    ftPct: 0.727,
+    blockRate: 0.025,
+  },
+  {
+    name: "Buck Johnson",
+    number: 1,
+    position: "SF",
+    height: 79, // 6'7"
+    speed: 7,
+    driveTendency: 6, // athletic cutter and runner
+    dunkTendency: 4, // energy finishes
+    shooting: 5,
+    passing: 4,
+    defense: 7,
+    rebounding: 6,
+    insideScoring: 5,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 3.0,
+    twoPct: 0.462,
+    offensiveRebRate: 0.050,
+    defensiveRebRate: 0.080,
+    stealRate: 0.016,
+    turnoverRate: 0.140,
+    ftAttempts: 1.0,
+    ftPct: 0.690,
+    blockRate: 0.015,
+  },
+];
