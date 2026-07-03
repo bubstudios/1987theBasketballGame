@@ -1206,14 +1206,14 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
 
   // Skyhook animation for Kareem's inside shots
   state.ball.isSkyhook = shooter.name === 'Kareem Abdul-Jabbar' && dist(shooter, basket) < 80;
-  // Bird's signature deep three — triggers the downtown burst
-  state.ball.isBirdThree = shooter.name === 'Larry Bird' && threePtr;
   state.ball.isMagicPass = false;
   if (state.ball.isSkyhook) state.ball.shotArcPeak += 25;
 
   // Calculate make probability
   const d = dist(shooter, basket);
   const threePtr = isThreePointer(shooter.x, shooter.y, state.attackingRight);
+  // Bird's signature deep three — triggers the downtown burst
+  state.ball.isBirdThree = shooter.name === 'Larry Bird' && threePtr;
   const defenseTeam = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
   const shotDefensePlayers = getOnCourtPlayers(state, defenseTeam);
   const isFb = !!(state.fastBreak && state.fastBreak.active);
