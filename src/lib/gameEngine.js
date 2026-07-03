@@ -1176,11 +1176,57 @@ function makePass(state, passer, receiver) {
   state.ball.isSkyhook = false;
   state.ball.isBirdThree = false;
   state.ball.isDunk = false;
+  state.ball.isDreamShake = false;
   state.ball.lastPasserId = passer.id;
   recordCelticsPass(state, receiver);
 
   state.gameLog.unshift(`${passer.name} passes to ${receiver.name}`);
   if (state.gameLog.length > 15) state.gameLog.pop();
+}
+
+// Contest levels ordered best→worst for the offense (used by Dream Shake)
+const CONTEST_ORDER = ['wide_open', 'open', 'light_contest', 'tight', 'smothered'];
+
+function improveContestLevel(level, steps) {
+  const idx = CONTEST_ORDER.indexOf(level);
+  if (idx < 0) return level;
+  return CONTEST_ORDER[Math.max(0, idx - steps)];
+}
+
+// Akeem Olajuwon's Dream Shake — signature post-move decision tree.
+// Not one fixed animation, but a sequence of fakes, pivots, and spins that
+// reacts to the defender. Triggers on ~18% of Akeem's post scoring actions
+// (6-12 ft, half-court only). Improves shot quality by 1-2 contest levels
+// (defender bites), boosts foul-drawing, and slightly raises block risk.
+function checkDreamShake(shooter, distToBasket, nearestDef, isFastBreak) {
+  if (shooter.name !== 'Akeem Olajuwon') return null;
+  if (isFastBreak) return null;
+  // Low/mid post only (6-12 ft ≈ 55-125 px). Excludes dunks (d < 55).
+  if (distToBasket < 55 || distToBasket > 125) return null;
+
+  if (Math.random() > 0.18) return null;
+
+  // Defender quality determines how badly he bites on the fakes
+  const defPostRating = (nearestDef && nearestDef.player && nearestDef.player.postDef) || 50;
+  let contestBoost;
+  let defenderBit;
+  if (defPostRating >= 85) {
+    // Elite post defender stays balanced — only 1 level improvement
+    contestBoost = 1;
+    defenderBit = false;
+  } else if (defPostRating < 65) {
+    // Poor/aggressive defender bites hard — 2 levels, high foul chance
+    contestBoost = 2;
+    defenderBit = true;
+  } else {
+    contestBoost = Math.random() < 0.5 ? 1 : 2;
+    defenderBit = contestBoost === 2;
+  }
+
+  const variants = ['baseline_spin', 'middle_hook', 'up_and_under', 'turnaround', 'step_through'];
+  const variant = variants[Math.floor(Math.random() * variants.length)];
+
+  return { contestBoost, variant, defenderBit };
 }
 
 function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
@@ -1207,6 +1253,7 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   // Skyhook animation for Kareem's inside shots
   state.ball.isSkyhook = shooter.name === 'Kareem Abdul-Jabbar' && dist(shooter, basket) < 80;
   state.ball.isMagicPass = false;
+  state.ball.isDreamShake = false;
   if (state.ball.isSkyhook) state.ball.shotArcPeak += 25;
 
   // Calculate make probability
@@ -1217,7 +1264,18 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   const defenseTeam = state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
   const shotDefensePlayers = getOnCourtPlayers(state, defenseTeam);
   const isFb = !!(state.fastBreak && state.fastBreak.active);
-  const { level: contestLevel, helpDef: shotHelpDef } = evaluateContest(state, shooter, nearestDef, shotDefensePlayers, d, isFb);
+  let { level: contestLevel, helpDef: shotHelpDef } = evaluateContest(state, shooter, nearestDef, shotDefensePlayers, d, isFb);
+
+  // --- Dream Shake: Akeem's signature post-move decision tree ---
+  // Improves shot quality by 1-2 contest levels (defender bites on fakes/spins),
+  // then boosts foul-drawing and slightly raises block risk below.
+  const dreamShake = checkDreamShake(shooter, d, nearestDef, isFb);
+  if (dreamShake) {
+    contestLevel = improveContestLevel(contestLevel, dreamShake.contestBoost);
+    state.ball.isDreamShake = true;
+    state.ball.dreamShakeVariant = dreamShake.variant;
+  }
+
   let prob;
 
   if (d < 60) {
@@ -1256,9 +1314,19 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef) {
   let blockedBy = null;
   const helpCommitted = !!(state.helpCommitment);
   if (!fouledBy) {
-    const blockChance = computeBlockChance(d, threePtr, nearestDef && nearestDef.player, shotHelpDef, helpCommitted);
+    let blockChance = computeBlockChance(d, threePtr, nearestDef && nearestDef.player, shotHelpDef, helpCommitted);
+    // Dream Shake: extra pivots and ball exposure slightly raise strip risk
+    if (dreamShake) blockChance += 0.04;
     if (Math.random() < blockChance) {
       blockedBy = (nearestDef && nearestDef.player) || shotHelpDef;
+    }
+  }
+
+  // Dream Shake foul boost — defender bites on a fake and makes contact
+  if (dreamShake && !fouledBy && !blockedBy && nearestDef && nearestDef.player && !nearestDef.player.fouledOut) {
+    const dsFoulChance = dreamShake.defenderBit ? 0.28 : 0.14;
+    if (Math.random() < dsFoulChance) {
+      fouledBy = nearestDef.player;
     }
   }
 
@@ -1443,7 +1511,7 @@ function resolveFreeThrowRebound(state, ft) {
 // Star trash talk: ~2-3 times per game after a signature move (skyhook, deep three, no-look dime).
 function maybeTriggerTrashTalk(state, playerKey) {
   if (state.pendingTrashTalk) return;
-  const chances = { kareem: 0.14, bird: 0.45, magic: 0.12 };
+  const chances = { kareem: 0.14, bird: 0.45, magic: 0.12, akeem: 0.30 };
   if (Math.random() < (chances[playerKey] || 0.15)) {
     state.pendingTrashTalk = playerKey;
   }
@@ -1512,6 +1580,7 @@ function resolveShot(state) {
     result.shooter.stats.fga++;
     result.shooter.stats.points += result.points;
     if (state.ball.isSkyhook) maybeTriggerTrashTalk(state, 'kareem');
+    else if (state.ball.isDreamShake) maybeTriggerTrashTalk(state, 'akeem');
     else if (result.shooter.name === 'Larry Bird' && result.type === 'three') maybeTriggerTrashTalk(state, 'bird');
     if (state.ball.lastPasserId) {
       const passer = state.players.find(p => p.id === state.ball.lastPasserId);
@@ -1528,8 +1597,13 @@ function resolveShot(state) {
       state.gameLog.unshift(`💥 ${result.shooter.name} ${phrase.log} — ${result.points} pts`);
     } else {
       const desc = result.type === 'three' ? 'three-pointer' : (result.type === 'layup' ? 'layup' : 'jumper');
-      state.shotResultDisplay = `${result.shooter.name} hits the ${desc}! +${result.points}`;
-      state.gameLog.unshift(`✓ ${result.shooter.name} ${desc} — ${result.points} pts`);
+      if (state.ball.isDreamShake) {
+        state.shotResultDisplay = `✨ ${result.shooter.name} DREAM SHAKE! +${result.points}`;
+        state.gameLog.unshift(`✨ ${result.shooter.name} Dream Shake! — ${result.points} pts`);
+      } else {
+        state.shotResultDisplay = `${result.shooter.name} hits the ${desc}! +${result.points}`;
+        state.gameLog.unshift(`✓ ${result.shooter.name} ${desc} — ${result.points} pts`);
+      }
     }
   } else {
     result.shooter.stats.fga++;
@@ -1613,6 +1687,7 @@ function resolveFouledShot(state, result) {
     shooter.stats.fga++;
     shooter.stats.points += result.points;
     if (state.ball.isSkyhook) maybeTriggerTrashTalk(state, 'kareem');
+    else if (state.ball.isDreamShake) maybeTriggerTrashTalk(state, 'akeem');
     else if (shooter.name === 'Larry Bird' && result.type === 'three') maybeTriggerTrashTalk(state, 'bird');
     if (state.ball.lastPasserId) {
       const passer = state.players.find(p => p.id === state.ball.lastPasserId);

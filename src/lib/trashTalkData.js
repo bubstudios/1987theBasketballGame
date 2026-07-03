@@ -29,4 +29,14 @@ export const TRASH_TALK_CLIPS = {
     { text: "I've got eyes in the back of my head.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/771065f43_speech.mp3" },
     { text: "Check the replay on that one.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/4e7d7aaa4_speech.mp3" },
   ],
+  // Akeem → "storm" (formal, authoritative) — triggered after Dream Shake scores
+  akeem: [
+    { text: "You're chasing a ghost.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/ecf6fab1d_speech.mp3" },
+    { text: "Sit down, you're off-balance.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/25fd8e826_speech.mp3" },
+    { text: "Which way did I go?", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/63a687720_speech.mp3" },
+    { text: "The dream is a nightmare for you.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/a888ba306_speech.mp3" },
+    { text: "Spinning through, nothing you can do.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/f07d5ff60_speech.mp3" },
+    { text: "Too quick for your feet.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/ec8c54bb2_speech.mp3" },
+    { text: "You're just watching the show now.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/593b8a1bb_speech.mp3" },
+  ],
 };

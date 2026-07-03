@@ -318,6 +318,36 @@ function drawBall(ctx, ball, tf) {
     ctx.fillText('FROM DOWNTOWN! 3️⃣', x, ballY - 20);
   }
 
+  // Akeem's Dream Shake — swirling spin particles + label
+  if (ball.isDreamShake && ball.inFlight) {
+    const ballY = y - arcOffset;
+    const time = Date.now() * 0.005;
+    // Elliptical orbiting particles (spin/pivot feel) in Rockets gold
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + time * 1.5;
+      const sr = 16 + Math.sin(time * 2 + i) * 5;
+      const px = x + Math.cos(angle) * sr;
+      const py = ballY + Math.sin(angle) * sr * 0.55;
+      const alpha = 0.4 + Math.sin(time * 2 + i) * 0.3;
+      ctx.fillStyle = `rgba(255, 184, 28, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Trailing spin arc in Rockets red
+    ctx.strokeStyle = 'rgba(200, 16, 46, 0.65)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(x, ballY, 22, time * 1.5, time * 1.5 + Math.PI * 1.3);
+    ctx.stroke();
+    // Label
+    ctx.fillStyle = 'rgba(255, 184, 28, 0.95)';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✨ DREAM SHAKE!', x, ballY - 24);
+  }
+
   // Dunk effect — motion trail + rim flash on impact
   if (ball.isDunk && ball.inFlight) {
     const elapsed = Date.now() - ball.flightStart;
