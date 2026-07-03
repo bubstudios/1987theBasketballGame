@@ -505,7 +505,7 @@ export function updateGame(state, dt) {
     let nearestD = Infinity;
     for (const d of defensePlayers) { const dd = dist(ballCarrier, d); if (dd < nearestD) nearestD = dd; }
     const buzzer = state.gameClock < 5;
-    const advantage = nearestD > 120 && dToBasket < 350;
+    const advantage = (nearestD > 120 && dToBasket < 350) || (dToBasket < 160 && nearestD > 70);
     if (buzzer || advantage) {
       const cap = buzzer ? 250 : 500;
       state.actionTimer = Math.min(state.actionTimer, cap);
@@ -963,7 +963,12 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   // A clear transition advantage (numbers up, no defender nearby) is attacked
   // immediately rather than backing out to set up the half-court offense.
   const rimBucket = isVeryClose;
-  const clearLane = nearestDef.dist > 120 && distToBasket < 350;
+  // A clear lane = no defender between carrier and basket, OR the carrier is
+  // in the lane with enough space to attack. The lane-proximity condition
+  // catches the case where a fast break ends in the paint without a shot —
+  // the carrier should finish, not kick out and reset the half-court offense.
+  const inLane = distToBasket < 160;
+  const clearLane = (nearestDef.dist > 120 && distToBasket < 350) || (inLane && nearestDef.dist > 70);
   const attackNow = rimBucket || clearLane;
   const effectiveClock = Math.min(state.gameClock, state.shotClock);
 
