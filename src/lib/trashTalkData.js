@@ -89,4 +89,63 @@ export const TRASH_TALK_CLIPS = {
     { text: "Get that out of here.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/812ffbf9d_speech.mp3" },
     { text: "Not today.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/8a6dcecab_speech.mp3" },
   ],
+  // === Lakers ===
+  // Worthy → "sunny" (bright, upbeat) — Big Game James, smooth finisher
+  worthy: [
+    { text: "Big Game James!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/126a2f4ef_speech.mp3" },
+    { text: "Worthy beats him baseline!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/cf9af934d_speech.mp3" },
+    { text: "Smooth finish!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/4ff2558e0_speech.mp3" },
+    { text: "He made that look easy!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/be2ebcf39_speech.mp3" },
+  ],
+  // Cooper → "spark" (energetic, quick) — defensive chatter
+  cooper: [
+    { text: "Coop is locked in!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/f75b43707_speech.mp3" },
+    { text: "He's all over him!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/12d920f84_speech.mp3" },
+    { text: "That defense travels!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/cfb28b9f2_speech.mp3" },
+    { text: "Coop made that happen!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/b2eee1ebf_speech.mp3" },
+  ],
+  // === Celtics ===
+  // McHale → "storm" (formal, authoritative) — Torture Chamber post moves
+  mchale: [
+    { text: "McHale has him dancing!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/ab58bd9eb_speech.mp3" },
+    { text: "Up, under, and in!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/c54c99823_speech.mp3" },
+    { text: "The footwork is ridiculous!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/5c1687176_speech.mp3" },
+    { text: "He's stuck on an island down there.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/eab7d86ac_speech.mp3" },
+  ],
+  // Ainge → "spark" (energetic, quick) — pesky irritant
+  ainge: [
+    { text: "Ainge is chirping!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/f972d68ab_speech.mp3" },
+    { text: "That one got under their skin.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/472f64763_speech.mp3" },
+    { text: "Danny lets it fly!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/92451dfbf_speech.mp3" },
+    { text: "He loves that corner.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/ba0e782a6_speech.mp3" },
+  ],
+  // Dennis Johnson → "storm" (formal, authoritative) — tough veteran guard
+  dennis_johnson: [
+    { text: "DJ takes the assignment.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/891cf97a8_speech.mp3" },
+    { text: "That's tough guard play.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/527366692_speech.mp3" },
+    { text: "Johnson is right there.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/29160e7ab_speech.mp3" },
+    { text: "Big possession from DJ.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/65cd8c986_speech.mp3" },
+  ],
+  // === Rockets ===
+  // Sampson → "storm" (formal, authoritative) — 7'4" quiet mismatch
+  sampson: [
+    { text: "Sampson faces up!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/4b9cc734d_speech.mp3" },
+    { text: "That's a 7-foot-4 problem.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/67f8f0ca3_speech.mp3" },
+    { text: "He shoots over everybody.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/a97e1ee84_speech.mp3" },
+    { text: "The length changes everything.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/5dd610b9f_speech.mp3" },
+  ],
+  // Wiggins → "spark" (energetic, quick) — guard crasher
+  wiggins: [
+    { text: "Wiggins crashes from the guard spot!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/45baf42e6_speech.mp3" },
+    { text: "He came out of nowhere!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/c1173d3b8_speech.mp3" },
+    { text: "That's pure athleticism.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/fefed18c0_speech.mp3" },
+    { text: "Great energy from Wiggins!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/a2c9cac25_speech.mp3" },
+  ],
+  // Lloyd → "spark" (energetic, quick) — wing attack
+  lloyd: [
+    { text: "Lloyd attacks!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/a0c5f94e8_speech.mp3" },
+    { text: "He's looking to score.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/08939f438_speech.mp3" },
+    { text: "That was aggressive.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/a15ffd41e_speech.mp3" },
+    { text: "The wing gets loose!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/e485c58bd_speech.mp3" },
+  ],
 };
