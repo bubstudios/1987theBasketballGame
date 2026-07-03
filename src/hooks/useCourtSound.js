@@ -59,6 +59,52 @@ export function useCourtSound() {
     osc.stop(now + dur + 0.02);
   }, [getCtx]);
 
+  // Synthesizes a referee's pea-whistle — piercing high tone with a tremolo warble.
+  const playWhistle = useCallback(() => {
+    if (mutedRef.current) return;
+    const ctx = getCtx();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const dur = 0.35;
+
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0, now);
+    master.gain.linearRampToValueAtTime(0.16, now + 0.015);
+    master.gain.setValueAtTime(0.16, now + dur - 0.1);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    master.connect(ctx.destination);
+
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'square';
+    osc1.frequency.setValueAtTime(2600, now);
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(3300, now);
+
+    // Tremolo for the pea-whistle warble
+    const tremolo = ctx.createGain();
+    tremolo.gain.value = 0.5;
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 28;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.5;
+    lfo.connect(lfoGain);
+    lfoGain.connect(tremolo.gain);
+
+    osc1.connect(tremolo);
+    osc2.connect(tremolo);
+    tremolo.connect(master);
+
+    osc1.start(now);
+    osc2.start(now);
+    lfo.start(now);
+    osc1.stop(now + dur + 0.02);
+    osc2.stop(now + dur + 0.02);
+    lfo.stop(now + dur + 0.02);
+  }, [getCtx]);
+
   const toggleMute = useCallback(() => {
     setMuted(m => {
       const next = !m;
@@ -74,5 +120,5 @@ export function useCourtSound() {
     };
   }, []);
 
-  return { playSqueak, muted, toggleMute };
+  return { playSqueak, playWhistle, muted, toggleMute };
 }

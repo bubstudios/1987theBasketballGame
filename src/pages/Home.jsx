@@ -23,7 +23,8 @@ export default function Home() {
   const rafRef = useRef(null);
   const lastTimeRef = useRef(null);
   const prevVelRef = useRef({});
-  const { playSqueak, muted, toggleMute } = useCourtSound();
+  const prevStoppedRef = useRef(false);
+  const { playSqueak, playWhistle, muted, toggleMute } = useCourtSound();
 
   const oppColors = TEAM_COLORS.celtics;
 
@@ -75,6 +76,12 @@ export default function Home() {
         }
         if (bestSqueak > 0) playSqueak(bestSqueak);
       }
+
+      // Ref's whistle: fire on the rising edge of a play-stopping state
+      // (foul → free throws, timeout, end-of-quarter break).
+      const stopped = !!(updated.timeoutState || updated.ftState || updated.quarterBreak);
+      if (stopped && !prevStoppedRef.current) playWhistle();
+      prevStoppedRef.current = stopped;
 
       // Throttle React updates to ~30fps for performance
       setGameState(prev => {
