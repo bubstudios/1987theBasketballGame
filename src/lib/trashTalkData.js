@@ -47,4 +47,46 @@ export const TRASH_TALK_CLIPS = {
     { text: "See ya.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/84c9a1967_speech.mp3" },
     { text: "Zeke does it again.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/2423f5bc7_speech.mp3" },
   ],
+  // Dantley → "honey" (warm, soft) — quiet assassin, pump-fake parade
+  dantley: [
+    { text: "Stay down next time.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/5580554bf_speech.mp3" },
+    { text: "You bit on that one.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/f0622a853_speech.mp3" },
+    { text: "Too small down here.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/158158260_speech.mp3" },
+    { text: "Watch your feet.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/fa56d15f1_speech.mp3" },
+  ],
+  // Laimbeer → "spark" (energetic, quick) — primary agitator
+  laimbeer: [
+    { text: "Still talking.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/c4f635fcd_speech.mp3" },
+    { text: "You're not getting that easy.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/d3d7bc697_speech.mp3" },
+    { text: "That paint is closed.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/d55508c72_speech.mp3" },
+    { text: "Try that again.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/a98839321_speech.mp3" },
+  ],
+  // Mahorn → "storm" (formal, authoritative) — enforcer
+  mahorn: [
+    { text: "No easy ones.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/6ed7da738_speech.mp3" },
+    { text: "Not in here.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/f1dcadb7e_speech.mp3" },
+    { text: "You felt that one.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/9d531e956_speech.mp3" },
+    { text: "The lane is crowded.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/8e60505cc_speech.mp3" },
+  ],
+  // Vinnie → "sunny" (bright, upbeat) — the Microwave
+  vinnie: [
+    { text: "I'm heating up.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/89ea9195d_speech.mp3" },
+    { text: "Give me another one.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/343068563_speech.mp3" },
+    { text: "Microwave's on.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/084c15896_speech.mp3" },
+    { text: "That jumper is warm.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/c7e030dc3_speech.mp3" },
+  ],
+  // Rodman → "spark" (energetic, quick) — chaos
+  rodman: [
+    { text: "I'm everywhere.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/76eebad27_speech.mp3" },
+    { text: "Total chaos out here.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/6e7f51e8e_speech.mp3" },
+    { text: "Can't keep me off the glass.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/000647632_speech.mp3" },
+    { text: "Pure energy.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/cf48ae3a8_speech.mp3" },
+  ],
+  // Salley → "sunny" (bright, upbeat) — shot-blocker
+  salley: [
+    { text: "Not in my house.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/2b02f5a16_speech.mp3" },
+    { text: "Swatted away.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/599bd4d12_speech.mp3" },
+    { text: "Get that out of here.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/812ffbf9d_speech.mp3" },
+    { text: "Not today.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/8a6dcecab_speech.mp3" },
+  ],
 };

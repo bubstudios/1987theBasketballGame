@@ -107,6 +107,8 @@ export default function Home() {
         if (clips && clips.length > 0) {
           const clip = clips[Math.floor(Math.random() * clips.length)];
           playTrashTalk(clip.url);
+        } else {
+          console.warn(`No trash-talk audio clips for ${tt.playerName}`, tt.playerKey);
         }
         updated.gameLog.unshift(`💬 ${tt.playerName}: "${tt.bubble}"`);
         if (updated.gameLog.length > 15) updated.gameLog.pop();

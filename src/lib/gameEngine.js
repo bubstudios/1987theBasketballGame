@@ -8,7 +8,7 @@ import { TEAM_DEFENSE_TENDENCIES } from './defenseData';
 import { selectShotVariation } from './shotLexicon';
 import { DUNK_PHRASES } from './dunkPhrases';
 import { checkDreamShake, checkZekeSplit, checkPumpFakeParade, improveContestLevel, updateMicrowaveMode, tickMicrowaveMode } from './signatureMoves';
-import { rollTrashTalk } from './personalityEngine';
+import { rollTrashTalk, isEnforcer } from './personalityEngine';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -1585,9 +1585,8 @@ function resolveShot(state) {
       switchPossession(state, result.blockedBy, 'block');
     } else if (blockOutcome.outcome === 'out_of_bounds') {
       state.shotResultDisplay = `${result.blockedBy.name} blocks it out of bounds!`;
-      state.gameLog.unshift(`🚫 ${result.blockedBy.name} blocks ${result.shooter.name} — out of bounds!`);
-      state.shotClock = 24;
-      state.actionTimer = 800;
+      state.gameLog.unshift(`🚫 ${result.blockedBy.name} blocks ${result.shooter.name} — out of bounds! ${result.shooter.team} keeps it.`);
+      inboundToTeam(state, result.shooter.team, 'block_out_of_bounds', true);
     } else {
       // Loose ball — nearest on-court player recovers (scramble or offense recover)
       let nearest = null, nd = Infinity;
@@ -1740,8 +1739,9 @@ function resolveFouledShot(state, result) {
 
   // Count the personal foul on the defender (+ team foul, with DQ at 6)
   const fouledOut = commitPersonalFoul(state, fouledBy);
-  // Hard foul → the agitator who committed it may run his mouth
-  rollTrashTalk(state, fouledBy, 'hard_foul');
+  // Hard foul → only enforcers/agitators intimidate (never celebratory talk
+  // from a non-enforcer like Magic after committing a foul)
+  if (isEnforcer(fouledBy)) rollTrashTalk(state, fouledBy, 'enforcer_foul');
 
   // If the shot was made (and-one), count the basket points now
   if (result.made) {
@@ -2015,9 +2015,36 @@ function executePendingTurnover(state) {
   if (state.gameLog.length > 15) state.gameLog.pop();
 }
 
+// Restart play with an inbound after a dead ball (block/deflection out of bounds).
+// The retaining team inbounds to a guard — no one stands around ball-less until
+// a shot-clock violation drifts the game into a stall.
+function inboundToTeam(state, team, reason = 'out_of_bounds', resetShotClock = true) {
+  state.ball.inFlight = false; state.ball.isShot = false;
+  state.ball.shotResult = null; state.shotAnimating = false;
+  state.players.forEach(p => { p.hasBall = false; });
+  if (state.possession !== team) switchPossession(state, null, reason);
+  state.possession = team;
+  const onCourt = getOnCourtPlayers(state, team);
+  const inbounder = onCourt.find(p => p.position === 'PG') || onCourt.find(p => p.passing >= 7) || onCourt[0];
+  if (!inbounder) { console.error('No inbounder found for out-of-bounds restart', { team, reason }); return; }
+  inbounder.hasBall = true; state.ball.carrier = inbounder.id;
+  state.ball.x = state.attackingRight ? 90 : COURT.width - 90;
+  state.ball.y = COURT.height / 2;
+  inbounder.x = state.ball.x; inbounder.y = state.ball.y;
+  inbounder.targetX = inbounder.x; inbounder.targetY = inbounder.y;
+  state.ball.lastPasserId = null; state.ball.carrierHoldTime = 0;
+  if (resetShotClock) state.shotClock = 24;
+  state.actionTimer = 800; state.turnoverCooldown = 1200;
+  state.gameLog.unshift(`↻ ${team} inbounds after ${reason.replaceAll('_', ' ')}`);
+  if (state.gameLog.length > 15) state.gameLog.pop();
+}
+
 function switchPossession(state, fastBreakInitiator = null, reason = 'unknown') {
   if (reason === 'unknown') {
     console.error('Possession switched without a recorded reason');
+  }
+  if (reason === 'out_of_bounds' || reason === 'block_out_of_bounds' || reason === 'deflection_out_of_bounds') {
+    console.error('Do not use switchPossession directly for out-of-bounds. Use inboundToTeam().');
   }
   state.lastPossessionEndReason = reason;
   finalizeCelticsPossession(state);

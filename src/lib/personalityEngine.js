@@ -60,7 +60,22 @@ const PLAYER_AUDIO_KEY = {
   'Magic Johnson': 'magic',
   'Akeem Olajuwon': 'akeem',
   'Isiah Thomas': 'isiah',
+  // Detroit Pistons
+  'Adrian Dantley': 'dantley',
+  'Bill Laimbeer': 'laimbeer',
+  'Rick Mahorn': 'mahorn',
+  'Vinnie Johnson': 'vinnie',
+  'Dennis Rodman': 'rodman',
+  'John Salley': 'salley',
 };
+
+// Enforcer / agitator check — gates intimidation talk after hard fouls so
+// non-enforcers (Magic, Dumars) never chirp after committing a foul.
+export function isEnforcer(player) {
+  const r = PERSONALITY_RATINGS[player && player.name];
+  if (!r) return false;
+  return r.role === 'enforcer' || r.role === 'agitator' || r.role === 'chaos';
+}
 
 // Role → badge label for the bubble
 const ROLE_LABEL = {
@@ -77,13 +92,25 @@ const EVENT_MOD = {
   poster_dunk: 0.12,
   blocked_shot: 0.12,
   steal_fastbreak: 0.06,
-  hard_foul: 0.20,
+  enforcer_foul: 0.10,
   off_rebound_traffic: 0.06,
   charge_drawn: 0.08,
   signature_score: 0.08,
   microwave_activate: 0.07,
   pick_and_pop: 0.06,
 };
+
+// Trash talk only fires after a POSITIVE event for the talking player/team.
+// A player who commits a foul, turns it over, or misses badly stays quiet.
+const POSITIVE_EVENTS = new Set([
+  'big_shot', 'poster_dunk', 'blocked_shot', 'steal_fastbreak',
+  'off_rebound_traffic', 'charge_drawn', 'signature_score',
+  'microwave_activate', 'pick_and_pop', 'enforcer_foul',
+]);
+const NEGATIVE_EVENTS = new Set([
+  'committed_foul', 'hard_foul', 'offensive_foul', 'turnover',
+  'bad_pass', 'shot_clock_violation', 'missed_bad_shot', 'fouled_shooter',
+]);
 
 function gameElapsed(state) {
   return state.quarter * 720 + (720 - state.gameClock);
@@ -92,8 +119,14 @@ function gameElapsed(state) {
 // Main entry: decide whether a player talks after an event.
 // Assigns a talk object to state.pendingTrashTalk and applies small effects.
 // Returns the talk object, or null if he stays quiet.
-export function rollTrashTalk(state, player, eventType) {
+export function rollTrashTalk(state, player, eventType, context = {}) {
   if (!player) return null;
+  // Never talk after a negative event for the talking player
+  if (NEGATIVE_EVENTS.has(eventType)) return null;
+  // Never let the fouler celebrate his own foul
+  if (context.foulerId && context.foulerId === player.id) return null;
+  // Never talk when the player's team just lost the ball
+  if (context.negativeForTeam && context.team === player.team) return null;
   const ratings = PERSONALITY_RATINGS[player.name];
   if (!ratings) return null;
   if (state.pendingTrashTalk) return null; // don't stack
