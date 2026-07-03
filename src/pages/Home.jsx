@@ -4,6 +4,7 @@ import { LAKERS_ROSTER, CELTICS_ROSTER, LAKERS_BENCH, CELTICS_BENCH, TEAM_COLORS
 import { createGameState, updateGame, advanceToNextQuarter } from '@/lib/gameEngine';
 import { Button } from '@/components/ui/button';
 import { useCourtSound } from '@/hooks/useCourtSound';
+import { TRASH_TALK_CLIPS } from '@/lib/trashTalkData';
 import CourtCanvas from '@/components/game/CourtCanvas';
 import Scoreboard from '@/components/game/Scoreboard';
 import GameControls from '@/components/game/GameControls';
@@ -24,7 +25,7 @@ export default function Home() {
   const lastTimeRef = useRef(null);
   const prevVelRef = useRef({});
   const prevStoppedRef = useRef(false);
-  const { playSqueak, playWhistle, muted, toggleMute } = useCourtSound();
+  const { playSqueak, playWhistle, playTrashTalk, muted, toggleMute } = useCourtSound();
 
   const oppColors = TEAM_COLORS.celtics;
 
@@ -82,6 +83,18 @@ export default function Home() {
       const stopped = !!(updated.timeoutState || updated.ftState || updated.quarterBreak);
       if (stopped && !prevStoppedRef.current) playWhistle();
       prevStoppedRef.current = stopped;
+
+      // Star trash talk: play a pre-generated clip when a signature move lands
+      if (updated.pendingTrashTalk) {
+        const clips = TRASH_TALK_CLIPS[updated.pendingTrashTalk];
+        if (clips && clips.length > 0) {
+          const clip = clips[Math.floor(Math.random() * clips.length)];
+          playTrashTalk(clip.url);
+          updated.gameLog.unshift(`💬 ${clip.text}`);
+          if (updated.gameLog.length > 15) updated.gameLog.pop();
+        }
+        updated.pendingTrashTalk = null;
+      }
 
       // Throttle React updates to ~30fps for performance
       setGameState(prev => {

@@ -325,6 +325,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     defensiveMatchups: {},
     helpCommitment: null,
     pendingTurnover: null,
+    pendingTrashTalk: null,
   };
   recomputeMatchups(state);
   rollPossessionTurnover(state);
@@ -1434,6 +1435,15 @@ function resolveFreeThrowRebound(state, ft) {
   }
 }
 
+// Star trash talk: ~2-3 times per game after a signature move (skyhook, deep three, no-look dime).
+function maybeTriggerTrashTalk(state, playerKey) {
+  if (state.pendingTrashTalk) return;
+  const chances = { kareem: 0.14, bird: 0.45, magic: 0.12 };
+  if (Math.random() < (chances[playerKey] || 0.15)) {
+    state.pendingTrashTalk = playerKey;
+  }
+}
+
 function resolveShot(state) {
   const result = state.ball.shotResult;
   if (!result) return;
@@ -1496,11 +1506,14 @@ function resolveShot(state) {
     result.shooter.stats.fgm++;
     result.shooter.stats.fga++;
     result.shooter.stats.points += result.points;
+    if (state.ball.isSkyhook) maybeTriggerTrashTalk(state, 'kareem');
+    else if (result.shooter.name === 'Larry Bird' && result.type === 'three') maybeTriggerTrashTalk(state, 'bird');
     if (state.ball.lastPasserId) {
       const passer = state.players.find(p => p.id === state.ball.lastPasserId);
       if (passer && passer.team === result.shooter.team && passer.id !== result.shooter.id
           && shouldAwardAssist(result.holdTime || 0, result.type)) {
         passer.stats.assists++;
+        if (passer.name === 'Magic Johnson') maybeTriggerTrashTalk(state, 'magic');
       }
     }
     state.ball.lastPasserId = null;
@@ -1594,11 +1607,14 @@ function resolveFouledShot(state, result) {
     shooter.stats.fgm++;
     shooter.stats.fga++;
     shooter.stats.points += result.points;
+    if (state.ball.isSkyhook) maybeTriggerTrashTalk(state, 'kareem');
+    else if (shooter.name === 'Larry Bird' && result.type === 'three') maybeTriggerTrashTalk(state, 'bird');
     if (state.ball.lastPasserId) {
       const passer = state.players.find(p => p.id === state.ball.lastPasserId);
       if (passer && passer.team === shooter.team && passer.id !== shooter.id
           && shouldAwardAssist(result.holdTime || 0, result.type)) {
         passer.stats.assists++;
+        if (passer.name === 'Magic Johnson') maybeTriggerTrashTalk(state, 'magic');
       }
     }
     state.ball.lastPasserId = null;

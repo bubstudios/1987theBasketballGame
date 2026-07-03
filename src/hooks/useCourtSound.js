@@ -105,6 +105,14 @@ export function useCourtSound() {
     lfo.stop(now + dur + 0.02);
   }, [getCtx]);
 
+  // Plays a pre-generated TTS audio clip (star trash talk)
+  const playTrashTalk = useCallback((url) => {
+    if (mutedRef.current) return;
+    const audio = new Audio(url);
+    audio.volume = 0.8;
+    audio.play().catch(() => {});
+  }, []);
+
   const toggleMute = useCallback(() => {
     setMuted(m => {
       const next = !m;
@@ -120,5 +128,5 @@ export function useCourtSound() {
     };
   }, []);
 
-  return { playSqueak, playWhistle, muted, toggleMute };
+  return { playSqueak, playWhistle, playTrashTalk, muted, toggleMute };
 }
