@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
+import TeamSelect from './pages/TeamSelect';
 import LakersOffense from './pages/LakersOffense';
 import CelticsOffense from './pages/CelticsOffense';
 // Add page imports here
@@ -37,7 +38,8 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<TeamSelect />} />
+      <Route path="/game" element={<Home />} />
       <Route path="/lakers-offense" element={<LakersOffense />} />
       <Route path="/celtics-offense" element={<CelticsOffense />} />
       <Route path="*" element={<PageNotFound />} />

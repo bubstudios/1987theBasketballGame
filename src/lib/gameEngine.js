@@ -173,17 +173,17 @@ const FASTBREAK_LANES_LEFT = [
   { x: 440, y: 250 },
 ];
 
-export function createGameState(lakersRoster, opponentRoster, opponentKey = 'celtics') {
+export function createGameState(team1Key, team1Roster, team2Key, team2Roster) {
   const players = [];
 
-  // Lakers start on the right side (offense first)
-  lakersRoster.forEach((p, i) => {
+  // Team 1 starts on the right side (offense first)
+  team1Roster.forEach((p, i) => {
     const isStarter = i < 5;
     const spot = isStarter ? OFFENSE_SPOTS_RIGHT[i] : { x: 80 + i * 40, y: 475 };
     players.push({
       ...p,
-      team: 'lakers',
-      id: `lakers_${i}`,
+      team: team1Key,
+      id: `${team1Key}_${i}`,
       x: spot.x,
       y: spot.y,
       targetX: spot.x,
@@ -212,15 +212,15 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     });
   });
 
-  // Opponent on left side (defense first)
-  opponentRoster.forEach((p, i) => {
+  // Team 2 on left side (defense first)
+  team2Roster.forEach((p, i) => {
     const isStarter = i < 5;
     const offSpot = OFFENSE_SPOTS_RIGHT[i];
     const spot = isStarter ? { x: offSpot.x + 30, y: offSpot.y } : { x: 860 - i * 40, y: 25 };
     players.push({
       ...p,
-      team: opponentKey,
-      id: `${opponentKey}_${i}`,
+      team: team2Key,
+      id: `${team2Key}_${i}`,
       x: spot.x,
       y: spot.y,
       targetX: spot.x,
@@ -249,8 +249,8 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     });
   });
 
-  mergeDefenseRatings(players.filter(p => p.team === 'lakers'), 'lakers');
-  mergeDefenseRatings(players.filter(p => p.team === opponentKey), opponentKey);
+  mergeDefenseRatings(players.filter(p => p.team === team1Key), team1Key);
+  mergeDefenseRatings(players.filter(p => p.team === team2Key), team2Key);
 
   const state = {
     players,
@@ -276,13 +276,13 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
       flightElapsed: 0,
       carrierHoldTime: 0,
     },
-    score: { lakers: 0, [opponentKey]: 0 },
+    score: { [team1Key]: 0, [team2Key]: 0 },
     gameClock: 720, // 12 min quarter in seconds
     shotClock: 24,
     quarter: 1,
-    possession: 'lakers', // who has offense
-    teamKeys: { team1: 'lakers', team2: opponentKey },
-    attackingRight: true, // lakers attack right basket
+    possession: team1Key, // who has offense
+    teamKeys: { team1: team1Key, team2: team2Key },
+    attackingRight: true, // team 1 attacks right basket
     lastUpdate: Date.now(),
     passTimer: 0,
     actionTimer: 2500,
@@ -295,7 +295,7 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     turnoverCooldown: 0,
     ftState: null,
     fastBreak: null,
-    momentum: { lakers: 0, [opponentKey]: 0 },
+    momentum: { [team1Key]: 0, [team2Key]: 0 },
     pace: 5,
     momentumHistory: [{ clock: 720, quarter: 1, team1: 0, team2: 0, pace: 0, fastBreak: false }],
     momentumSampleTimer: 0,
@@ -303,18 +303,18 @@ export function createGameState(lakersRoster, opponentRoster, opponentKey = 'cel
     substitutionLog: [],
     substitutionCommentary: [],
     timeouts: {
-      lakers: { remaining: TIMEOUTS_PER_GAME, used: 0 },
-      [opponentKey]: { remaining: TIMEOUTS_PER_GAME, used: 0 },
+      [team1Key]: { remaining: TIMEOUTS_PER_GAME, used: 0 },
+      [team2Key]: { remaining: TIMEOUTS_PER_GAME, used: 0 },
     },
     timeoutState: null,
-    teamFouls: { lakers: 0, [opponentKey]: 0 },
+    teamFouls: { [team1Key]: 0, [team2Key]: 0 },
     quarterBreak: null,
     playCall: null,
     userPlayCall: null,
     screenState: null,
     screenCooldown: 0,
     stealCheckTimer: 0,
-    possessionCount: { lakers: 1, [opponentKey]: 0 },
+    possessionCount: { [team1Key]: 1, [team2Key]: 0 },
     possessionType: 'halfcourt',
     possessionTargetDuration: 18,
     celticsOffense: {

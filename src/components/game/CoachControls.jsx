@@ -30,19 +30,20 @@ function accentColor(colors) {
   return colors.secondary === '#FFFFFF' ? colors.primary : colors.secondary;
 }
 
-export default function CoachControls({ gameState, opponent, onCallTimeout }) {
+export default function CoachControls({ gameState, userTeam, opponent, onCallTimeout }) {
   const [playMode, setPlayMode] = useState(false);
 
   if (!gameState) return null;
-  const lakersTO = gameState.timeouts?.lakers || { remaining: TIMEOUTS_PER_GAME };
+  const userTO = gameState.timeouts?.[userTeam] || { remaining: TIMEOUTS_PER_GAME };
   const oppTO = gameState.timeouts?.[opponent] || { remaining: TIMEOUTS_PER_GAME };
+  const userColors = TEAM_COLORS[userTeam];
   const oppColors = TEAM_COLORS[opponent];
-  const lakerAccent = '#FDB927';
+  const userAccent = accentColor(userColors);
   const oppAccent = accentColor(oppColors);
 
   const activeTimeout = gameState.timeoutState;
   const blocked = !!activeTimeout || gameState.shotAnimating || !!gameState.ftState || gameState.isPaused || (gameState.quarter >= 4 && gameState.gameClock <= 0);
-  const canCall = lakersTO.remaining > 0 && !blocked;
+  const canCall = userTO.remaining > 0 && !blocked;
 
   return (
     <div className="bg-neutral-900 rounded-xl border border-neutral-700 p-3">
@@ -50,8 +51,8 @@ export default function CoachControls({ gameState, opponent, onCallTimeout }) {
         <span className="text-xs text-neutral-400 uppercase tracking-widest font-semibold">Coach's Timeout</span>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1">
-            <span className="text-[9px] text-amber-400 font-bold">LAL</span>
-            <TimeoutPips remaining={lakersTO.remaining} color={lakerAccent} />
+            <span className="text-[9px] font-bold" style={{ color: userAccent }}>{userColors.abbr}</span>
+            <TimeoutPips remaining={userTO.remaining} color={userAccent} />
           </div>
           <div className="flex items-center gap-1">
             <span className="text-[9px] font-bold" style={{ color: oppAccent }}>{oppColors.abbr}</span>
@@ -63,7 +64,7 @@ export default function CoachControls({ gameState, opponent, onCallTimeout }) {
       {activeTimeout ? (
         <div
           className="rounded-lg bg-neutral-800 px-3 py-2 border-l-2"
-          style={{ borderLeftColor: activeTimeout.team === 'lakers' ? lakerAccent : oppAccent }}
+          style={{ borderLeftColor: activeTimeout.team === userTeam ? userAccent : oppAccent }}
         >
           <div className="text-[9px] font-mono text-neutral-500 mb-0.5">⏸ TIMEOUT IN PROGRESS</div>
           <p className="text-xs text-white leading-snug">{activeTimeout.message}</p>
@@ -81,7 +82,7 @@ export default function CoachControls({ gameState, opponent, onCallTimeout }) {
               <button
                 key={play.id}
                 disabled={!canCall}
-                onClick={() => { onCallTimeout('lakers', 'full', 'call_play', play.id); setPlayMode(false); }}
+                onClick={() => { onCallTimeout(userTeam, 'full', 'call_play', play.id); setPlayMode(false); }}
                 className="rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed p-1.5 text-left transition-colors border border-neutral-700"
               >
                 <div className="text-[11px] font-bold text-white">{play.label}</div>
@@ -100,7 +101,7 @@ export default function CoachControls({ gameState, opponent, onCallTimeout }) {
                 disabled={!canCall}
                 onClick={() => {
                   if (p.id === 'call_play') { setPlayMode(true); return; }
-                  onCallTimeout('lakers', p.type, p.id);
+                  onCallTimeout(userTeam, p.type, p.id);
                 }}
                 className="rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed p-1.5 text-left transition-colors border border-neutral-700"
               >
@@ -115,7 +116,7 @@ export default function CoachControls({ gameState, opponent, onCallTimeout }) {
 
       {!canCall && !activeTimeout && !playMode && (
         <div className="text-[10px] text-neutral-600 italic mt-2 text-center">
-          {lakersTO.remaining <= 0 ? 'No timeouts remaining.' : 'Timeouts unavailable during this play.'}
+          {userTO.remaining <= 0 ? 'No timeouts remaining.' : 'Timeouts unavailable during this play.'}
         </div>
       )}
     </div>

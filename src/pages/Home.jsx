@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { LAKERS_ROSTER, CELTICS_ROSTER, LAKERS_BENCH, CELTICS_BENCH, TEAM_COLORS } from '@/lib/gameData';
+import { TEAMS, TEAM_COLORS } from '@/lib/gameData';
 import { createGameState, updateGame, advanceToNextQuarter } from '@/lib/gameEngine';
 import { Button } from '@/components/ui/button';
 import { useCourtSound } from '@/hooks/useCourtSound';
@@ -27,10 +27,16 @@ export default function Home() {
   const prevStoppedRef = useRef(false);
   const { playSqueak, playWhistle, playTrashTalk, muted, toggleMute } = useCourtSound();
 
-  const oppColors = TEAM_COLORS.celtics;
+  const urlParams = new URLSearchParams(window.location.search);
+  const userTeamKey = urlParams.get('user') || 'lakers';
+  const cpuTeamKey = urlParams.get('cpu') || 'celtics';
+  const userTeam = TEAMS[userTeamKey];
+  const cpuTeam = TEAMS[cpuTeamKey];
+  const oppColors = cpuTeam.colors;
+  const userAccent = userTeam.colors.secondary === '#FFFFFF' ? userTeam.colors.primary : userTeam.colors.secondary;
 
   const initGame = useCallback(() => {
-    const state = createGameState([...LAKERS_ROSTER, ...LAKERS_BENCH], [...CELTICS_ROSTER, ...CELTICS_BENCH], 'celtics');
+    const state = createGameState(userTeamKey, [...userTeam.roster, ...userTeam.bench], cpuTeamKey, [...cpuTeam.roster, ...cpuTeam.bench]);
     gameRef.current = state;
     prevVelRef.current = {};
     setGameState({ ...state });
@@ -136,9 +142,9 @@ export default function Home() {
   const handleCallPlay = (playId, side) => {
     if (!gameRef.current) return;
     if (gameRef.current.timeoutState || gameRef.current.ftState || gameRef.current.shotAnimating) return;
-    if (side === 'offense' && gameRef.current.possession !== 'lakers') return;
-    if (side === 'defense' && gameRef.current.possession === 'lakers') return;
-    gameRef.current.userPlayCall = { team: 'lakers', type: playId, side };
+    if (side === 'offense' && gameRef.current.possession !== userTeamKey) return;
+    if (side === 'defense' && gameRef.current.possession === userTeamKey) return;
+    gameRef.current.userPlayCall = { team: userTeamKey, type: playId, side };
     setGameState({ ...gameRef.current });
   };
 
@@ -156,24 +162,22 @@ export default function Home() {
       {/* Header */}
       <div className="text-center pt-6 pb-4 px-4">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-          <span style={{ color: '#FDB927' }}>Lakers</span>
+          <span style={{ color: userAccent }}>{userTeam.colors.name}</span>
           <span className="text-neutral-500 mx-2">vs</span>
           <span style={{ color: oppColors.primary }}>{oppColors.name}</span>
         </h1>
         <p className="text-xs text-neutral-500 mt-1 uppercase tracking-widest">1986-87 Season · NBA Sim</p>
         <div className="flex items-center justify-center gap-3 mt-2">
-          <Link
-            to="/lakers-offense"
-            className="text-xs text-amber-400 hover:text-amber-300 underline"
-          >
-            Lakers Offense →
-          </Link>
-          <Link
-            to="/celtics-offense"
-            className="text-xs text-green-500 hover:text-green-400 underline"
-          >
-            Celtics Offense →
-          </Link>
+          {(userTeamKey === 'lakers' || cpuTeamKey === 'lakers') && (
+            <Link to="/lakers-offense" className="text-xs text-amber-400 hover:text-amber-300 underline">
+              Lakers Offense →
+            </Link>
+          )}
+          {(userTeamKey === 'celtics' || cpuTeamKey === 'celtics') && (
+            <Link to="/celtics-offense" className="text-xs text-green-500 hover:text-green-400 underline">
+              Celtics Offense →
+            </Link>
+          )}
         </div>
       </div>
 
@@ -206,9 +210,9 @@ export default function Home() {
           <div className="text-center mb-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
             <div className="text-lg font-bold text-amber-400">Final Score</div>
             <div className="text-sm text-neutral-300">
-              {gameState.score.lakers > gameState.score.celtics
-                ? 'Lakers Win!'
-                : gameState.score.celtics > gameState.score.lakers
+              {gameState.score[userTeamKey] > gameState.score[cpuTeamKey]
+                ? `${userTeam.colors.name} Win!`
+                : gameState.score[cpuTeamKey] > gameState.score[userTeamKey]
                 ? `${oppColors.name} Win!`
                 : 'Tied Game!'}
             </div>
@@ -221,8 +225,8 @@ export default function Home() {
             <CourtCanvas gameState={gameState} />
             <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[10px] text-neutral-500">
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#552583', border: '1.5px solid #FDB927' }} />
-                Lakers (Offense)
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: userTeam.colors.primary, border: `1.5px solid ${userAccent}` }} />
+                {userTeam.colors.name} (You)
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: oppColors.primary, border: `1.5px solid ${oppColors.secondary}` }} />
@@ -237,15 +241,15 @@ export default function Home() {
 
           <div className="lg:col-span-1 space-y-3">
             <Scoreboard gameState={gameState} />
-            <PlayCallBar gameState={gameState} onCallPlay={handleCallPlay} />
-            <CoachControls gameState={gameState} opponent="celtics" onCallTimeout={handleCallTimeout} />
+            <PlayCallBar gameState={gameState} userTeam={userTeamKey} onCallPlay={handleCallPlay} />
+            <CoachControls gameState={gameState} userTeam={userTeamKey} opponent={cpuTeamKey} onCallTimeout={handleCallTimeout} />
           </div>
         </div>
 
         {/* Rosters */}
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <RosterPanel roster={LAKERS_ROSTER} bench={LAKERS_BENCH} teamKey="lakers" gameState={gameState} />
-          <RosterPanel roster={CELTICS_ROSTER} bench={CELTICS_BENCH} teamKey="celtics" gameState={gameState} />
+          <RosterPanel roster={userTeam.roster} bench={userTeam.bench} teamKey={userTeamKey} gameState={gameState} />
+          <RosterPanel roster={cpuTeam.roster} bench={cpuTeam.bench} teamKey={cpuTeamKey} gameState={gameState} />
         </div>
 
         {/* Game Log */}

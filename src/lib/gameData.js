@@ -1,7 +1,8 @@
 // 1986-87 Lakers and Celtics rosters with real attributes
 // Speed: 1-10 scale, Height in inches, Skills rated 1-10
 
-export { LAKERS_BENCH, CELTICS_BENCH } from './benchData';
+import { LAKERS_BENCH, CELTICS_BENCH } from './benchData';
+export { LAKERS_BENCH, CELTICS_BENCH };
 
 export const LAKERS_ROSTER = [
   {
@@ -308,6 +309,24 @@ export const TEAM_COLORS = {
 export const TEAM_FAST_BREAK = {
   lakers: 9,
   celtics: 4,
+};
+
+// Central team registry — the single source of truth for the team selection page.
+// To add a new team: define its roster + bench, add colors to TEAM_COLORS,
+// add fast-break tendency to TEAM_FAST_BREAK, then add an entry here.
+export const TEAMS = {
+  lakers: {
+    colors: TEAM_COLORS.lakers,
+    fastBreak: TEAM_FAST_BREAK.lakers,
+    roster: LAKERS_ROSTER,
+    bench: LAKERS_BENCH,
+  },
+  celtics: {
+    colors: TEAM_COLORS.celtics,
+    fastBreak: TEAM_FAST_BREAK.celtics,
+    roster: CELTICS_ROSTER,
+    bench: CELTICS_BENCH,
+  },
 };
 
 // Minutes per game (1986-87 regular season) — drives fatigue & stamina

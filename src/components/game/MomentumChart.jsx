@@ -5,11 +5,14 @@ import { TEAM_COLORS } from '@/lib/gameData';
 function MomentumChartInner({ gameState }) {
   if (!gameState) return null;
 
+  const t1Key = gameState.teamKeys.team1;
   const oppKey = gameState.teamKeys.team2;
+  const t1Colors = TEAM_COLORS[t1Key];
   const oppColors = TEAM_COLORS[oppKey];
-  const lakersMom = gameState.momentum?.lakers ?? 0;
+  const t1Mom = gameState.momentum?.[t1Key] ?? 0;
   const oppMom = gameState.momentum?.[oppKey] ?? 0;
   const pace = gameState.pace ?? 5;
+  const t1Accent = t1Colors.secondary === '#FFFFFF' ? t1Colors.primary : t1Colors.secondary;
 
   // Always render — seed a flat baseline so the chart shows from tip-off
   const history = gameState.momentumHistory && gameState.momentumHistory.length >= 2
@@ -26,8 +29,8 @@ function MomentumChartInner({ gameState }) {
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
           <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Momentum</span>
-          <span className="text-[10px] font-bold tabular-nums" style={{ color: '#FDB927' }}>
-            LAL {lakersMom >= 0 ? '+' : ''}{lakersMom.toFixed(1)}
+          <span className="text-[10px] font-bold tabular-nums" style={{ color: t1Accent }}>
+            {t1Colors.abbr} {t1Mom >= 0 ? '+' : ''}{t1Mom.toFixed(1)}
           </span>
           <span className="text-[10px] font-bold tabular-nums" style={{ color: oppColors.secondary === '#FFFFFF' ? '#e5e5e5' : oppColors.secondary }}>
             {oppColors.abbr} {oppMom >= 0 ? '+' : ''}{oppMom.toFixed(1)}
@@ -57,7 +60,7 @@ function MomentumChartInner({ gameState }) {
             itemStyle={{ color: '#a3a3a3', fontSize: '10px' }}
           />
           <Line type="monotone" dataKey="pace" stroke="#525252" strokeWidth={1} strokeDasharray="3 3" dot={false} isAnimationActive={false} name="Pace" />
-          <Line type="monotone" dataKey="team1" stroke="#FDB927" strokeWidth={2} dot={false} isAnimationActive={false} name="Lakers" />
+          <Line type="monotone" dataKey="team1" stroke={t1Accent} strokeWidth={2} dot={false} isAnimationActive={false} name={t1Colors.name} />
           <Line type="monotone" dataKey="team2" stroke={oppColors.secondary === '#FFFFFF' ? '#e5e5e5' : oppColors.secondary} strokeWidth={2} dot={false} isAnimationActive={false} name={oppColors.name} />
         </LineChart>
       </ResponsiveContainer>

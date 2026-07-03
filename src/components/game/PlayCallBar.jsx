@@ -15,12 +15,12 @@ const DEFENSE_PLAYS = [
   { id: 'double_ball', label: 'Double Ball', desc: 'Double the ball-handler', icon: UserCheck },
 ];
 
-export default function PlayCallBar({ gameState, onCallPlay }) {
+export default function PlayCallBar({ gameState, userTeam, onCallPlay }) {
   if (!gameState) return null;
 
-  const lakersPossession = gameState.possession === 'lakers';
-  const plays = lakersPossession ? OFFENSE_PLAYS : DEFENSE_PLAYS;
-  const side = lakersPossession ? 'offense' : 'defense';
+  const userPossession = gameState.possession === userTeam;
+  const plays = userPossession ? OFFENSE_PLAYS : DEFENSE_PLAYS;
+  const side = userPossession ? 'offense' : 'defense';
 
   const blocked = !!gameState.timeoutState
     || !!gameState.ftState
@@ -36,11 +36,11 @@ export default function PlayCallBar({ gameState, onCallPlay }) {
         <div className="flex items-center gap-1.5">
           <Megaphone size={13} className="text-amber-400" />
           <span className="text-xs text-neutral-400 uppercase tracking-widest font-semibold">
-            {lakersPossession ? 'Offensive Play Call' : 'Defensive Play Call'}
+            {userPossession ? 'Offensive Play Call' : 'Defensive Play Call'}
           </span>
         </div>
         <span className="text-[9px] text-neutral-500">
-          {active ? 'Active · single play' : lakersPossession ? 'Lakers ball' : 'On defense'}
+          {active ? 'Active · single play' : userPossession ? 'Your ball' : 'On defense'}
         </span>
       </div>
 
