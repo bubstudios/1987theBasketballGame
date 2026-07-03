@@ -398,17 +398,22 @@ export function updateGame(state, dt) {
   if (state.gameClock <= 0) {
     state.gameClock = 0;
     state.shotClock = 0;
-    if (state.quarter < 4) {
-      // Stop play for an intermission — user must continue to the next quarter
-      state.quarterBreak = { awaitingInput: true };
-      return state;
-    } else {
-      state.isPaused = true;
-      return state;
+    // A shot in flight when the buzzer sounds is a buzzer-beater — let it
+    // resolve on the next tick before ending the quarter.
+    const shotInFlightAtBuzzer = state.ball.inFlight && state.ball.isShot;
+    if (!shotInFlightAtBuzzer) {
+      if (state.quarter < 4) {
+        // Stop play for an intermission — user must continue to the next quarter
+        state.quarterBreak = { awaitingInput: true };
+        return state;
+      } else {
+        state.isPaused = true;
+        return state;
+      }
     }
   }
 
-  if (state.shotClock <= 0) {
+  if (state.shotClock <= 0 && !state.ball.inFlight) {
     // Shot clock violation — charge a turnover to the ball handler
     const offender = state.players.find(p => p.id === state.ball.carrier)
       || getOnCourtPlayers(state, state.possession)[0];
@@ -490,6 +495,22 @@ export function updateGame(state, dt) {
   const offensePlayers = getOnCourtPlayers(state, state.possession);
   const defensePlayers = getOnCourtPlayers(state, state.possession === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1);
   const ballCarrier = state.players.find(p => p.id === state.ball.carrier);
+
+  // Force rapid decisions on a buzzer-beater or a clear transition advantage
+  // (numbers-up break) so the offense attacks instead of resetting to set up.
+  if (ballCarrier && !state.ball.inFlight && !state.shotAnimating) {
+    const b = getBasketPos(state.attackingRight);
+    const dToBasket = dist(ballCarrier, b);
+    let nearestD = Infinity;
+    for (const d of defensePlayers) { const dd = dist(ballCarrier, d); if (dd < nearestD) nearestD = dd; }
+    const buzzer = state.gameClock < 5;
+    const advantage = nearestD > 120 && dToBasket < 350;
+    if (buzzer || advantage) {
+      const cap = buzzer ? 250 : 500;
+      state.actionTimer = Math.min(state.actionTimer, cap);
+      state.passTimer = Math.min(state.passTimer, cap);
+    }
+  }
 
   // --- Fast break or half-court offense ---
   if (state.fastBreak && state.fastBreak.active) {
@@ -778,7 +799,10 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
     const matchup = getMatchupFor(state, defender) || offensePlayers[i];
     if (!matchup) return;
 
-    const basket = getDefenseBasketPos(state.attackingRight);
+    // Defenders position between their man and the basket they're DEFENDING —
+    // which is the same basket the offense attacks (getBasketPos), not the
+    // opposite basket (getDefenseBasketPos).
+    const basket = getBasketPos(state.attackingRight);
 
     // Recovery factor: combines speed and defensive awareness (0.2 - 1.0)
     // Uses the new perimeter/transition defensive ratings.
@@ -934,6 +958,14 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   const isMidRange = distToBasket >= 150 && distToBasket < 220;
   const threeZone = isThreePointer(carrier.x, carrier.y, state.attackingRight);
 
+  // A player at the rim takes the shot — gate/patience never suppress a layup.
+  // A clear transition advantage (numbers up, no defender nearby) is attacked
+  // immediately rather than backing out to set up the half-court offense.
+  const rimBucket = isVeryClose;
+  const clearLane = nearestDef.dist > 120 && distToBasket < 350;
+  const attackNow = rimBucket || clearLane;
+  const effectiveClock = Math.min(state.gameClock, state.shotClock);
+
   // Late-game: a trailing defense intentionally fouls to stop the clock
   if (!isFastBreak && checkIntentionalFoul(state, carrier, nearestDef.player)) {
     state.actionTimer = 1500;
@@ -984,13 +1016,19 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   shootChance *= scoringWeight;
   driveChance *= scoringWeight;
 
+  // Transition advantage: attack a numbers-up break before the defense recovers
+  if (clearLane && !isFastBreak) {
+    driveChance += 0.35;
+    if (isVeryClose) shootChance += 0.25;
+  }
+
   // --- Possession time gate: half-court offense consumes realistic time
   // (15-21s for normal sets) before looking to shoot. Willingness ramps from
   // ~10% at possession start to 100% at the target duration. Fast breaks and
   // late-clock urgency bypass this. Uses the shot clock as the elapsed proxy —
   // it resets to 24 on possession change, offensive rebound, and non-shooting
   // fouls, so the ramp correctly restarts for each new action.
-  if (!isFastBreak && state.shotClock > 6) {
+  if (!isFastBreak && !attackNow && state.shotClock > 6 && state.gameClock > 8) {
     const minTime = state.possessionTargetDuration || 16;
     const elapsed = 24 - state.shotClock;
     if (elapsed < minTime) {
@@ -1003,11 +1041,11 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
 
   // --- Shot-clock patience: in the half court the CPU defers contested looks
   // and hunts a better shot, only bailing out as the clock expires ---
-  if (!isFastBreak) {
-    shootChance *= getPatienceFactor(contestLevel, state.shotClock);
-    if (state.shotClock < 6) {
+  if (!isFastBreak && !attackNow) {
+    shootChance *= getPatienceFactor(contestLevel, effectiveClock);
+    if (effectiveClock < 6) {
       // Late-clock urgency ramps up so the offense always gets a shot off
-      const urgency = (6 - state.shotClock) / 6;
+      const urgency = (6 - effectiveClock) / 6;
       shootChance += 0.35 * urgency;
       driveChance += 0.25 * urgency;
     }
@@ -1073,6 +1111,17 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
         driveChance += needed * (1 - shotShare);
       }
     }
+  }
+
+  // --- Buzzer-beater: never let the quarter end holding the ball ---
+  if (state.gameClock < 8 && !isFastBreak) {
+    const gameUrgency = clamp((8 - state.gameClock) / 8, 0, 1);
+    shootChance += 0.40 * gameUrgency;
+    driveChance += 0.30 * gameUrgency;
+  }
+  if (state.gameClock < 2.5) {
+    // Heave it — with under 2.5s, no more passing
+    shootChance = Math.max(shootChance, 0.92);
   }
 
   const roll = Math.random();
@@ -1615,7 +1664,17 @@ function resolveShot(state) {
 
   if (state.gameLog.length > 15) state.gameLog.pop();
 
-  // Reset possession
+  // Reset possession — but if the quarter buzzer has sounded, the shot was a
+  // buzzer-beater and the quarter ends here (no rebound or new possession).
+  if (state.gameClock <= 0) {
+    state.ball.shotResult = null;
+    if (state.quarter < 4) {
+      state.quarterBreak = { awaitingInput: true };
+    } else {
+      state.isPaused = true;
+    }
+    return;
+  }
   if (result.made) {
     switchPossession(state, null, 'made_basket');
   } else {
@@ -2078,9 +2137,22 @@ function updateFastBreak(state, offensePlayers, defensePlayers, dt) {
     defender.targetY = clamp(basket.y + randomInRange(-50, 50), 20, COURT.height - 20);
   });
 
-  // Fast break ends when timer expires → normal half-court offense takes over
+  // Fast break ends when the timer expires — but not if the carrier still has a
+  // live advantage (ahead of the defense and approaching the rim). Cutting off a
+  // 2-on-0 just because a fixed timer ran out produces ugly kick-out resets.
   if (fb.timer <= 0) {
-    state.fastBreak = null;
+    const carrier = state.players.find(p => p.id === state.ball.carrier);
+    if (carrier) {
+      const carrierDist = dist(carrier, basket);
+      const defenseRecovered = defensePlayers.some(d => dist(d, basket) < carrierDist + 15);
+      if (carrierDist < 280 && !defenseRecovered && carrierDist > 90) {
+        fb.timer = 1500; // extend — still a live numbers advantage
+      } else {
+        state.fastBreak = null;
+      }
+    } else {
+      state.fastBreak = null;
+    }
   }
 }
 
