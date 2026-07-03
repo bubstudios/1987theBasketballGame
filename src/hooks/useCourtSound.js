@@ -105,13 +105,28 @@ export function useCourtSound() {
     lfo.stop(now + dur + 0.02);
   }, [getCtx]);
 
-  // Plays a pre-generated TTS audio clip (star trash talk)
+  // Plays a pre-generated TTS audio clip (star trash talk).
+  // Decodes through the AudioContext (already unlocked by user interaction)
+  // instead of a separate Audio element, which browsers can block silently.
   const playTrashTalk = useCallback((url) => {
     if (mutedRef.current) return;
-    const audio = new Audio(url);
-    audio.volume = 0.8;
-    audio.play().catch(() => {});
-  }, []);
+    const ctx = getCtx();
+    if (!ctx) return;
+    fetch(url)
+      .then(r => r.arrayBuffer())
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(audioBuffer => {
+        const src = ctx.createBufferSource();
+        src.buffer = audioBuffer;
+        const gain = ctx.createGain();
+        gain.gain.value = 0.85;
+        src.connect(gain);
+        gain.connect(ctx.destination);
+        src.start();
+        src.onended = () => { try { src.disconnect(); gain.disconnect(); } catch (e) {} };
+      })
+      .catch(() => {});
+  }, [getCtx]);
 
   const toggleMute = useCallback(() => {
     setMuted(m => {

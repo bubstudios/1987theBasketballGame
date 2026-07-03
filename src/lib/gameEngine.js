@@ -1018,7 +1018,14 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     shootChance = 0;
   }
 
-  if (!threeZone && contestLevel !== 'tight' && contestLevel !== 'smothered') {
+  if (isFastBreak) {
+    // On a fast break the carrier drives toward the basket even from beyond
+    // the arc — pulling up to reset the half-court offense wastes a transition
+    // advantage. Only heavy contest stops the drive.
+    if (contestLevel !== 'tight' && contestLevel !== 'smothered') {
+      driveChance = 0.06 + (carrier.driveTendency || 5) * 0.04 + carrier.speed * 0.01;
+    }
+  } else if (!threeZone && contestLevel !== 'tight' && contestLevel !== 'smothered') {
     driveChance = 0.06 + (carrier.driveTendency || 5) * 0.04 + carrier.speed * 0.01;
   }
 
@@ -1028,8 +1035,9 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
   shootChance *= scoringWeight;
   driveChance *= scoringWeight;
 
-  // Transition advantage: attack a numbers-up break before the defense recovers
-  if (clearLane && !isFastBreak) {
+  // Transition advantage: attack a numbers-up break before the defense recovers.
+  // Applies on fast breaks too — a wide-open lane should always be attacked.
+  if (clearLane) {
     driveChance += 0.35;
     if (isVeryClose) shootChance += 0.25;
   }
