@@ -1028,6 +1028,51 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     }
   }
 
+  // --- Possession-finishing deadline ---
+  // The target time is a soft deadline, not just an early-shot suppressor.
+  // Once elapsed reaches the target, the offense must attempt to finish
+  // (shoot or drive) rather than throwing another pass.
+  if (!isFastBreak) {
+    const elapsed = 24 - state.shotClock;
+    const targetTime = state.possessionTargetDuration || 14;
+
+    if (elapsed >= targetTime) {
+      const secondsOverTarget = elapsed - targetTime;
+      const urgency = clamp(secondsOverTarget / 3, 0, 1);
+
+      // At the target: ≥72% shot-or-drive. Three seconds late: ≥95%.
+      const minimumFinishChance = 0.72 + urgency * 0.23;
+      const currentFinishChance = shootChance + driveChance;
+
+      if (currentFinishChance < minimumFinishChance) {
+        const needed = minimumFinishChance - currentFinishChance;
+
+        let shotShare;
+        switch (contestLevel) {
+          case 'wide_open':
+            shotShare = 0.82;
+            break;
+          case 'open':
+            shotShare = 0.72;
+            break;
+          case 'light_contest':
+            shotShare = 0.60;
+            break;
+          case 'tight':
+            shotShare = 0.42;
+            break;
+          default:
+            // Smothered: prefer attacking or creating movement.
+            shotShare = 0.25;
+            break;
+        }
+
+        shootChance += needed * shotShare;
+        driveChance += needed * (1 - shotShare);
+      }
+    }
+  }
+
   const roll = Math.random();
 
   if (roll < shootChance) {
@@ -1051,7 +1096,14 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     if (passTarget) {
       makePass(state, carrier, passTarget);
     }
-    state.passTimer = randomInRange(1800, 3000);
+    const elapsed = 24 - state.shotClock;
+    const targetTime = state.possessionTargetDuration || 14;
+
+    if (elapsed >= targetTime) {
+      state.passTimer = randomInRange(700, 1300);
+    } else {
+      state.passTimer = randomInRange(1300, 2200);
+    }
   }
 }
 
@@ -1625,52 +1677,73 @@ function updateFreeThrows(state, dt) {
   }
 }
 
-// --- Pace & possession governor ---
+// --- Shared matchup pace governor ---
 // Targets ~100 possessions per team over 48 minutes (1986-87 Lakers-Celtics).
-// Expected possessions at any point = 100 × elapsedGameTime ÷ 2880.
-function getPaceAdjustment(state) {
+// Pace is shared by both teams, so the deficit uses the game-wide average.
+// Returns a POSITIVE value when the game is running too slowly.
+const MATCHUP_PACE_TARGET = 100;
+
+function getPaceDeficit(state) {
   const totalElapsed = (state.quarter - 1) * 720 + (720 - state.gameClock);
-  const expected = 100 * totalElapsed / 2880;
-  const actual = state.possessionCount[state.possession] || 0;
-  const diff = actual - expected;
-  // Normalize to [-1, 1]: positive = ahead of pace (too fast), negative = behind
-  return clamp(diff / 10, -1, 1);
+  const expectedPossessions = MATCHUP_PACE_TARGET * totalElapsed / 2880;
+  const team1Possessions = state.possessionCount[state.teamKeys.team1] || 0;
+  const team2Possessions = state.possessionCount[state.teamKeys.team2] || 0;
+  const actualPossessions = (team1Possessions + team2Possessions) / 2;
+  return expectedPossessions - actualPossessions;
 }
 
 // Determine possession type and target duration. Drives the time gate that
 // prevents half-court offenses from shooting in the first few seconds.
-// Distribution: ~20% fast break, ~30% early, ~55% normal half-court, ~15% deliberate.
+// Distribution: ~20% fast break, ~32% early, ~56% normal half-court, ~12% deliberate.
 function setupPossessionPacing(state, isFastBreak) {
+  const deficit = getPaceDeficit(state);
+
   if (isFastBreak) {
     state.possessionType = 'fastbreak';
-    state.possessionTargetDuration = randomInRange(4, 8);
+    state.possessionTargetDuration = randomInRange(4, 7);
     return;
   }
-  const teamPace = TEAM_FAST_BREAK[state.possession] || 5;
-  const transitionBias = (teamPace - 5) * 0.015; // Lakers +6%, Celtics -1.5%
 
-  // Pace governor: paceAdj < 0 = behind pace (too slow); > 0 = ahead (too fast)
-  const paceAdj = getPaceAdjustment(state);
-  const earlyShift = -paceAdj * 0.12; // behind pace → lean toward early offense
+  const teamPace = TEAM_FAST_BREAK[state.possession] || 5;
+  const transitionBias = (teamPace - 5) * 0.015;
+
+  // Positive when behind pace.
+  const paceUrgency = clamp(deficit / 8, -1, 1);
+
+  const earlyProbability = clamp(
+    0.32 + transitionBias + paceUrgency * 0.14,
+    0.15,
+    0.58
+  );
+
+  const deliberateProbability = clamp(
+    0.12 - paceUrgency * 0.06,
+    0.04,
+    0.20
+  );
 
   const roll = Math.random();
-  let pType, targetDur;
-  // Faster distribution: more early offense, far fewer deliberate sets
-  if (roll < 0.30 + transitionBias + earlyShift) {
-    pType = 'early';
-    targetDur = randomInRange(8, 13);
-  } else if (roll < 0.85 + transitionBias + earlyShift * 0.5) {
-    pType = 'halfcourt';
-    targetDur = randomInRange(13, 19);
-  } else {
-    pType = 'deliberate';
-    targetDur = randomInRange(18, 23);
-  }
-  // Behind pace → trim setup; ahead → add setup
-  targetDur = clamp(targetDur + (paceAdj > 0 ? paceAdj * 2 : paceAdj * 1.5), 6, 24);
+  let type;
+  let target;
 
-  state.possessionType = pType;
-  state.possessionTargetDuration = targetDur;
+  if (roll < earlyProbability) {
+    type = 'early';
+    target = randomInRange(7, 11);
+  } else if (roll < 1 - deliberateProbability) {
+    type = 'halfcourt';
+    target = randomInRange(11, 16);
+  } else {
+    type = 'deliberate';
+    target = randomInRange(17, 21);
+  }
+
+  // Stronger correction than the old maximum of about 1.5 seconds.
+  const paceCorrection = clamp(deficit * 0.18, -2.5, 4.0);
+
+  target -= paceCorrection;
+
+  state.possessionType = type;
+  state.possessionTargetDuration = clamp(target, 5, 22);
 }
 
 // --- Single per-possession turnover roll ---
@@ -1801,9 +1874,9 @@ function switchPossession(state, fastBreakInitiator = null, reason = 'unknown') 
   // Celtics slightly less). Was far too high before (Lakers 90%, Celtics 40%).
   const tendency = TEAM_FAST_BREAK[state.possession] || 5;
   const initiator = fastBreakInitiator || state.players.find(p => p.id === state.ball.carrier);
-  // Pace-aware: behind pace → more transition; ahead → fewer
-  const paceAdj = getPaceAdjustment(state);
-  const fastBreakChance = clamp(0.18 + (tendency - 5) * 0.012 - paceAdj * 0.05, 0.08, 0.35);
+  // Pace-aware: behind pace (positive deficit) → more transition; ahead → fewer
+  const paceUrgency = clamp(getPaceDeficit(state) / 8, -1, 1);
+  const fastBreakChance = clamp(0.18 + (tendency - 5) * 0.012 + paceUrgency * 0.05, 0.08, 0.35);
 
   if (initiator && initiator.team === state.possession && Math.random() < fastBreakChance) {
     // Outlet to the transition controller (Magic) when he didn't get the board
