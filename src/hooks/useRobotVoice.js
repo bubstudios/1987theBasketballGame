@@ -67,8 +67,8 @@ export function useRobotVoice() {
       window.speechSynthesis.resume(); // Chrome workaround: queue can stall
       const flavored = addFlair(text);
       const u = new SpeechSynthesisUtterance(flavored);
-      u.pitch = 1.6;   // high, excitable pitch
-      u.rate = 1.35;   // fast, energetic delivery
+      u.pitch = 1.05;  // natural-high — excitable without squeaking
+      u.rate = 1.2;    // fast and energetic, not cartoonish
       u.volume = 1.0;  // max volume
       if (voiceRef.current) u.voice = voiceRef.current;
       window.speechSynthesis.speak(u);
