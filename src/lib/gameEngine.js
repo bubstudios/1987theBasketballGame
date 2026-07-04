@@ -10,6 +10,7 @@ import { DUNK_PHRASES } from './dunkPhrases';
 import { checkDreamShake, checkZekeSplit, checkPumpFakeParade, improveContestLevel, updateMicrowaveMode, tickMicrowaveMode } from './signatureMoves';
 import { rollTrashTalk, isEnforcer } from './personalityEngine';
 import { checkSubstitutions, executeSubstitution } from './subEngine';
+import { setupFreeThrowAlignment, releaseLanePlayersForRebound, getFTReboundWeight } from './freeThrowEngine';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -336,10 +337,18 @@ export function updateGame(state, dt) {
     return state;
   }
 
-  // Handle free throw state — play stops while the shooter is at the line
+  // Handle free throw state — dead-ball set piece: players hold FT formation
   if (state.ftState) {
     updateFreeThrows(state, effectiveDt);
     updatePlayerMovement(state, effectiveDt);
+    // Keep ball with the shooter during FTs
+    if (state.ball.carrier) {
+      const carrier = state.players.find(p => p.id === state.ball.carrier);
+      if (carrier) {
+        state.ball.x = carrier.x;
+        state.ball.y = carrier.y;
+      }
+    }
     return state;
   }
 
@@ -1434,25 +1443,22 @@ function forceSubstitution(state, outgoing) {
   if (state.gameLog.length > 15) state.gameLog.pop();
 }
 
-// Send a shooter to the line for a standalone (non-shooting) foul
+// Send a shooter to the line for a standalone (non-shooting) foul.
+// Positions all ten players into NBA free-throw lane alignment.
 function setupFreeThrows(state, shooter, fouledBy, ftCount, fouledOut) {
-  const basket = getBasketPos(state.attackingRight);
-  const ftX = state.attackingRight ? basket.x - 120 : basket.x + 120;
-  shooter.targetX = ftX;
-  shooter.targetY = basket.y;
-  state.ball.carrier = shooter.id;
-  shooter.hasBall = true;
   state.ftState = {
     shooter: shooter,
     fouledBy: fouledBy,
     ftCount: ftCount,
     ftsMade: 0,
     currentFT: 0,
-    timer: 1200,
+    timer: 800,
     team: shooter.team,
     madeShot: false,
     fouledOut: fouledOut,
+    phase: 'setup',
   };
+  setupFreeThrowAlignment(state, shooter);
 }
 
 // Late-game intentional foul: a trailing defense fouls the carrier to stop the clock
@@ -1527,38 +1533,59 @@ function checkDriveFoul(state, carrier, nearestDef, defenders, isFastBreak) {
   return true;
 }
 
-// Rebound a missed final free throw — defensive team has the inside lane positions
+// Rebound a missed final free throw — lane position dominates the weighted pick.
+// Low-block defenders get the first crack; perimeter players react too late.
 function resolveFreeThrowRebound(state, ft) {
-  const basket = getBasketPos(state.attackingRight);
-  const defenseTeam = ft.team === state.teamKeys.team1 ? state.teamKeys.team2 : state.teamKeys.team1;
-  const offensePlayers = getOnCourtPlayers(state, ft.team);
-  const defensePlayers = getOnCourtPlayers(state, defenseTeam);
-  const zone = { x: basket.x, y: clamp(basket.y + randomInRange(-30, 30), 30, COURT.height - 30) };
-  const ftResult = { shooter: ft.shooter, type: 'layup' };
-  // FT misses rebound defensively far more often (lane positions favor the defense)
-  const isOffensive = determineOffensiveRebound(state, ftResult, offensePlayers, defensePlayers, false, { baseline: 0.14 });
-  const reboundTeam = isOffensive ? ft.team : defenseTeam;
-  const rebounder = selectRebounder(state, ftResult, zone, reboundTeam, isOffensive, defensePlayers);
+  const shooter = ft.shooter;
 
-  if (rebounder) {
-    rebounder.stats.rebounds++;
-    if (isOffensive) rebounder.stats.offReb++; else rebounder.stats.defReb++;
-    state.ball.carrier = rebounder.id;
-    rebounder.hasBall = true;
-    state.ball.x = rebounder.x;
-    state.ball.y = rebounder.y;
-    state.ball.lastPasserId = null;
-    state.ball.carrierHoldTime = 0;
-    state.gameLog.unshift(`↑ ${rebounder.name} ${isOffensive ? 'offensive' : 'defensive'} rebound (FT miss)`);
-    if (state.gameLog.length > 15) state.gameLog.pop();
-    if (!isOffensive) {
-      switchPossession(state, rebounder, 'defensive_rebound');
-    } else {
-      state.shotClock = 24;
-      state.actionTimer = 500;
+  // Weighted selection across all on-court players
+  const candidates = state.players.filter(p => p.onCourt).map(p => {
+    const isOffensive = p.team === shooter.team;
+    let weight = getFTReboundWeight(p, shooter, isOffensive);
+    weight *= (0.5 + Math.random()); // randomness — great rebounders don't get every board
+    return { player: p, weight, isOffensive };
+  });
+
+  const total = candidates.reduce((s, c) => s + c.weight, 0);
+  let rebounder = null;
+  if (total > 0) {
+    let roll = Math.random() * total;
+    for (const c of candidates) {
+      roll -= c.weight;
+      if (roll <= 0) { rebounder = c.player; break; }
     }
-  } else {
+  }
+  if (!rebounder) rebounder = candidates[0]?.player;
+
+  if (!rebounder) {
+    endFreeThrowState(state);
     switchPossession(state, null, 'dead_ball');
+    return;
+  }
+
+  const isOffensive = rebounder.team === shooter.team;
+  rebounder.stats.rebounds++;
+  if (isOffensive) rebounder.stats.offReb++; else rebounder.stats.defReb++;
+  state.momentum[rebounder.team] += isOffensive ? 1 : 0.5;
+  state.ball.carrier = rebounder.id;
+  rebounder.hasBall = true;
+  state.ball.x = rebounder.x;
+  state.ball.y = rebounder.y;
+  state.ball.lastPasserId = null;
+  state.ball.carrierHoldTime = 0;
+  state.gameLog.unshift(`↑ ${rebounder.name} ${isOffensive ? 'offensive' : 'defensive'} rebound (FT miss)`);
+  if (state.gameLog.length > 15) state.gameLog.pop();
+
+  endFreeThrowState(state);
+
+  if (isOffensive) {
+    // Offensive rebound — fresh shot clock, resume offense
+    state.shotClock = 24;
+    state.actionTimer = 500;
+    rollPossessionTurnover(state);
+  } else {
+    // Defensive rebound — transition to other team
+    switchPossession(state, rebounder, 'defensive_rebound');
   }
 }
 
@@ -1787,26 +1814,20 @@ function resolveFouledShot(state, result) {
   // Microwave Mode: track Vinnie's makes/misses (fouled shots count too)
   updateMicrowaveMode(state, shooter, result.made);
 
-  // Move shooter to the free throw line for the FT sequence
-  const basket = getBasketPos(state.attackingRight);
-  const ftX = state.attackingRight ? basket.x - 120 : basket.x + 120;
-  shooter.targetX = ftX;
-  shooter.targetY = basket.y;
-  state.ball.carrier = shooter.id;
-  shooter.hasBall = true;
-
-  // Set up free throw state — play stops while shooter goes to the line
+  // Set up free throw state — dead-ball set piece with full lane alignment
   state.ftState = {
     shooter: shooter,
     fouledBy: fouledBy,
     ftCount: ftCount,
     ftsMade: 0,
     currentFT: 0,
-    timer: 1200,
+    timer: 800,
     team: shooter.team,
     madeShot: result.made,
     fouledOut: fouledOut,
+    phase: 'setup',
   };
+  setupFreeThrowAlignment(state, shooter);
 
   const varData = result.shotVariation;
   if (result.made) {
@@ -1819,41 +1840,84 @@ function resolveFouledShot(state, result) {
   if (state.gameLog.length > 15) state.gameLog.pop();
 }
 
+// Clear the FT dead-ball state and restore players to normal play
+function endFreeThrowState(state) {
+  state.players.forEach(p => {
+    p.ftLaneSpot = null;
+    p.currentAction = null;
+  });
+  state.ftState = null;
+  state.shotResultTimer = 1200;
+}
+
+// Free-throw state machine: setup → shooting → between_shots → shooting → ...
+// On the final FT: made → defense inbounds; missed → live rebound.
 function updateFreeThrows(state, dt) {
   const ft = state.ftState;
   ft.timer -= dt;
+  if (ft.timer > 0) return;
 
-  if (ft.timer <= 0) {
-    if (ft.currentFT < ft.ftCount) {
-      // Shoot one free throw
-      const made = Math.random() < ft.shooter.ftPct;
-      ft.shooter.stats.fta++;
-      if (made) {
-        state.score[ft.team] += 1;
-        ft.shooter.stats.ftm++;
-        ft.shooter.stats.points++;
-        ft.ftsMade++;
-      }
-      ft.currentFT++;
-      // Only the final free throw is live for a rebound
-      if (ft.currentFT === ft.ftCount && !made) ft.finalMissed = true;
+  // Setup phase — players settle into FT formation, then shooting begins
+  if (ft.phase === 'setup') {
+    ft.phase = 'shooting';
+    ft.timer = 300;
+    return;
+  }
 
-      state.shotResultDisplay = `${ft.shooter.name} ${made ? 'makes' : 'misses'} FT ${ft.currentFT}/${ft.ftCount} (${ft.ftsMade}/${ft.ftCount})`;
-      state.gameLog.unshift(`${made ? '✓' : '✗'} ${ft.shooter.name} ${made ? 'makes' : 'misses'} FT ${ft.ftsMade}/${ft.ftCount}`);
-      if (state.gameLog.length > 15) state.gameLog.pop();
+  // Live rebound phase — lane players crash, then rebound is resolved
+  if (ft.phase === 'live_rebound') {
+    resolveFreeThrowRebound(state, ft);
+    return;
+  }
 
-      ft.timer = 1500;
-    } else {
-      // All free throws complete — resume play
-      state.ftState = null;
-      state.shotResultTimer = 1200;
-      // A missed final FT is rebounded; otherwise the other team gets the ball
-      if (ft.finalMissed) {
-        resolveFreeThrowRebound(state, ft);
-      } else {
-        switchPossession(state, null, 'dead_ball');
-      }
+  // Between shots — brief pause before the next FT, players hold formation
+  if (ft.phase === 'between_shots') {
+    ft.phase = 'shooting';
+    ft.timer = 300;
+    ft.shooter.hasBall = true;
+    state.ball.carrier = ft.shooter.id;
+    return;
+  }
+
+  // Shooting phase — resolve one free throw
+  if (ft.phase === 'shooting') {
+    const made = Math.random() < ft.shooter.ftPct;
+    ft.shooter.stats.fta++;
+    if (made) {
+      state.score[ft.team] += 1;
+      ft.shooter.stats.ftm++;
+      ft.shooter.stats.points++;
+      ft.ftsMade++;
     }
+    ft.currentFT++;
+    const isFinal = ft.currentFT >= ft.ftCount;
+
+    state.shotResultDisplay = `${ft.shooter.name} ${made ? 'makes' : 'misses'} FT ${ft.currentFT}/${ft.ftCount}`;
+    state.gameLog.unshift(`${made ? '✓' : '✗'} ${ft.shooter.name} ${made ? 'makes' : 'misses'} FT ${ft.ftsMade}/${ft.ftCount}`);
+    if (state.gameLog.length > 15) state.gameLog.pop();
+
+    if (!isFinal) {
+      // Non-final FT — no live rebound, keep everyone in formation
+      ft.phase = 'between_shots';
+      ft.timer = 1200;
+      ft.shooter.hasBall = true;
+      state.ball.carrier = ft.shooter.id;
+      return;
+    }
+
+    // Final FT
+    if (made) {
+      // Made → defense inbounds
+      endFreeThrowState(state);
+      switchPossession(state, null, 'made_free_throw');
+      return;
+    }
+
+    // Missed final FT — ball is live, lane players crash
+    ft.phase = 'live_rebound';
+    ft.timer = 600;
+    releaseLanePlayersForRebound(state);
+    return;
   }
 }
 
