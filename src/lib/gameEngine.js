@@ -11,6 +11,7 @@ import { checkDreamShake, checkZekeSplit, checkPumpFakeParade, improveContestLev
 import { rollTrashTalk, isEnforcer } from './personalityEngine';
 import { checkSubstitutions, executeSubstitution } from './subEngine';
 import { setupFreeThrowAlignment, releaseLanePlayersForRebound, getFTReboundWeight } from './freeThrowEngine';
+import { maybeStartActivePlay, updateActivePlay, clearActivePlay } from './playEngine';
 
 const BALL_RADIUS = 6;
 const PLAYER_BASE_RADIUS = 14;
@@ -324,6 +325,11 @@ function isThreePointer(x, y, attackingRight) {
 
 export function updateGame(state, dt) {
   if (state.isPaused) return state;
+
+  // Dead-ball stoppages clear any active offensive play
+  if ((state.timeoutState || state.ftState || state.quarterBreak) && state.activePlay) {
+    clearActivePlay(state);
+  }
   
   // 0.5x is the baseline (regular) speed — simRate = 1.0 there.
   // Higher speeds (1, 2, 3) fast-forward both the simulation and the clocks.
@@ -495,11 +501,18 @@ export function updateGame(state, dt) {
   if (state.fastBreak && state.fastBreak.active) {
     updateFastBreak(state, offensePlayers, defensePlayers, effectiveDt);
   } else {
-    // --- OFFENSE AI: Motion Offense ---
-    updateMotionOffense(state, offensePlayers, ballCarrier, effectiveDt);
+    maybeStartActivePlay(state);
 
-    // --- SCREENS: bigs set ball screens so the offense can create separation ---
-    updateScreens(state, offensePlayers, defensePlayers, ballCarrier, effectiveDt);
+    if (state.activePlay) {
+      // --- ACTIVE PLAY: phase machine + play-specific positioning ---
+      updateActivePlay(state, offensePlayers, defensePlayers, ballCarrier, effectiveDt);
+    } else {
+      // --- OFFENSE AI: Motion Offense ---
+      updateMotionOffense(state, offensePlayers, ballCarrier, effectiveDt);
+
+      // --- SCREENS: bigs set ball screens so the offense can create separation ---
+      updateScreens(state, offensePlayers, defensePlayers, ballCarrier, effectiveDt);
+    }
 
     // --- DEFENSE AI: Man-to-Man ---
     updateManToManDefense(state, defensePlayers, offensePlayers, effectiveDt);
@@ -852,71 +865,56 @@ function updateManToManDefense(state, defensePlayers, offensePlayers, dt) {
   });
 }
 
-// On-screen user play calls — override the CPU ball-carrier decision for one possession.
-// ISO Hottest: force the ball to the hottest hand and let him isolate.
-// Feed Post: pound it inside to the center for a close finish.
-// Shoot 3: find the best deep shooter and let it fly from beyond the arc.
-// Attack Rim: the current carrier drives hard and finishes at the basket.
-function getHottestPlayer(teammates) {
-  // Hottest hand = most points scored so far; tie-break by scoring skill
-  let best = null;
-  let bestScore = -Infinity;
-  teammates.forEach(t => {
-    const pts = (t.stats && t.stats.points) || 0;
-    const score = pts * 10 + (t.shooting + t.insideScoring) * 0.5;
-    if (score > bestScore) { bestScore = score; best = t; }
-  });
-  return best || teammates[0];
-}
+// Execute the active play's chosen option (shot/drive/pass) based on its phase.
+// Lives in gameEngine because it needs takeShot/makePass/findBestPassTarget.
+function executePlayOption(state, carrier, teammates, defenders, basket, nearestDef) {
+  const play = state.activePlay;
+  if (!play || play.team !== carrier.team) return false;
+  if (state.gameClock < 8 || state.shotClock < 5) return false; // defer to buzzer/urgency
 
-function applyUserPlayCall(state, carrier, teammates, basket, distToBasket, isOpen, threeZone, nearestDef) {
-  const playId = state.userPlayCall.type;
+  const primary = state.players.find(p => p.id === play.primaryId);
+  const secondary = play.secondaryId ? state.players.find(p => p.id === play.secondaryId) : null;
 
-  const passTo = (player) => {
-    if (!player || carrier.id === player.id) return false;
-    makePass(state, carrier, player);
-    state.passTimer = randomInRange(400, 700);
-    state.actionTimer = 800;
-    return true;
-  };
-  const shootNow = () => {
-    takeShot(state, carrier, isOpen, null, nearestDef);
-    state.actionTimer = 1200;
-    return true;
-  };
-  const driveTo = (factor) => {
-    carrier.targetX = lerp(carrier.x, basket.x, factor);
-    carrier.targetY = lerp(carrier.y, basket.y, factor);
-    state.actionTimer = randomInRange(350, 700);
-    return true;
-  };
+  if (play.phase === 'setup') { state.actionTimer = 250; return true; }
 
-  if (playId === 'iso_hot') {
-    const hot = getHottestPlayer(teammates);
-    if (hot && carrier.id !== hot.id) return passTo(hot);
-    if (distToBasket < 90) return shootNow();
-    return driveTo(0.6);
-  }
-  if (playId === 'feed_post') {
-    const post = teammates.find(t => t.courtIndex === 4);
-    if (post && carrier.id !== post.id) return passTo(post);
-    if (distToBasket < 100) return shootNow();
-    return driveTo(0.4);
-  }
-  if (playId === 'shoot_3') {
-    const shooter = teammates.filter(t => t.threeAttempts > 0.5).sort((a, b) => b.threePct - a.threePct)[0];
-    if (shooter && carrier.id !== shooter.id) return passTo(shooter);
-    if (threeZone) return shootNow();
-    const spots = getOffenseSpots(state.attackingRight);
-    const spot = spots[Math.min(carrier.courtIndex || 0, spots.length - 1)];
-    carrier.targetX = spot.x;
-    carrier.targetY = spot.y;
-    state.actionTimer = randomInRange(400, 600);
+  if (play.phase === 'initiate' || play.phase === 'read') {
+    const entryId = play.entryTargetId || play.primaryId;
+    if (carrier.id !== entryId) {
+      const entry = state.players.find(p => p.id === entryId);
+      if (entry && dist(carrier, entry) < 420) { makePass(state, carrier, entry); state.passTimer = randomInRange(400, 700); state.actionTimer = 800; }
+      else state.actionTimer = 300;
+    } else {
+      state.actionTimer = 300;
+    }
     return true;
   }
-  if (playId === 'attack_rim') {
-    if (distToBasket < 75) return shootNow();
-    return driveTo(0.7);
+
+  if (play.phase === 'finishing') {
+    if (carrier.id !== play.primaryId) {
+      if (primary && dist(carrier, primary) < 420) { makePass(state, carrier, primary); state.actionTimer = 600; }
+      else state.actionTimer = 300;
+      return true;
+    }
+    const opt = play.chosenOption || 'shoot';
+    const dToBasket = dist(primary, basket);
+    const open = (nearestDef && nearestDef.dist != null) ? nearestDef.dist > 55 : true;
+    switch (opt) {
+      case 'kick':
+        if (secondary) { makePass(state, primary, secondary); state.actionTimer = 800; return true; }
+        takeShot(state, primary, open, null, nearestDef); return true;
+      case 'shoot':
+      case 'pullup':
+        takeShot(state, primary, open, null, nearestDef); return true;
+      case 'drive':
+      case 'post_move':
+        if (dToBasket < 85) { takeShot(state, primary, open, null, nearestDef); return true; }
+        primary.targetX = basket.x; primary.targetY = basket.y; state.actionTimer = 350; return true;
+      default: {
+        const target = findBestPassTarget(state, primary, teammates, defenders, basket);
+        if (target) { makePass(state, primary, target); state.actionTimer = 800; return true; }
+        takeShot(state, primary, open, null, nearestDef); return true;
+      }
+    }
   }
   return false;
 }
@@ -956,10 +954,10 @@ function makeBallCarrierDecision(state, carrier, teammates, defenders) {
     return;
   }
 
-  // User's on-screen play call overrides the CPU for this single possession.
-  // It persists across passes and is consumed when a shot goes up or possession changes.
-  if (state.userPlayCall && state.userPlayCall.side === 'offense' && state.userPlayCall.team === carrier.team) {
-    const handled = applyUserPlayCall(state, carrier, teammates, basket, distToBasket, isOpen, threeZone, nearestDef);
+  // Active multi-option play takes over the carrier's decision (except in the
+  // final seconds, where the buzzer/urgency logic further down takes over).
+  if (state.activePlay && state.activePlay.team === carrier.team) {
+    const handled = executePlayOption(state, carrier, teammates, defenders, basket, nearestDef);
     if (handled) return;
   }
 
@@ -1241,6 +1239,8 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef, options = {}) {
   if (state.playCall) state.playCall = null;
   // Defensive play calls survive the shot so Crash Boards still affects the rebound
   if (state.userPlayCall && state.userPlayCall.side === 'offense') state.userPlayCall = null;
+  // A shot ends any active offensive play
+  clearActivePlay(state);
   const basket = getBasketPos(state.attackingRight);
   shooter.hasBall = false;
   state.ball.carrier = null;
@@ -1446,6 +1446,7 @@ function forceSubstitution(state, outgoing) {
 // Send a shooter to the line for a standalone (non-shooting) foul.
 // Positions all ten players into NBA free-throw lane alignment.
 function setupFreeThrows(state, shooter, fouledBy, ftCount, fouledOut) {
+  clearActivePlay(state);
   state.ftState = {
     shooter: shooter,
     fouledBy: fouledBy,
@@ -2117,6 +2118,7 @@ function executePendingTurnover(state) {
 // The retaining team inbounds to a guard — no one stands around ball-less until
 // a shot-clock violation drifts the game into a stall.
 function inboundToTeam(state, team, reason = 'out_of_bounds', resetShotClock = true) {
+  clearActivePlay(state);
   state.ball.inFlight = false; state.ball.isShot = false;
   state.ball.shotResult = null; state.shotAnimating = false;
   state.players.forEach(p => { p.hasBall = false; });
@@ -2138,6 +2140,7 @@ function inboundToTeam(state, team, reason = 'out_of_bounds', resetShotClock = t
 }
 
 function switchPossession(state, fastBreakInitiator = null, reason = 'unknown') {
+  clearActivePlay(state);
   if (reason === 'unknown') {
     console.error('Possession switched without a recorded reason');
   }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Flame, Mountain, Target, Zap, Megaphone, LayoutGrid, Hand, Users, UserCheck } from 'lucide-react';
+import { getActivePlayLabel } from '@/lib/playEngine';
 
 const OFFENSE_PLAYS = [
   { id: 'iso_hot', label: 'ISO Hottest', desc: 'Isolate the hottest hand', icon: Flame },
@@ -28,7 +29,11 @@ export default function PlayCallBar({ gameState, userTeam, onCallPlay }) {
     || gameState.isPaused
     || (gameState.quarter >= 4 && gameState.gameClock <= 0);
 
-  const active = gameState.userPlayCall;
+  // Offense runs the multi-option play engine (activePlay); defense is still a
+  // one-shot override (userPlayCall) — defense gets the tradeoff rework next.
+  const offPlay = userPossession ? gameState.activePlay : null;
+  const defCall = !userPossession ? gameState.userPlayCall : null;
+  const playLabel = getActivePlayLabel(gameState);
 
   return (
     <div className="bg-neutral-900 rounded-xl border border-neutral-700 p-3">
@@ -39,15 +44,21 @@ export default function PlayCallBar({ gameState, userTeam, onCallPlay }) {
             {userPossession ? 'Offensive Play Call' : 'Defensive Play Call'}
           </span>
         </div>
-        <span className="text-[9px] text-neutral-500">
-          {active ? 'Active · single play' : userPossession ? 'Your ball' : 'On defense'}
+        <span className="text-[9px] text-neutral-500 max-w-[55%] text-right truncate">
+          {playLabel
+            ? `${playLabel.label}${playLabel.phase === 'finishing' && playLabel.option ? ` · ${playLabel.option.replace('_', ' ')}` : ` · ${playLabel.phase}`}`
+            : defCall
+            ? 'Active · single play'
+            : userPossession ? 'Your ball' : 'On defense'}
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-1.5">
         {plays.map(play => {
           const Icon = play.icon;
-          const isActive = active && active.type === play.id && active.side === side;
+          const isActive = userPossession
+            ? !!(offPlay && offPlay.buttonType === play.id)
+            : !!(defCall && defCall.type === play.id && defCall.side === 'defense');
           const disabled = blocked || isActive;
           return (
             <button
