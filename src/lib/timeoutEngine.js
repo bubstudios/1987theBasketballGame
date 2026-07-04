@@ -2,7 +2,8 @@
 // split between "full" timeouts (~100s) and "20-second" timeouts (~60s actual).
 // Coaches use them to stop opposing runs, make substitutions, or draw up plays.
 
-import { checkSubstitutions, resetPositions } from './gameEngine';
+import { resetPositions } from './gameEngine';
+import { checkSubstitutions } from './subEngine';
 import { TEAM_COLORS } from './gameData';
 
 export const TIMEOUTS_PER_GAME = 7;
