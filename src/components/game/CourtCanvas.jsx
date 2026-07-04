@@ -1,10 +1,8 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { COURT, TEAM_COLORS } from '@/lib/gameData';
 
-// 2x zoom: only half the court width is visible at a time.
-// The camera smoothly pans horizontally to follow the ball.
-const ZOOM = 2;
-const VISIBLE_WIDTH = COURT.width / ZOOM; // half-court width visible
+// Adaptive zoom: portrait shows a close-up half-court view; landscape zooms
+// out to the full court. The camera pans to follow the ball when zoomed in.
 const PAN_SMOOTH = 0.12; // camera follow easing per frame
 
 function lerp(a, b, t) {
@@ -15,9 +13,10 @@ function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 
-// Shared court→screen transform: screen = court * scale + offset
-function buildTransform(w, h, cameraX) {
-  const sx = w / VISIBLE_WIDTH;
+// Shared court→screen transform: screen = court * scale + offset.
+// visibleWidth = how many court-units are visible horizontally (zoom-dependent).
+function buildTransform(w, h, cameraX, visibleWidth) {
+  const sx = w / visibleWidth;
   const sy = h / COURT.height;
   // camera center (cameraX) maps to canvas center (w/2)
   const ox = (w / 2) - cameraX * sx;
@@ -403,6 +402,9 @@ function drawBall(ctx, ball, tf) {
 export default function CourtCanvas({ gameState }) {
   const canvasRef = useRef(null);
   const cameraRef = useRef(COURT.width / 2); // start centered
+  // Adaptive zoom: portrait → half-court (close-up), landscape → full court.
+  const zoomRef = useRef(2);
+  const visibleWidthRef = useRef(COURT.width / 2);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -414,13 +416,20 @@ export default function CourtCanvas({ gameState }) {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Smoothly pan the camera toward the ball
-    const ballX = gameState.ball.x;
-    const half = VISIBLE_WIDTH / 2;
-    const target = clamp(ballX, half, COURT.width - half);
-    cameraRef.current = lerp(cameraRef.current, target, PAN_SMOOTH);
+    // Smoothly pan the camera toward the ball (only when zoomed in).
+    // Full-court view is static — you can already see everything.
+    const visibleW = visibleWidthRef.current;
+    const isFullCourt = visibleW >= COURT.width - 10;
+    if (isFullCourt) {
+      cameraRef.current = COURT.width / 2;
+    } else {
+      const ballX = gameState.ball.x;
+      const half = visibleW / 2;
+      const target = clamp(ballX, half, COURT.width - half);
+      cameraRef.current = lerp(cameraRef.current, target, PAN_SMOOTH);
+    }
 
-    const tf = buildTransform(w, h, cameraRef.current);
+    const tf = buildTransform(w, h, cameraRef.current, visibleW);
 
     // Draw court
     drawCourt(ctx, tf);
@@ -524,15 +533,29 @@ export default function CourtCanvas({ gameState }) {
     const resize = () => {
       const container = canvas.parentElement;
       const maxW = container.clientWidth;
-      // Half-court aspect: (width/2) : height  →  uniform 2x zoom, full height visible
-      const aspect = VISIBLE_WIDTH / COURT.height;
-      canvas.width = Math.min(maxW, 940);
-      canvas.height = canvas.width / aspect;
+      const maxH = Math.max(200, window.innerHeight - 110);
+      // Wide screens (landscape) → full court (zoom 1); narrow (portrait) → half court (zoom 2)
+      const containerAspect = maxW / maxH;
+      const zoom = containerAspect >= 1.2 ? 1 : 2;
+      const visibleW = COURT.width / zoom;
+      const courtAspect = visibleW / COURT.height;
+      // Fit the canvas within both width and height constraints
+      let cw = maxW;
+      let ch = cw / courtAspect;
+      if (ch > maxH) { ch = maxH; cw = ch * courtAspect; }
+      canvas.width = Math.round(cw);
+      canvas.height = Math.round(ch);
+      zoomRef.current = zoom;
+      visibleWidthRef.current = visibleW;
     };
 
     resize();
     window.addEventListener('resize', resize);
-    return () => window.removeEventListener('resize', resize);
+    window.addEventListener('orientationchange', resize);
+    return () => {
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('orientationchange', resize);
+    };
   }, []);
 
   return (
