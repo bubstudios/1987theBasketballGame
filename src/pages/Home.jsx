@@ -362,12 +362,10 @@ export default function Home() {
           <SubstitutionLog gameState={gameState} />
         </div>
 
-
-      </div>
-
-      {/* Sticky bottom momentum & pace tracker */}
-      <div className="sticky bottom-0 z-20 max-w-6xl mx-auto px-4 pb-3 pt-2 bg-gradient-to-t from-neutral-950 via-neutral-950/95 to-transparent">
-        <MomentumChart gameState={gameState} />
+        {/* Momentum & pace tracker */}
+        <div className="mt-4 max-w-2xl mx-auto">
+          <MomentumChart gameState={gameState} />
+        </div>
       </div>
     </div>
   );
