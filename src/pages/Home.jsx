@@ -4,7 +4,7 @@ import { TEAMS, TEAM_COLORS } from '@/lib/gameData';
 import { createGameState, updateGame, advanceToNextQuarter } from '@/lib/gameEngine';
 import { Button } from '@/components/ui/button';
 import { useCourtSound } from '@/hooks/useCourtSound';
-import { TRASH_TALK_CLIPS } from '@/lib/trashTalkData';
+import { useRobotVoice } from '@/hooks/useRobotVoice';
 import CourtCanvas from '@/components/game/CourtCanvas';
 import TrashTalkBubble from '@/components/game/TrashTalkBubble';
 import Scoreboard from '@/components/game/Scoreboard';
@@ -28,6 +28,7 @@ export default function Home() {
   const prevVelRef = useRef({});
   const prevStoppedRef = useRef(false);
   const { playSqueak, playWhistle, playTrashTalk, muted, toggleMute } = useCourtSound();
+  const { speak: speakRobot, setMuted: setRobotMuted } = useRobotVoice();
   const [trashBubble, setTrashBubble] = useState(null);
 
   const urlParams = new URLSearchParams(window.location.search);
@@ -56,6 +57,28 @@ export default function Home() {
     const t = setTimeout(() => setTrashBubble(null), 2800);
     return () => clearTimeout(t);
   }, [trashBubble]);
+
+  // Robot voice respects the same mute toggle as court sound
+  useEffect(() => { setRobotMuted(muted); }, [muted, setRobotMuted]);
+
+  // Robot-voiced game announcements: shot results and quarter breaks
+  const prevShotDisplayRef = useRef(null);
+  useEffect(() => {
+    const display = gameState?.shotResultDisplay;
+    if (display && display !== prevShotDisplayRef.current) {
+      speakRobot(display.replace(/[^\x20-\x7E]/g, '').trim());
+    }
+    prevShotDisplayRef.current = display || null;
+  }, [gameState?.shotResultDisplay, speakRobot]);
+
+  const prevQuarterBreakRef = useRef(null);
+  useEffect(() => {
+    const qb = gameState?.quarterBreak;
+    if (qb && !prevQuarterBreakRef.current) {
+      speakRobot(`End of quarter ${gameState.quarter}`);
+    }
+    prevQuarterBreakRef.current = qb || null;
+  }, [gameState?.quarterBreak, gameState?.quarter, speakRobot]);
 
   useEffect(() => {
     const loop = (timestamp) => {
@@ -104,13 +127,8 @@ export default function Home() {
       if (updated.pendingTrashTalk) {
         const tt = updated.pendingTrashTalk;
         setTrashBubble({ ...tt, id: Date.now() });
-        const clips = tt.playerKey && TRASH_TALK_CLIPS[tt.playerKey];
-        if (clips && clips.length > 0) {
-          const clip = clips[Math.floor(Math.random() * clips.length)];
-          playTrashTalk(clip.url);
-        } else {
-          console.warn(`No trash-talk audio clips for ${tt.playerName}`, tt.playerKey);
-        }
+        // Robot voice reads the trash-talk line
+        speakRobot(tt.bubble);
         updated.gameLog.unshift(`💬 ${tt.playerName}: "${tt.bubble}"`);
         if (updated.gameLog.length > 15) updated.gameLog.pop();
         updated.pendingTrashTalk = null;
@@ -202,10 +220,11 @@ export default function Home() {
     if (['pause', 'resume', 'play'].includes(voice.lastMatch) && gameRef.current) {
       label = gameRef.current.isPaused ? '⏸ Paused' : '▶ Resumed';
     }
+    speakRobot(label.replace(/[^\x20-\x7E]/g, '').trim());
     setVoiceToast(label);
     const t = setTimeout(() => setVoiceToast(null), 1500);
     return () => clearTimeout(t);
-  }, [voice.lastMatch]);
+  }, [voice.lastMatch, speakRobot]);
 
   const isGameOver = gameState && gameState.quarter >= 4 && gameState.gameClock <= 0;
 
