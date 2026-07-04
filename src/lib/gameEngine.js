@@ -1674,15 +1674,15 @@ function resolveShot(state) {
     state.ball.lastPasserId = null;
     if (varData && varData.family === 'DUNK' && Math.random() < 0.35) {
       const phrase = DUNK_PHRASES[Math.floor(Math.random() * DUNK_PHRASES.length)];
-      state.shotResultDisplay = `💥 ${result.shooter.name} ${phrase.display} +${result.points}`;
+      state.shotResultDisplay = `💥 ${result.shooter.name} ${phrase.display}`;
     } else if (state.ball.isZekeSplit) {
-      state.shotResultDisplay = `⚡ ${result.shooter.name} ZEKE SPLIT! +${result.points}`;
+      state.shotResultDisplay = `⚡ ${result.shooter.name} ZEKE SPLIT!`;
     } else if (state.ball.isPumpFake) {
-      state.shotResultDisplay = `🎭 ${result.shooter.name} PUMP-FAKE PARADE! +${result.points}`;
+      state.shotResultDisplay = `🎭 ${result.shooter.name} PUMP-FAKE PARADE!`;
     } else if (state.ball.isDreamShake) {
-      state.shotResultDisplay = `✨ ${result.shooter.name} DREAM SHAKE — ${varData ? varData.make : 'scores'}! +${result.points}`;
+      state.shotResultDisplay = `✨ ${result.shooter.name} DREAM SHAKE — ${varData ? varData.make : 'scores'}!`;
     } else {
-      state.shotResultDisplay = `${result.shooter.name} ${varData ? varData.make : 'scores'}! +${result.points}`;
+      state.shotResultDisplay = `${result.shooter.name} ${varData ? varData.make : 'scores'}!`;
     }
     state.gameLog.unshift(`${varData && varData.family === 'DUNK' ? '💥' : '✓'} ${result.shooter.name} ${varData ? varData.log : 'scores'} — ${result.points} pts`);
   } else {
@@ -1833,7 +1833,7 @@ function resolveFouledShot(state, result) {
   const varData = result.shotVariation;
   if (result.made) {
     state.shotResultDisplay = `${shooter.name} ${varData ? varData.make : 'scores'} + foul! AND1!`;
-    state.gameLog.unshift(`✓ ${shooter.name} ${varData ? varData.log : 'basket'} + foul on ${fouledBy.name} (${fouledBy.fouls})! +${result.points}`);
+    state.gameLog.unshift(`✓ ${shooter.name} ${varData ? varData.log : 'basket'} + foul on ${fouledBy.name} (${fouledBy.fouls})!`);
   } else {
     state.shotResultDisplay = `Foul on ${fouledBy.name} (${fouledBy.fouls})! ${shooter.name} to the line for ${ftCount}`;
     state.gameLog.unshift(`🦵 Foul on ${fouledBy.name} (${fouledBy.fouls}) — ${shooter.name} to the line for ${ftCount}`);
