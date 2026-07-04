@@ -1,11 +1,15 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 
 // useRobotVoice — speaks text via the browser's speechSynthesis API using a
 // flat, low-pitched "robot" voice. Used for command feedback, trash talk, and
 // game announcements. Respects a mute flag synced from the court sound toggle.
+//
+// Mobile browsers require the FIRST speechSynthesis.speak() to happen inside a
+// user gesture. We expose `enabled` (false until unlocked) so the UI can show a
+// prompt, and `enable()` which speaks an audible confirmation on first tap.
 export function useRobotVoice() {
   const mutedRef = useRef(false);
-  const unlockedRef = useRef(false);
+  const [enabled, setEnabled] = useState(false);
   const supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
   const speak = useCallback((text) => {
@@ -21,32 +25,33 @@ export function useRobotVoice() {
 
   const setMuted = useCallback((m) => { mutedRef.current = m; }, []);
 
-  // Mobile browsers (iOS Safari, Chrome Android) require the FIRST
-  // speechSynthesis.speak() call to happen inside a user gesture. This
-  // one-time listener fires a silent warm-up utterance on the first tap or
-  // keypress, unlocking speech for all subsequent programmatic calls.
+  // Unlock speech on first user gesture — speaks an audible confirmation
+  const enable = useCallback(() => {
+    if (!supported || enabled) return;
+    setEnabled(true);
+    try {
+      const u = new SpeechSynthesisUtterance('Voice enabled.');
+      u.pitch = 0;
+      u.rate = 0.85;
+      u.volume = 0.9;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* noop */ }
+  }, [supported, enabled]);
+
   useEffect(() => {
-    if (!supported) return;
-    const unlock = () => {
-      if (unlockedRef.current) return;
-      unlockedRef.current = true;
-      try {
-        const u = new SpeechSynthesisUtterance(' ');
-        u.volume = 0;
-        window.speechSynthesis.speak(u);
-      } catch (e) { /* noop */ }
-    };
-    window.addEventListener('pointerdown', unlock, { once: true });
-    window.addEventListener('keydown', unlock, { once: true });
+    if (!supported || enabled) return;
+    const handler = () => enable();
+    window.addEventListener('pointerdown', handler, { once: true });
+    window.addEventListener('keydown', handler, { once: true });
     return () => {
-      window.removeEventListener('pointerdown', unlock);
-      window.removeEventListener('keydown', unlock);
+      window.removeEventListener('pointerdown', handler);
+      window.removeEventListener('keydown', handler);
     };
-  }, [supported]);
+  }, [supported, enabled, enable]);
 
   useEffect(() => () => {
     if (supported) { try { window.speechSynthesis.cancel(); } catch (e) {} }
   }, [supported]);
 
-  return { speak, setMuted };
+  return { speak, setMuted, enabled, supported };
 }

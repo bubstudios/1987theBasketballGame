@@ -28,7 +28,7 @@ export default function Home() {
   const prevVelRef = useRef({});
   const prevStoppedRef = useRef(false);
   const { playSqueak, playWhistle, playTrashTalk, muted, toggleMute } = useCourtSound();
-  const { speak: speakRobot, setMuted: setRobotMuted } = useRobotVoice();
+  const { speak: speakRobot, setMuted: setRobotMuted, enabled: robotEnabled, supported: robotSupported } = useRobotVoice();
   const [trashBubble, setTrashBubble] = useState(null);
 
   const urlParams = new URLSearchParams(window.location.search);
@@ -253,6 +253,13 @@ export default function Home() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 pb-8">
+        {/* Robot voice enable prompt — disappears after first tap */}
+        {robotSupported && !robotEnabled && (
+          <div className="mb-3 text-center py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg animate-pulse">
+            <span className="text-sm text-blue-300 font-semibold">👆 Tap anywhere to enable robot voice</span>
+          </div>
+        )}
+
         {/* Controls */}
         <div className="mb-4">
           <GameControls
