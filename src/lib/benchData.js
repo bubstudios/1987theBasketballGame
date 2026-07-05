@@ -535,3 +535,137 @@ export const PISTONS_BENCH = [
     blockRate: 0.015,
   },
 ];
+
+// 1986-87 Atlanta Hawks bench (Human Highlight Film era)
+export const HAWKS_BENCH = [
+  {
+    name: "Spud Webb",
+    number: 2,
+    position: "PG",
+    height: 67, // 5'7" — famously short, 1986 Slam Dunk Contest champion
+    speed: 10, // elite quickness
+    driveTendency: 9, // penetrator, changes pace
+    dunkTendency: 6, // dunk contest winner despite height
+    shooting: 6,
+    passing: 8,
+    defense: 6, // pesky ball pressure
+    rebounding: 2, // too short to rebound
+    insideScoring: 7,
+    threePoint: 2,
+    threeAttempts: 0.2,
+    threePct: 0.118,
+    twoAttempts: 5.7,
+    twoPct: 0.473,
+    offensiveRebRate: 0.015,
+    defensiveRebRate: 0.040,
+    stealRate: 0.030,
+    turnoverRate: 0.140,
+    ftAttempts: 1.5,
+    ftPct: 0.762,
+    blockRate: 0.003,
+  },
+  {
+    name: "Mike McGee",
+    number: 20,
+    position: "SG",
+    height: 77, // 6'5"
+    speed: 7,
+    driveTendency: 6, // bench scorer, attacks closeouts
+    dunkTendency: 4,
+    shooting: 7,
+    passing: 4,
+    defense: 5,
+    rebounding: 3,
+    insideScoring: 6,
+    threePoint: 6,
+    threeAttempts: 0.8,
+    threePct: 0.375,
+    twoAttempts: 6.7,
+    twoPct: 0.469,
+    offensiveRebRate: 0.025,
+    defensiveRebRate: 0.060,
+    stealRate: 0.018,
+    turnoverRate: 0.120,
+    ftAttempts: 1.5,
+    ftPct: 0.584,
+    blockRate: 0.005,
+  },
+  {
+    name: "Cliff Levingston",
+    number: 7,
+    position: "PF",
+    height: 80, // 6'8"
+    speed: 7,
+    driveTendency: 5, // energy forward, cuts and putbacks
+    dunkTendency: 5,
+    shooting: 5,
+    passing: 3,
+    defense: 7, // good help defender
+    rebounding: 8,
+    insideScoring: 6,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 4.8,
+    twoPct: 0.506,
+    offensiveRebRate: 0.075,
+    defensiveRebRate: 0.170,
+    stealRate: 0.018,
+    turnoverRate: 0.130,
+    ftAttempts: 1.7,
+    ftPct: 0.731,
+    blockRate: 0.025,
+  },
+  {
+    name: "Antoine Carr",
+    number: 33,
+    position: "PF",
+    height: 81, // 6'9"
+    speed: 6,
+    driveTendency: 5, // reserve interior scorer
+    dunkTendency: 4,
+    shooting: 6,
+    passing: 3,
+    defense: 6,
+    rebounding: 5,
+    insideScoring: 7,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 4.5,
+    twoPct: 0.506,
+    offensiveRebRate: 0.055,
+    defensiveRebRate: 0.120,
+    stealRate: 0.012,
+    turnoverRate: 0.120,
+    ftAttempts: 1.6,
+    ftPct: 0.709,
+    blockRate: 0.015,
+  },
+  {
+    name: "Jon Koncak",
+    number: 54,
+    position: "C",
+    height: 84, // 7'0"
+    speed: 5,
+    driveTendency: 2, // low-usage backup big
+    dunkTendency: 3,
+    shooting: 4,
+    passing: 2,
+    defense: 7, // backup rim protector
+    rebounding: 7,
+    insideScoring: 5,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 3.3,
+    twoPct: 0.514,
+    offensiveRebRate: 0.070,
+    defensiveRebRate: 0.150,
+    stealRate: 0.010,
+    turnoverRate: 0.110,
+    ftAttempts: 1.3,
+    ftPct: 0.654,
+    blockRate: 0.035,
+  },
+];

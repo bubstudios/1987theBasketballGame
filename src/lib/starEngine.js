@@ -277,6 +277,78 @@ const PLAYER_ROLES = {
     creation: 42, offReb: 58,
     fgaTarget: 4.0, mpgExpected: 8,
   },
+  // --- Hawks ---
+  // Atlanta: Dominique is the primary scorer (Human Highlight Film), Doc Rivers
+  // is the organizer (drive-and-dish general), Willis is the second scoring/
+  // rebounding option, Wittman is a steady catch-and-shoot guard, Rollins is
+  // low-usage rim protection. Spud changes pace off the bench, McGee provides
+  // bench scoring, Levingston brings energy, Carr is reserve post scoring,
+  // Koncak is backup size. Ratings out of 99.
+  'Dominique Wilkins': {
+    team: 'hawks', starRole: 'highlight_film',
+    initiation: 72, finishing: 99, offBall: 82, transition: 96,
+    creation: 82, offReb: 84, clutchPriority: 98,
+    fgaTarget: 24.0, mpgExpected: 38,
+    shotWeight: 30,
+  },
+  'Doc Rivers': {
+    team: 'hawks', starRole: 'organizer',
+    initiation: 97, finishing: 74, offBall: 78, transition: 85,
+    creation: 96, offReb: 36,
+    fgaTarget: 10.5, mpgExpected: 33,
+    shotWeight: 14,
+  },
+  'Kevin Willis': {
+    team: 'hawks', starRole: 'post_star',
+    initiation: 22, finishing: 84, offBall: 78, transition: 50,
+    creation: 36, offReb: 96, clutchPriority: 88,
+    fgaTarget: 13.0, mpgExpected: 34,
+    shotWeight: 20,
+  },
+  'Randy Wittman': {
+    team: 'hawks',
+    initiation: 58, finishing: 70, offBall: 82, transition: 72,
+    creation: 64, offReb: 22,
+    fgaTarget: 10.0, mpgExpected: 30,
+    shotWeight: 14,
+  },
+  'Tree Rollins': {
+    team: 'hawks',
+    initiation: 8, finishing: 62, offBall: 68, transition: 30,
+    creation: 10, offReb: 76,
+    fgaTarget: 4.5, mpgExpected: 24,
+    shotWeight: 8,
+  },
+  'Spud Webb': {
+    team: 'hawks',
+    initiation: 90, finishing: 76, offBall: 70, transition: 96,
+    creation: 88, offReb: 24,
+    fgaTarget: 6.0, mpgExpected: 14,
+  },
+  'Mike McGee': {
+    team: 'hawks',
+    initiation: 48, finishing: 80, offBall: 78, transition: 78,
+    creation: 58, offReb: 46,
+    fgaTarget: 8.0, mpgExpected: 18,
+  },
+  'Cliff Levingston': {
+    team: 'hawks',
+    initiation: 18, finishing: 70, offBall: 72, transition: 70,
+    creation: 24, offReb: 90,
+    fgaTarget: 5.0, mpgExpected: 20,
+  },
+  'Antoine Carr': {
+    team: 'hawks',
+    initiation: 20, finishing: 76, offBall: 68, transition: 40,
+    creation: 32, offReb: 72,
+    fgaTarget: 4.5, mpgExpected: 12,
+  },
+  'Jon Koncak': {
+    team: 'hawks',
+    initiation: 10, finishing: 56, offBall: 60, transition: 35,
+    creation: 12, offReb: 78,
+    fgaTarget: 3.5, mpgExpected: 17,
+  },
 };
 
 function getRole(player) {
@@ -376,6 +448,29 @@ function getAdjustedRole(state, player) {
     }
     if (!isiahOn && !dumarsOn && player.name === 'Adrian Dantley') {
       adjusted.initiation = 72;
+    }
+  }
+
+  if (team === 'hawks') {
+    const docOn = state.players.some(p => p.name === 'Doc Rivers' && p.team === team && p.onCourt);
+    const dominiqueOn = state.players.some(p => p.name === 'Dominique Wilkins' && p.team === team && p.onCourt);
+    // When Doc rests, Spud becomes the primary organizer
+    if (!docOn && player.name === 'Spud Webb') {
+      adjusted.initiation = 96;
+      adjusted.creation = 92;
+    }
+    // Both Doc and Spud out — Dominique takes over creation load
+    if (!docOn) {
+      const spudOn = state.players.some(p => p.name === 'Spud Webb' && p.team === team && p.onCourt);
+      if (!spudOn && player.name === 'Dominique Wilkins') {
+        adjusted.initiation = 85;
+        adjusted.creation = 88;
+      }
+    }
+    // When Dominique rests, McGee steps up as bench scorer
+    if (!dominiqueOn && player.name === 'Mike McGee') {
+      adjusted.finishing = 88;
+      adjusted.initiation = 60;
     }
   }
 
@@ -523,6 +618,11 @@ export function getTouchWeight(state, player, openness) {
     w *= celticsClutchBoost(state, player);
     w *= opportunityModifier(player);
     w *= earlyGameProtection(state, player);
+  } else if (player.team === 'hawks') {
+    w *= hawksShotBias(state, player);
+    w *= hawksClutchBoost(state, player);
+    w *= opportunityModifier(player);
+    w *= earlyGameProtection(state, player);
   } else {
     w *= opportunityModifier(player);
     w *= earlyGameProtection(state, player);
@@ -549,6 +649,10 @@ export function getScoringWeight(state, player) {
     w *= celticsClutchBoost(state, player);
     w *= opportunityModifier(player);
     w *= earlyGameProtection(state, player);
+  } else if (player.team === 'hawks') {
+    w *= hawksClutchBoost(state, player);
+    w *= opportunityModifier(player);
+    w *= earlyGameProtection(state, player);
   } else {
     w *= opportunityModifier(player);
     w *= earlyGameProtection(state, player);
@@ -561,6 +665,43 @@ export function getScoringWeight(state, player) {
 
 // --- Transition controller ---
 // The team's transition director (Magic) — outlets and fast-break decisions.
+// --- Hawks offensive role system ---
+// Atlanta: Doc Rivers initiates and creates, Dominique is the primary scorer
+// and hub, Willis is the second interior option. Dominique should be involved
+// on 60-70% of possessions while on court.
+const HAWKS_CLUTCH_WEIGHTS = {
+  'Dominique Wilkins': 36,
+  'Kevin Willis': 22,
+  'Doc Rivers': 16,
+  'Randy Wittman': 12,
+  'Tree Rollins': 8,
+  'Spud Webb': 14,
+  'Mike McGee': 10,
+};
+
+function hawksShotBias(state, player) {
+  const role = getAdjustedRole(state, player);
+  if (!role) return 1.0;
+  let m = 1.0;
+  if (role.shotWeight) m *= role.shotWeight / 20;
+  // After 10 Hawks FGA, if Dominique has fewer than 3 FGA, boost his action weight
+  const teamFga = getTeamFGA(state, 'hawks');
+  if (teamFga >= 10 && player.name === 'Dominique Wilkins') {
+    const domFga = (player.stats && player.stats.fga) || 0;
+    if (domFga < 3) m *= 1.25;
+  }
+  return m;
+}
+
+function hawksClutchBoost(state, player) {
+  if (!isClutch(state)) return 1.0;
+  const w = HAWKS_CLUTCH_WEIGHTS[player.name];
+  if (w != null) return w / 20;
+  const domOn = state.players.some(p => p.name === 'Dominique Wilkins' && p.team === player.team && p.onCourt);
+  if (domOn) return 0.5;
+  return 0.9;
+}
+
 export function getTransitionController(state, team) {
   return (
     state.players.find(

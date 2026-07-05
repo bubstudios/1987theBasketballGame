@@ -24,11 +24,13 @@ const POST_SCORERS = new Set([
   'Akeem Olajuwon', 'Ralph Sampson', 'Adrian Dantley', 'Bill Laimbeer',
   'Mychal Thompson', 'Bill Walton', 'Jim Petersen', 'Sidney Green',
   'Rick Mahorn', 'John Salley', 'Kurt Rambis', 'Fred Roberts',
+  'Kevin Willis', 'Tree Rollins', 'Antoine Carr', 'Jon Koncak', 'Cliff Levingston',
 ]);
 const PERIMETER_CREATORS = new Set([
   'Magic Johnson', 'Isiah Thomas', 'Dennis Johnson', 'Danny Ainge',
   'Dirk Minniefield', 'Allen Leavell', 'Rodney McCray', 'Robert Reid',
   'Michael Cooper', 'Vinnie Johnson', 'Wes Matthews', 'Jerry Sichting',
+  'Doc Rivers', 'Spud Webb', 'Dominique Wilkins',
 ]);
 const THREE_SHOOTERS = new Set([
   'Larry Bird', 'Byron Scott', 'Danny Ainge', 'Michael Cooper',
@@ -37,14 +39,16 @@ const THREE_SHOOTERS = new Set([
 const SLASHERS = new Set([
   'James Worthy', 'Magic Johnson', 'Isiah Thomas', 'Rodney McCray',
   'Mitchell Wiggins', 'Lewis Lloyd', 'A.C. Green', 'Joe Dumars',
+  'Dominique Wilkins', 'Spud Webb', 'Mike McGee', 'Cliff Levingston',
 ]);
 const MID_POST_STARS = new Set([
   'Larry Bird', 'Adrian Dantley', 'James Worthy', 'Magic Johnson',
-  'Akeem Olajuwon', 'Kevin McHale',
+  'Akeem Olajuwon', 'Kevin McHale', 'Dominique Wilkins',
 ]);
 const HIGH_PNR_GUARDS = new Set([
   'Isiah Thomas', 'Magic Johnson', 'Dennis Johnson', 'Vinnie Johnson',
   'Dirk Minniefield', 'Allen Leavell', 'Danny Ainge',
+  'Doc Rivers', 'Spud Webb',
 ]);
 
 // --- Role pickers (operate on on-court offensive players) ---
@@ -317,6 +321,12 @@ const TEAM_PREFS = {
     feed_post: ['post_direct_entry', 'post_repost', 'post_cross_screen', 'post_high_low'],
     shoot_3: ['three_drive_kick', 'three_trailer_pop', 'three_floppy', 'three_pick_pop'],
     attack_rim: ['rim_high_pnr', 'rim_transition_push', 'rim_spread_drive', 'rim_baseline_cut'],
+  },
+  hawks: {
+    iso_hot: ['iso_wing_clearout', 'iso_mid_post', 'iso_hothand_quick', 'iso_high_pnr'],
+    feed_post: ['post_direct_entry', 'post_high_low', 'post_repost', 'post_cross_screen'],
+    shoot_3: ['three_drive_kick', 'three_floppy', 'three_trailer_pop', 'three_pick_pop'],
+    attack_rim: ['rim_baseline_cut', 'rim_spread_drive', 'rim_high_pnr', 'rim_transition_push'],
   },
 };
 

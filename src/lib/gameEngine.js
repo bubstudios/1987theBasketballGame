@@ -7,7 +7,7 @@ import { mergeDefenseRatings, recomputeMatchups, getPrimaryDefender, getMatchupF
 import { TEAM_DEFENSE_TENDENCIES } from './defenseData';
 import { selectShotVariation } from './shotLexicon';
 import { DUNK_PHRASES } from './dunkPhrases';
-import { checkDreamShake, checkZekeSplit, checkPumpFakeParade, improveContestLevel, updateMicrowaveMode, tickMicrowaveMode } from './signatureMoves';
+import { checkDreamShake, checkZekeSplit, checkPumpFakeParade, checkHumanHighlight, improveContestLevel, updateMicrowaveMode, tickMicrowaveMode } from './signatureMoves';
 import { rollTrashTalk, isEnforcer } from './personalityEngine';
 import { checkSubstitutions, executeSubstitution } from './subEngine';
 import { setupFreeThrowAlignment, releaseLanePlayersForRebound, getFTReboundWeight } from './freeThrowEngine';
@@ -1224,6 +1224,7 @@ function makePass(state, passer, receiver) {
   state.ball.isDreamShake = false;
   state.ball.isZekeSplit = false;
   state.ball.isPumpFake = false;
+  state.ball.isHumanHighlight = false;
   state.ball.lastPasserId = passer.id;
   recordCelticsPass(state, receiver);
 
@@ -1264,6 +1265,7 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef, options = {}) {
   state.ball.isDreamShake = false;
   state.ball.isZekeSplit = false;
   state.ball.isPumpFake = false;
+  state.ball.isHumanHighlight = false;
 
   // Calculate make probability
   const d = dist(shooter, basket);
@@ -1301,11 +1303,22 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef, options = {}) {
     state.ball.pumpFakeVariant = pumpFake.variant;
   }
 
+  // --- Human Highlight Film: Dominique's signature wing attack ---
+  // Triggers in transition (runway!) and half-court. Explosive first step
+  // creates separation, boosts dunk probability, and draws fouls.
+  const humanHighlight = checkHumanHighlight(shooter, d, nearestDef, isFb, state.shotClock);
+  if (humanHighlight) {
+    contestLevel = improveContestLevel(contestLevel, humanHighlight.contestBoost);
+    state.ball.isHumanHighlight = true;
+    state.ball.humanHighlightVariant = humanHighlight.variant;
+  }
+
   // --- Shot variation: pick a descriptive shot type from the player's package ---
   let sigVariant = null, sigFamily = 'dream';
   if (dreamShake) { sigVariant = dreamShake.variant; sigFamily = 'dream'; }
   else if (zekeSplit) { sigVariant = zekeSplit.variant; sigFamily = 'zeke'; }
   else if (pumpFake) { sigVariant = pumpFake.variant; sigFamily = 'pumpfake'; }
+  else if (humanHighlight) { sigVariant = humanHighlight.variant; sigFamily = 'highlight'; }
   const variation = selectShotVariation(shooter, {
     distToBasket: d, isThree: threePtr, isFastBreak: isFb,
     isPutback: !!(options && options.isPutback), shotClock: state.shotClock, gameClock: state.gameClock,
@@ -1387,6 +1400,13 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef, options = {}) {
   if (pumpFake && !fouledBy && !blockedBy && nearestDef && nearestDef.player && !nearestDef.player.fouledOut) {
     const pfFoulChance = pumpFake.defenderBit ? 0.38 : 0.22;
     if (Math.random() < pfFoulChance) {
+      fouledBy = nearestDef.player;
+    }
+  }
+  // Human Highlight Film foul boost — Dominique draws contact attacking the rim
+  if (humanHighlight && !fouledBy && !blockedBy && nearestDef && nearestDef.player && !nearestDef.player.fouledOut) {
+    const hhFoulChance = humanHighlight.defenderBit ? 0.30 : 0.16;
+    if (Math.random() < hhFoulChance) {
       fouledBy = nearestDef.player;
     }
   }
@@ -1652,13 +1672,14 @@ function resolveShot(state) {
 
   if (result.made) {
     state.score[result.shooter.team] += result.points;
-    state.momentum[result.shooter.team] += result.type === 'dunk' ? 2 : 1;
+    // Human Highlight Film makes get a huge momentum swing (+3)
+    state.momentum[result.shooter.team] += state.ball.isHumanHighlight ? 3 : (result.type === 'dunk' ? 2 : 1);
     result.shooter.stats.fgm++;
     result.shooter.stats.fga++;
     result.shooter.stats.points += result.points;
     const varData = result.shotVariation;
     const isSigScore = !!(varData && (varData.isKareemSignature || varData.isMagicSignature))
-      || state.ball.isDreamShake || state.ball.isZekeSplit
+      || state.ball.isDreamShake || state.ball.isZekeSplit || state.ball.isHumanHighlight
       || (result.shooter.name === 'Larry Bird' && result.type === 'three');
     if (isSigScore) rollTrashTalk(state, result.shooter, 'signature_score');
     else if (result.type === 'dunk') rollTrashTalk(state, result.shooter, 'poster_dunk');
@@ -1672,7 +1693,9 @@ function resolveShot(state) {
       }
     }
     state.ball.lastPasserId = null;
-    if (varData && varData.family === 'DUNK' && Math.random() < 0.35) {
+    if (state.ball.isHumanHighlight) {
+      state.shotResultDisplay = `🔥 ${result.shooter.name} — HUMAN HIGHLIGHT FILM!`;
+    } else if (varData && varData.family === 'DUNK' && Math.random() < 0.35) {
       const phrase = DUNK_PHRASES[Math.floor(Math.random() * DUNK_PHRASES.length)];
       state.shotResultDisplay = `💥 ${result.shooter.name} ${phrase.display}`;
     } else if (state.ball.isZekeSplit) {
@@ -1793,7 +1816,7 @@ function resolveFouledShot(state, result) {
     shooter.stats.points += result.points;
     const varData = result.shotVariation;
     const isSigScore = !!(varData && (varData.isKareemSignature || varData.isMagicSignature))
-      || state.ball.isDreamShake || state.ball.isZekeSplit
+      || state.ball.isDreamShake || state.ball.isZekeSplit || state.ball.isHumanHighlight
       || (shooter.name === 'Larry Bird' && result.type === 'three');
     if (isSigScore) rollTrashTalk(state, shooter, 'signature_score');
     else if (result.type === 'dunk') rollTrashTalk(state, shooter, 'poster_dunk');
@@ -1832,7 +1855,11 @@ function resolveFouledShot(state, result) {
 
   const varData = result.shotVariation;
   if (result.made) {
-    state.shotResultDisplay = `${shooter.name} ${varData ? varData.make : 'scores'} + foul! AND1!`;
+    if (state.ball.isHumanHighlight) {
+      state.shotResultDisplay = `🔥 ${shooter.name} HUMAN HIGHLIGHT FILM + foul! AND1!`;
+    } else {
+      state.shotResultDisplay = `${shooter.name} ${varData ? varData.make : 'scores'} + foul! AND1!`;
+    }
     state.gameLog.unshift(`✓ ${shooter.name} ${varData ? varData.log : 'basket'} + foul on ${fouledBy.name} (${fouledBy.fouls})!`);
   } else {
     state.shotResultDisplay = `Foul on ${fouledBy.name} (${fouledBy.fouls})! ${shooter.name} to the line for ${ftCount}`;

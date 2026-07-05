@@ -60,6 +60,22 @@ export const PISTONS_DEFENSE = {
   'Tony Campbell':   { perimeterDef: 68, postDef: 58, helpDef: 66, screenNav: 68, stealDef: 60, blockDef: 34, dRebound: 55, discipline: 66, versatility: 70, transitionDef: 74 },
 };
 
+// 1986-87 Atlanta Hawks — strong organized Fratello-style defense, elite rim
+// protection (Tree Rollins), good defensive rebounding (Willis), moderate-high
+// physicality without the Bad Boys edge.
+export const HAWKS_DEFENSE = {
+  'Dominique Wilkins':  { perimeterDef: 76, postDef: 68, helpDef: 76, screenNav: 72, stealDef: 78, blockDef: 70, dRebound: 76, discipline: 70, versatility: 82, transitionDef: 80 },
+  'Doc Rivers':         { perimeterDef: 88, postDef: 48, helpDef: 84, screenNav: 86, stealDef: 92, blockDef: 40, dRebound: 62, discipline: 78, versatility: 82, transitionDef: 86 },
+  'Kevin Willis':       { perimeterDef: 58, postDef: 82, helpDef: 78, screenNav: 66, stealDef: 58, blockDef: 72, dRebound: 94, discipline: 72, versatility: 74, transitionDef: 74 },
+  'Randy Wittman':      { perimeterDef: 72, postDef: 46, helpDef: 70, screenNav: 74, stealDef: 54, blockDef: 28, dRebound: 42, discipline: 82, versatility: 66, transitionDef: 72 },
+  'Tree Rollins':       { perimeterDef: 42, postDef: 88, helpDef: 90, screenNav: 44, stealDef: 50, blockDef: 96, dRebound: 88, discipline: 76, versatility: 58, transitionDef: 48 },
+  'Spud Webb':          { perimeterDef: 82, postDef: 15, helpDef: 68, screenNav: 84, stealDef: 86, blockDef: 12, dRebound: 28, discipline: 68, versatility: 58, transitionDef: 88 },
+  'Mike McGee':         { perimeterDef: 68, postDef: 50, helpDef: 64, screenNav: 70, stealDef: 70, blockDef: 22, dRebound: 46, discipline: 64, versatility: 66, transitionDef: 74 },
+  'Cliff Levingston':   { perimeterDef: 68, postDef: 78, helpDef: 82, screenNav: 68, stealDef: 64, blockDef: 78, dRebound: 86, discipline: 76, versatility: 82, transitionDef: 76 },
+  'Antoine Carr':       { perimeterDef: 52, postDef: 80, helpDef: 72, screenNav: 58, stealDef: 42, blockDef: 68, dRebound: 74, discipline: 66, versatility: 66, transitionDef: 60 },
+  'Jon Koncak':         { perimeterDef: 38, postDef: 82, helpDef: 78, screenNav: 42, stealDef: 42, blockDef: 84, dRebound: 82, discipline: 74, versatility: 58, transitionDef: 50 },
+};
+
 // Team defensive tendency multipliers (1.0 = league baseline).
 // Lakers: active, opportunistic, gambling, fast-break-creating.
 // Celtics: structured, physical, disciplined, rim-protecting.
@@ -99,6 +115,19 @@ export const TEAM_DEFENSE_TENDENCIES = {
     foulAggression: 1.00,
     halfcourtDiscipline: 1.05,
   },
+  // Hawks: organized Fratello defense — strong rim protection, good discipline,
+  // moderate pressure. Not as physical/dirty as Detroit, better structured than LA.
+  hawks: {
+    stealAttemptFreq: 0.98,
+    passingLaneDenial: 0.98,
+    hardDoubleFreq: 0.90,
+    helpAtRim: 1.18,
+    fullSwitching: 0.80,
+    dropCoverageCenter: 1.15,
+    defRebEmphasis: 1.08,
+    foulAggression: 1.00,
+    halfcourtDiscipline: 1.08,
+  },
   // Pistons: Bad Boys — high pressure, high physicality, high foul risk.
   // Isiah/Dumars pressure the ball; Laimbeer/Mahorn provide body contact.
   pistons: {
@@ -135,6 +164,12 @@ export const DEFAULT_MATCHUPS = {
     'Adrian Dantley': 'Larry Bird',
     'Sidney Green': 'Kevin McHale',
     'Bill Laimbeer': 'Robert Parish',
+    // vs Hawks
+    'Doc Rivers': 'Dennis Johnson',
+    'Randy Wittman': 'Danny Ainge',
+    'Dominique Wilkins': 'Larry Bird',
+    'Kevin Willis': 'Kevin McHale',
+    'Tree Rollins': 'Robert Parish',
   },
   // Lakers defending Celtics
   lakers: {
@@ -155,6 +190,12 @@ export const DEFAULT_MATCHUPS = {
     'Adrian Dantley': 'Michael Cooper',
     'Sidney Green': 'A.C. Green',
     'Bill Laimbeer': 'Kareem Abdul-Jabbar',
+    // vs Hawks
+    'Doc Rivers': 'Magic Johnson',
+    'Randy Wittman': 'Byron Scott',
+    'Dominique Wilkins': 'Michael Cooper',
+    'Kevin Willis': 'A.C. Green',
+    'Tree Rollins': 'Kareem Abdul-Jabbar',
   },
   // Rockets defending (covers both Lakers and Celtics offenses)
   rockets: {
@@ -176,6 +217,12 @@ export const DEFAULT_MATCHUPS = {
     'Adrian Dantley': 'Rodney McCray',
     'Sidney Green': 'Ralph Sampson',
     'Bill Laimbeer': 'Akeem Olajuwon',
+    // vs Hawks
+    'Doc Rivers': 'Dirk Minniefield',
+    'Randy Wittman': 'Robert Reid',
+    'Dominique Wilkins': 'Rodney McCray',
+    'Kevin Willis': 'Ralph Sampson',
+    'Tree Rollins': 'Akeem Olajuwon',
   },
   // Pistons defending (covers Lakers, Celtics, Rockets offenses)
   pistons: {
@@ -197,6 +244,39 @@ export const DEFAULT_MATCHUPS = {
     'Rodney McCray': 'Adrian Dantley',
     'Ralph Sampson': 'Rick Mahorn',
     'Akeem Olajuwon': 'Bill Laimbeer',
+    // vs Hawks
+    'Doc Rivers': 'Isiah Thomas',
+    'Randy Wittman': 'Joe Dumars',
+    'Dominique Wilkins': 'Adrian Dantley',
+    'Kevin Willis': 'Rick Mahorn',
+    'Tree Rollins': 'Bill Laimbeer',
+  },
+  // Hawks defending (covers Lakers, Celtics, Rockets, Pistons offenses)
+  hawks: {
+    // vs Lakers
+    'Magic Johnson': 'Doc Rivers',
+    'Byron Scott': 'Randy Wittman',
+    'James Worthy': 'Dominique Wilkins',
+    'A.C. Green': 'Kevin Willis',
+    'Kareem Abdul-Jabbar': 'Tree Rollins',
+    // vs Celtics
+    'Dennis Johnson': 'Doc Rivers',
+    'Danny Ainge': 'Randy Wittman',
+    'Larry Bird': 'Dominique Wilkins',
+    'Kevin McHale': 'Kevin Willis',
+    'Robert Parish': 'Tree Rollins',
+    // vs Rockets
+    'Dirk Minniefield': 'Doc Rivers',
+    'Robert Reid': 'Randy Wittman',
+    'Rodney McCray': 'Dominique Wilkins',
+    'Ralph Sampson': 'Kevin Willis',
+    'Akeem Olajuwon': 'Tree Rollins',
+    // vs Pistons
+    'Isiah Thomas': 'Doc Rivers',
+    'Joe Dumars': 'Randy Wittman',
+    'Adrian Dantley': 'Dominique Wilkins',
+    'Sidney Green': 'Kevin Willis',
+    'Bill Laimbeer': 'Tree Rollins',
   },
 };
 
@@ -215,4 +295,5 @@ export const TEAM_DEFENSE_MAP = {
   celtics: CELTICS_DEFENSE,
   rockets: ROCKETS_DEFENSE,
   pistons: PISTONS_DEFENSE,
+  hawks: HAWKS_DEFENSE,
 };

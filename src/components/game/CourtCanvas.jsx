@@ -347,6 +347,53 @@ function drawBall(ctx, ball, tf) {
     ctx.fillText('✨ DREAM SHAKE!', x, ballY - 24);
   }
 
+  // Human Highlight Film — Dominique's fire effect (red/gold flame trail)
+  if (ball.isHumanHighlight && ball.inFlight) {
+    const ballY = y - arcOffset;
+    const time = Date.now() * 0.006;
+    const elapsed = Date.now() - ball.flightStart;
+    const t = Math.min(elapsed / ball.flightDuration, 1);
+    // Flame trail behind the ball
+    for (let i = 1; i <= 8; i++) {
+      const trailT = Math.max(0, t - i * 0.04);
+      if (trailT <= 0) continue;
+      const tx = sx_of(tf, lerp(ball.startX, ball.targetX, trailT));
+      const ty = sy_of(tf, lerp(ball.startY, ball.targetY, trailT));
+      const alpha = (1 - i / 8) * 0.6;
+      const sz = 6 - i * 0.5;
+      ctx.fillStyle = `rgba(255, 60, 30, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(tx, ty, Math.max(1, sz), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255, 200, 50, ${alpha * 0.7})`;
+      ctx.beginPath();
+      ctx.arc(tx, ty, Math.max(0.5, sz * 0.5), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Orbiting fire sparkles
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2 + time * 1.2;
+      const sr = 14 + Math.sin(time * 2 + i) * 6;
+      const px = x + Math.cos(angle) * sr;
+      const py = ballY + Math.sin(angle) * sr;
+      const alpha = 0.5 + Math.sin(time * 3 + i) * 0.4;
+      ctx.fillStyle = `rgba(255, 100, 30, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255, 220, 50, ${alpha * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Label
+    ctx.fillStyle = 'rgba(255, 80, 30, 0.95)';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔥 HUMAN HIGHLIGHT FILM!', x, ballY - 22);
+  }
+
   // Dunk effect — motion trail + rim flash on impact
   if (ball.isDunk && ball.inFlight) {
     const elapsed = Date.now() - ball.flightStart;

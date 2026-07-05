@@ -148,4 +148,36 @@ export const TRASH_TALK_CLIPS = {
     { text: "That was aggressive.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/a15ffd41e_speech.mp3" },
     { text: "The wing gets loose!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/e485c58bd_speech.mp3" },
   ],
+  // === Atlanta Hawks ===
+  // Dominique → "spark" (energetic, cocky) — Human Highlight Film
+  dominique: [
+    { text: "Human Highlight Film!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/34825229f_speech.mp3" },
+    { text: "Dominique takes flight!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/3f4ac6bdd_speech.mp3" },
+    { text: "That was violent!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/2f9e67755_speech.mp3" },
+    { text: "He's got the Omni rocking!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/5b0365c17_speech.mp3" },
+    { text: "You can't give him a runway!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/5a399eee0_speech.mp3" },
+  ],
+  // Doc Rivers → "storm" (authoritative) — the general
+  doc_rivers: [
+    { text: "Doc sees it!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/45c0ba305_speech.mp3" },
+    { text: "That's the general!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/4ebc145bc_speech.mp3" },
+    { text: "He runs the show.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/1d8375a1c_speech.mp3" },
+  ],
+  // Spud Webb → "spark" (energetic) — Tiny Lightning
+  spud_webb: [
+    { text: "Spud is flying!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/c954faa5b_speech.mp3" },
+    { text: "Tiny Lightning!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/7d4196b10_speech.mp3" },
+    { text: "Nobody caught me!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/6a7d83b1d_speech.mp3" },
+  ],
+  // Tree Rollins → "storm" (authoritative) — rim protector
+  tree_rollins: [
+    { text: "Tree says no!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/7b11d34c6_speech.mp3" },
+    { text: "The rim is protected!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/edfcd8b86_speech.mp3" },
+    { text: "Not in his house!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/a9674a45f_speech.mp3" },
+  ],
+  // Kevin Willis → "storm" (authoritative) — Glass Muscle
+  kevin_willis: [
+    { text: "Willis owns the glass!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/3cae63278_speech.mp3" },
+    { text: "That's muscle!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/0b5652a39_speech.mp3" },
+  ],
 };

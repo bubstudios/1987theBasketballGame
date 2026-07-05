@@ -1,8 +1,8 @@
 // 1986-87 Lakers and Celtics rosters with real attributes
 // Speed: 1-10 scale, Height in inches, Skills rated 1-10
 
-import { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH, PISTONS_BENCH } from './benchData';
-export { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH, PISTONS_BENCH };
+import { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH, PISTONS_BENCH, HAWKS_BENCH } from './benchData';
+export { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH, PISTONS_BENCH, HAWKS_BENCH };
 
 export const LAKERS_ROSTER = [
   {
@@ -538,6 +538,140 @@ export const PISTONS_ROSTER = [
   },
 ];
 
+// 1986-87 Atlanta Hawks (Dominique Wilkins — Human Highlight Film era)
+export const ATLANTA_HAWKS_ROSTER = [
+  {
+    name: "Doc Rivers",
+    number: 31,
+    position: "PG",
+    height: 76, // 6'4"
+    speed: 8,
+    driveTendency: 7, // drive-and-dish general, 3.5 FTA
+    dunkTendency: 2,
+    shooting: 7,
+    passing: 9,
+    defense: 8,
+    rebounding: 4,
+    insideScoring: 6,
+    threePoint: 3,
+    threeAttempts: 0.8,
+    threePct: 0.267,
+    twoAttempts: 8.9,
+    twoPct: 0.479,
+    offensiveRebRate: 0.020,
+    defensiveRebRate: 0.085,
+    stealRate: 0.028,
+    turnoverRate: 0.140,
+    ftAttempts: 3.5,
+    ftPct: 0.828,
+    blockRate: 0.005,
+  },
+  {
+    name: "Randy Wittman",
+    number: 4,
+    position: "SG",
+    height: 77, // 6'5"
+    speed: 7,
+    driveTendency: 4, // catch-and-shoot guard, low FTA
+    dunkTendency: 2,
+    shooting: 8,
+    passing: 6,
+    defense: 6,
+    rebounding: 3,
+    insideScoring: 5,
+    threePoint: 5,
+    threeAttempts: 0.4,
+    threePct: 0.333,
+    twoAttempts: 9.2,
+    twoPct: 0.496,
+    offensiveRebRate: 0.015,
+    defensiveRebRate: 0.060,
+    stealRate: 0.020,
+    turnoverRate: 0.110,
+    ftAttempts: 1.9,
+    ftPct: 0.787,
+    blockRate: 0.003,
+  },
+  {
+    name: "Dominique Wilkins",
+    number: 21,
+    position: "SF",
+    height: 80, // 6'8"
+    speed: 9, // explosive first step
+    driveTendency: 10, // elite wing attacker, 8.3 FTA
+    dunkTendency: 10, // Human Highlight Film — spectacular dunker
+    shooting: 8,
+    passing: 7,
+    defense: 7, // athletic but not a lockdown stopper
+    rebounding: 7,
+    insideScoring: 10,
+    threePoint: 3,
+    threeAttempts: 0.7,
+    threePct: 0.318,
+    twoAttempts: 22.2,
+    twoPct: 0.488,
+    offensiveRebRate: 0.060,
+    defensiveRebRate: 0.140,
+    stealRate: 0.027,
+    turnoverRate: 0.120,
+    ftAttempts: 8.3,
+    ftPct: 0.818,
+    blockRate: 0.012,
+  },
+  {
+    name: "Kevin Willis",
+    number: 41,
+    position: "PF",
+    height: 83, // 6'11"
+    speed: 7, // mobile for his size
+    driveTendency: 5, // face-up and post scorer
+    dunkTendency: 6, // athletic finisher
+    shooting: 7,
+    passing: 3,
+    defense: 8,
+    rebounding: 10, // Glass Muscle — elite rebounder
+    insideScoring: 8,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 12.3,
+    twoPct: 0.511,
+    offensiveRebRate: 0.085,
+    defensiveRebRate: 0.220,
+    stealRate: 0.014,
+    turnoverRate: 0.110,
+    ftAttempts: 4.9,
+    ftPct: 0.709,
+    blockRate: 0.020,
+  },
+  {
+    name: "Tree Rollins",
+    number: 25,
+    position: "C",
+    height: 85, // 7'1"
+    speed: 5,
+    driveTendency: 2, // low-usage rim protector
+    dunkTendency: 4, // standing dunks, putbacks
+    shooting: 4,
+    passing: 2,
+    defense: 9, // elite shot blocker
+    rebounding: 8,
+    insideScoring: 6,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 4.3,
+    twoPct: 0.520,
+    offensiveRebRate: 0.060,
+    defensiveRebRate: 0.180,
+    stealRate: 0.010,
+    turnoverRate: 0.090,
+    ftAttempts: 1.9,
+    ftPct: 0.724,
+    blockRate: 0.045, // Tree at the Rim — nearly 2 BPG
+  },
+];
+
 // Court dimensions (scaled for canvas)
 export const COURT = {
   width: 940,   // 94 feet * 10
@@ -582,6 +716,13 @@ export const TEAM_COLORS = {
     name: "Pistons",
     abbr: "DET",
   },
+  hawks: {
+    primary: "#E03A3E",
+    secondary: "#FDB927",
+    text: "#FFFFFF",
+    name: "Hawks",
+    abbr: "ATL",
+  },
 };
 
 // Team-level fast break tendency (1-10 scale)
@@ -595,6 +736,7 @@ export const TEAM_FAST_BREAK = {
   celtics: 4,
   rockets: 5,
   pistons: 7, // Isiah pushes tempo, but Dantley post-ups slow the half-court
+  hawks: 6, // Slower than Lakers, but dangerous in transition with Dominique
 };
 
 // Central team registry — the single source of truth for the team selection page.
@@ -625,6 +767,12 @@ export const TEAMS = {
     roster: PISTONS_ROSTER,
     bench: PISTONS_BENCH,
   },
+  hawks: {
+    colors: TEAM_COLORS.hawks,
+    fastBreak: TEAM_FAST_BREAK.hawks,
+    roster: ATLANTA_HAWKS_ROSTER,
+    bench: HAWKS_BENCH,
+  },
 };
 
 // Minutes per game (1986-87 regular season) — drives fatigue & stamina
@@ -649,6 +797,11 @@ export const PLAYER_MPG = {
   'Sidney Green': 22, 'Bill Laimbeer': 35,
   'Vinnie Johnson': 28, 'Rick Mahorn': 20, 'Dennis Rodman': 15,
   'John Salley': 18, 'Tony Campbell': 8,
+  // Hawks
+  'Dominique Wilkins': 38, 'Doc Rivers': 33, 'Kevin Willis': 34,
+  'Randy Wittman': 30, 'Tree Rollins': 24,
+  'Spud Webb': 14, 'Mike McGee': 18, 'Cliff Levingston': 20,
+  'Antoine Carr': 12, 'Jon Koncak': 17,
 };
 
 // Franchise stars — tolerate more fatigue, stay on the floor longer
@@ -657,4 +810,5 @@ export const STAR_PLAYERS = new Set([
   'Larry Bird', 'Kevin McHale', 'Robert Parish',
   'Akeem Olajuwon', 'Ralph Sampson', 'Rodney McCray',
   'Isiah Thomas', 'Adrian Dantley', 'Bill Laimbeer',
+  'Dominique Wilkins', 'Doc Rivers', 'Kevin Willis',
 ]);

@@ -139,6 +139,9 @@ function specialDefenseBonus(state, carrier, primaryDef, helpDef, distToBasket) 
   if (helpDef && helpDef.name === 'Larry Bird') bonus += 8;
   // Parish rim protection
   if (helpDef && helpDef.name === 'Robert Parish' && distToBasket < 80) bonus += 8;
+  // Tree Rollins — "Tree at the Rim": elite rim protector alters shots
+  if (primaryDef && primaryDef.name === 'Tree Rollins' && distToBasket < 80) bonus += 10;
+  if (helpDef && helpDef.name === 'Tree Rollins' && distToBasket < 80) bonus += 8;
   return bonus;
 }
 

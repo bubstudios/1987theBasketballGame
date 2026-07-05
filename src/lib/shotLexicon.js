@@ -159,6 +159,22 @@ export const PUMP_FAKE_VARIATIONS = {
   baseline_turnaround: ['BASELINE_FADEAWAY', 'TURNAROUND_JUMPER'],
 };
 
+// --- Human Highlight Film branch → variation mapping (Dominique Wilkins) ---
+// Dominique's signature: wing catch → first step → baseline explosion → dunk/layup/foul.
+export const HUMAN_HIGHLIGHT_VARIATIONS = {
+  breakaway_dunk: ['BREAKAWAY_DUNK', 'RUNNING_DUNK', 'ONE_HAND_DUNK'],
+  windmill_dunk: ['POWER_DUNK', 'TWO_HAND_DUNK', 'ONE_HAND_DUNK'],
+  power_drive: ['POWER_DUNK', 'POWER_LAYUP', 'BASELINE_LAYUP'],
+  reverse_layup: ['REVERSE_LAYUP', 'REVERSE_DUNK'],
+  baseline_dunk: ['BASELINE_DUNK', 'BASELINE_LAYUP'],
+  power_dunk: ['POWER_DUNK', 'TWO_HAND_DUNK', 'ONE_HAND_DUNK'],
+  finger_roll: ['FINGER_ROLL', 'SCOOP_LAYUP'],
+  putback_dunk: ['PUTBACK_DUNK', 'TIP_IN'],
+  baseline_drive: ['BASELINE_LAYUP', 'BASELINE_DUNK'],
+  pullup_jumper: ['PULL_UP_JUMPER', 'ONE_DRIBBLE_PULL_UP'],
+  turnaround_jumper: ['TURNAROUND_JUMPER', 'TURNAROUND_FADEAWAY'],
+};
+
 // --- Per-player shot packages (zone → [variationKey, tier]) ---
 const PLAYER_PACKAGES = {
   // ===== LAKERS =====
@@ -408,6 +424,68 @@ const PLAYER_PACKAGES = {
     mid: [['SPOT_UP_JUMPER','secondary'],['PULL_UP_JUMPER','secondary']],
     three: [],
   },
+
+  // ===== HAWKS =====
+  'Dominique Wilkins': {
+    rim: [['BASELINE_DUNK','primary'],['POWER_DUNK','primary'],['RUNNING_DUNK','primary'],['BASELINE_LAYUP','primary'],['FINGER_ROLL','primary'],['REVERSE_LAYUP','secondary'],['POWER_LAYUP','secondary'],['PUTBACK_DUNK','secondary'],['BREAKAWAY_DUNK','secondary']],
+    short_mid: [['TURNAROUND_JUMPER','primary'],['BASELINE_FADEAWAY','secondary'],['FACE_UP_JUMPER','secondary'],['PULL_UP_JUMPER','secondary']],
+    mid: [['PULL_UP_JUMPER','secondary'],['ONE_DRIBBLE_PULL_UP','secondary'],['SPOT_UP_JUMPER','rare']],
+    three: [['SPOT_UP_THREE','rare']],
+  },
+  'Doc Rivers': {
+    rim: [['DRIVING_LAYUP','primary'],['SCOOP_LAYUP','secondary'],['FAST_BREAK_LAYUP','secondary'],['POWER_LAYUP','secondary']],
+    short_mid: [['STOP_AND_POP','primary'],['RUNNING_JUMPER','secondary']],
+    mid: [['PULL_UP_JUMPER','primary'],['ELBOW_JUMPER','secondary'],['STOP_AND_POP','secondary'],['BASELINE_JUMPER','secondary']],
+    three: [['SPOT_UP_THREE','rare']],
+  },
+  'Kevin Willis': {
+    rim: [['PUTBACK_LAYUP','primary'],['POWER_LAYUP','primary'],['DROP_STEP_LAYUP','primary'],['TIP_IN','secondary'],['STANDING_DUNK','secondary'],['JUMP_HOOK','secondary']],
+    short_mid: [['FACE_UP_JUMPER','primary'],['SHORT_BANKER','primary'],['JUMP_HOOK','secondary'],['TURNAROUND_JUMPER','secondary']],
+    mid: [['PICK_AND_POP_JUMPER','secondary'],['FACE_UP_JUMPER','secondary']],
+    three: [],
+  },
+  'Randy Wittman': {
+    rim: [['DRIVING_LAYUP','secondary'],['BASELINE_LAYUP','secondary']],
+    short_mid: [['STOP_AND_POP','secondary'],['RUNNING_JUMPER','secondary']],
+    mid: [['SPOT_UP_JUMPER','primary'],['BASELINE_JUMPER','primary'],['ELBOW_JUMPER','secondary'],['PULL_UP_JUMPER','secondary']],
+    three: [['CORNER_THREE','secondary'],['SPOT_UP_THREE','secondary']],
+  },
+  'Tree Rollins': {
+    rim: [['STANDING_DUNK','primary'],['PUTBACK_LAYUP','primary'],['TIP_IN','secondary'],['SHORT_HOOK','secondary'],['DROP_STEP_LAYUP','secondary']],
+    short_mid: [['SHORT_HOOK','secondary'],['SHORT_BANKER','secondary']],
+    mid: [],
+    three: [],
+  },
+  'Spud Webb': {
+    rim: [['SCOOP_LAYUP','primary'],['FAST_BREAK_LAYUP','primary'],['REVERSE_LAYUP','secondary'],['FINGER_ROLL','secondary']],
+    short_mid: [['RUNNING_JUMPER','primary'],['STOP_AND_POP','secondary']],
+    mid: [['PULL_UP_JUMPER','primary'],['SPOT_UP_JUMPER','secondary']],
+    three: [['SPOT_UP_THREE','rare']],
+  },
+  'Mike McGee': {
+    rim: [['DRIVING_LAYUP','primary'],['FAST_BREAK_LAYUP','primary'],['CUTTING_LAYUP','secondary'],['REVERSE_LAYUP','secondary']],
+    short_mid: [['FACE_UP_JUMPER','secondary'],['STOP_AND_POP','secondary']],
+    mid: [['SPOT_UP_JUMPER','primary'],['PULL_UP_JUMPER','secondary'],['BASELINE_JUMPER','secondary'],['CORNER_JUMPER','secondary']],
+    three: [['CORNER_THREE','primary'],['WING_THREE','secondary']],
+  },
+  'Cliff Levingston': {
+    rim: [['PUTBACK_LAYUP','primary'],['CUTTING_LAYUP','primary'],['TIP_IN','secondary'],['STANDING_LAYUP','secondary'],['RUNNING_DUNK','secondary']],
+    short_mid: [['SHORT_BANKER','secondary'],['FACE_UP_JUMPER','secondary']],
+    mid: [['SPOT_UP_JUMPER','rare']],
+    three: [],
+  },
+  'Antoine Carr': {
+    rim: [['POWER_LAYUP','primary'],['DROP_STEP_LAYUP','primary'],['SHORT_BANKER','secondary'],['TURNAROUND_JUMPER','secondary']],
+    short_mid: [['SHORT_BANKER','primary'],['TURNAROUND_JUMPER','secondary'],['FACE_UP_JUMPER','secondary']],
+    mid: [['FACE_UP_JUMPER','secondary'],['PICK_AND_POP_JUMPER','rare']],
+    three: [],
+  },
+  'Jon Koncak': {
+    rim: [['PUTBACK_LAYUP','primary'],['STANDING_LAYUP','primary'],['TIP_IN','secondary'],['SHORT_HOOK','secondary'],['STANDING_DUNK','secondary']],
+    short_mid: [['SHORT_HOOK','secondary'],['SHORT_BANKER','secondary']],
+    mid: [],
+    three: [],
+  },
 };
 
 const DEFAULT_PACKAGE = {
@@ -472,9 +550,11 @@ export function selectShotVariation(shooter, ctx, sigVariant, sigFamily = 'dream
   if (sigVariant) {
     const variantMap = sigFamily === 'zeke' ? ZEKE_SPLIT_VARIATIONS
                      : sigFamily === 'pumpfake' ? PUMP_FAKE_VARIATIONS
+                     : sigFamily === 'highlight' ? HUMAN_HIGHLIGHT_VARIATIONS
                      : DREAM_SHAKE_VARIATIONS;
     const fallback = sigFamily === 'zeke' ? 'PULL_UP_JUMPER'
                    : sigFamily === 'pumpfake' ? 'SHORT_BANKER'
+                   : sigFamily === 'highlight' ? 'POWER_DUNK'
                    : 'TURNAROUND_JUMPER';
     const sigKeys = (variantMap[sigVariant] || [fallback])
       .filter(k => VARIATIONS[k].zones.includes(zone));

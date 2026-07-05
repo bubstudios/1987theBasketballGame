@@ -62,6 +62,18 @@ export const PERSONALITY_RATINGS = {
   'Mitchell Wiggins':  { trashTalk: 54, agitator: 64, intimidation: 60, composure: 62, retaliationRisk: 50, refRespect: 55, technicalRisk: 34, crowdFuel: 72, role: 'guard_crasher' },
   'Jim Petersen':      { trashTalk: 34, agitator: 52, intimidation: 68, composure: 70, retaliationRisk: 40, refRespect: 55, technicalRisk: 28, crowdFuel: 42, role: 'reserve_big' },
   'Buck Johnson':      { trashTalk: 34, agitator: 40, intimidation: 60, composure: 72, retaliationRisk: 35, refRespect: 60, technicalRisk: 22, crowdFuel: 56, role: 'rookie_athlete' },
+
+  // === Atlanta Hawks (Human Highlight Film era) ===
+  'Dominique Wilkins':  { trashTalk: 76, agitator: 54, intimidation: 60, composure: 65, retaliationRisk: 40, refRespect: 55, technicalRisk: 34, crowdFuel: 96, role: 'highlight_film' },
+  'Doc Rivers':         { trashTalk: 58, agitator: 54, intimidation: 50, composure: 78, retaliationRisk: 28, refRespect: 70, technicalRisk: 28, crowdFuel: 62, role: 'general' },
+  'Kevin Willis':       { trashTalk: 42, agitator: 58, intimidation: 72, composure: 70, retaliationRisk: 30, refRespect: 55, technicalRisk: 30, crowdFuel: 54, role: 'glass_muscle' },
+  'Randy Wittman':      { trashTalk: 28, agitator: 22, intimidation: 45, composure: 82, retaliationRisk: 12, refRespect: 78, technicalRisk: 12, crowdFuel: 42, role: 'ready_jumper' },
+  'Tree Rollins':       { trashTalk: 32, agitator: 62, intimidation: 85, composure: 66, retaliationRisk: 34, refRespect: 50, technicalRisk: 34, crowdFuel: 40, role: 'rim_protector' },
+  'Spud Webb':          { trashTalk: 64, agitator: 48, intimidation: 35, composure: 74, retaliationRisk: 26, refRespect: 60, technicalRisk: 26, crowdFuel: 88, role: 'tiny_lightning' },
+  'Mike McGee':         { trashTalk: 52, agitator: 38, intimidation: 50, composure: 68, retaliationRisk: 22, refRespect: 55, technicalRisk: 22, crowdFuel: 68, role: 'bench_bucket' },
+  'Cliff Levingston':   { trashTalk: 40, agitator: 58, intimidation: 68, composure: 70, retaliationRisk: 30, refRespect: 55, technicalRisk: 30, crowdFuel: 60, role: 'energy_forward' },
+  'Antoine Carr':       { trashTalk: 44, agitator: 60, intimidation: 72, composure: 66, retaliationRisk: 34, refRespect: 50, technicalRisk: 34, crowdFuel: 58, role: 'big_dog' },
+  'Jon Koncak':         { trashTalk: 24, agitator: 44, intimidation: 68, composure: 74, retaliationRisk: 26, refRespect: 55, technicalRisk: 26, crowdFuel: 32, role: 'backup_wall' },
 };
 
 // On-screen bubble phrases per player (one chosen per trash-talk event)
@@ -110,6 +122,17 @@ export const TRASH_TALK_BUBBLES = {
   'Mitchell Wiggins':    ['Wiggins crashes from the guard spot!', 'He came out of nowhere!', "That's pure athleticism.", 'Great energy from Wiggins!'],
   'Jim Petersen':        ['Petersen does the work.', 'Strong reserve minutes.', 'He held his ground.'],
   'Buck Johnson':        ['Buck runs the floor!', 'Young legs!', 'Johnson gives them a spark.'],
+  // Hawks
+  'Dominique Wilkins':   ['Human Highlight Film!', 'Dominique takes flight!', 'That was violent!', "He's got the Omni rocking!", "You can't give him a runway!"],
+  'Doc Rivers':          ['Doc sees it!', 'Rivers threads it through!', "That's the general!", 'He runs the show.'],
+  'Kevin Willis':        ['Willis owns the glass!', 'Strong work inside!', "That's muscle!", 'He carved out space.'],
+  'Randy Wittman':       ['Wittman was ready.', 'Clean jumper.', 'He got to his spot.'],
+  'Tree Rollins':        ['Tree says no!', 'The rim is protected!', 'Rollins erased it!', 'Not in his house!'],
+  'Spud Webb':           ['Spud is flying!', 'Tiny Lightning!', 'He changed the speed of the game!', 'Nobody caught him!'],
+  'Mike McGee':          ['McGee brings bench points!', "He's looking to score!", 'Good spark from McGee.'],
+  'Cliff Levingston':    ['Levingston keeps it alive!', 'Energy minutes!', 'He does the dirty work.'],
+  'Antoine Carr':        ['Carr powers it in!', 'Strong move from the bench.', "That's a grown-man bucket."],
+  'Jon Koncak':          ['Koncak gives them size.', 'Good backup big minutes.', 'He held his ground.'],
 };
 
 // Every player has a voice key — even if no audio clips exist yet (text-only fallback).
@@ -134,6 +157,11 @@ const PLAYER_AUDIO_KEY = {
   'Robert Reid': 'robert_reid', 'Dirk Minniefield': 'minniefield', 'Allen Leavell': 'leavell',
   'Lewis Lloyd': 'lloyd', 'Mitchell Wiggins': 'wiggins', 'Jim Petersen': 'petersen',
   'Buck Johnson': 'buck_johnson',
+  // Hawks
+  'Dominique Wilkins': 'dominique', 'Doc Rivers': 'doc_rivers', 'Kevin Willis': 'kevin_willis',
+  'Randy Wittman': 'wittman', 'Tree Rollins': 'tree_rollins', 'Spud Webb': 'spud_webb',
+  'Mike McGee': 'mike_mcgee', 'Cliff Levingston': 'levingston', 'Antoine Carr': 'antoine_carr',
+  'Jon Koncak': 'koncak',
 };
 
 // Enforcer / agitator check — gates intimidation talk after hard fouls so
@@ -185,6 +213,11 @@ const ROLE_LABEL = {
   quiet_mismatch: 'TWIN TOWER', glue: 'GLUE', steady_vet: 'VETERAN',
   guard_confidence: 'PUSH', stabilizer: 'SAFE HANDS', wing_attack: 'ATTACK',
   guard_crasher: 'CRASHER', reserve_big: 'WORK', rookie_athlete: 'ROOKIE',
+  // Hawks
+  highlight_film: 'HIGHLIGHT FILM', general: 'GENERAL', glass_muscle: 'GLASS',
+  ready_jumper: 'READY', rim_protector: 'TREE', tiny_lightning: 'SPUD',
+  bench_bucket: 'BENCH', energy_forward: 'ENERGY', big_dog: 'BIG DOG',
+  backup_wall: 'WALL',
 };
 
 function gameElapsed(state) {

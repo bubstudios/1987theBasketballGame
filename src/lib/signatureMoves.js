@@ -116,6 +116,54 @@ export function checkPumpFakeParade(shooter, distToBasket, nearestDef, isFastBre
   return { contestBoost, variant, defenderBit };
 }
 
+// Dominique Wilkins — "Human Highlight Film"
+// Wing catch → first step → baseline explosion → dunk/layup/foul draw.
+// Triggers on ~18% of Dominique's half-court scoring actions and ~35% in
+// transition (runway!). Improves contest level (explosive first step creates
+// separation), boosts dunk probability, raises foul-drawing chance, and
+// produces a large momentum swing on makes. Slightly raises charge risk
+// against set defense. Does NOT guarantee a make.
+export function checkHumanHighlight(shooter, distToBasket, nearestDef, isFastBreak, shotClock) {
+  if (shooter.name !== 'Dominique Wilkins') return null;
+  // Triggers from the wing (90-280px) or near the rim on putbacks/breaks
+  if (distToBasket > 280) return null;
+
+  // Higher trigger chance in transition (runway!) and late clock
+  let triggerChance;
+  if (isFastBreak) triggerChance = 0.35;
+  else if (shotClock <= 10) triggerChance = 0.22;
+  else triggerChance = 0.16;
+
+  if (Math.random() > triggerChance) return null;
+
+  // Defender quality determines how badly he bites on the first step
+  const defPerim = (nearestDef && nearestDef.player && nearestDef.player.perimeterDef) || 50;
+  let contestBoost;
+  let defenderBit;
+  if (defPerim >= 88) {
+    // Elite perimeter defender stays in front — only 1 level improvement
+    contestBoost = 1;
+    defenderBit = false;
+  } else if (defPerim < 65) {
+    // Poor/aggressive defender gets blown by — 2 levels, high foul chance
+    contestBoost = 2;
+    defenderBit = true;
+  } else {
+    contestBoost = Math.random() < 0.5 ? 1 : 2;
+    defenderBit = contestBoost === 2;
+  }
+
+  // Branch selection based on context — transition runway vs half-court
+  const variants = isFastBreak
+    ? ['breakaway_dunk', 'windmill_dunk', 'power_drive', 'reverse_layup']
+    : distToBasket < 85
+      ? ['baseline_dunk', 'power_dunk', 'finger_roll', 'putback_dunk']
+      : ['power_drive', 'baseline_drive', 'pullup_jumper', 'turnaround_jumper'];
+  const variant = variants[Math.floor(Math.random() * variants.length)];
+
+  return { contestBoost, variant, defenderBit, isHighlight: true };
+}
+
 // --- Vinnie Johnson — "Microwave Mode" ---
 // Vinnie heats up after consecutive makes. While active, his shot-selection
 // weight rises for a short stretch (~5 possessions). Missing cools him off.
