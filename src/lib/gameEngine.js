@@ -7,7 +7,7 @@ import { mergeDefenseRatings, recomputeMatchups, getPrimaryDefender, getMatchupF
 import { TEAM_DEFENSE_TENDENCIES } from './defenseData';
 import { selectShotVariation } from './shotLexicon';
 import { DUNK_PHRASES } from './dunkPhrases';
-import { checkDreamShake, checkZekeSplit, checkPumpFakeParade, checkHumanHighlight, improveContestLevel, updateMicrowaveMode, tickMicrowaveMode } from './signatureMoves';
+import { checkDreamShake, checkZekeSplit, checkPumpFakeParade, checkHumanHighlight, checkPowerWingWork, checkSilkyPullUp, checkLeftyFaceUp, improveContestLevel, updateMicrowaveMode, tickMicrowaveMode } from './signatureMoves';
 import { rollTrashTalk, isEnforcer } from './personalityEngine';
 import { checkSubstitutions, executeSubstitution } from './subEngine';
 import { setupFreeThrowAlignment, releaseLanePlayersForRebound, getFTReboundWeight } from './freeThrowEngine';
@@ -1225,6 +1225,9 @@ function makePass(state, passer, receiver) {
   state.ball.isZekeSplit = false;
   state.ball.isPumpFake = false;
   state.ball.isHumanHighlight = false;
+  state.ball.isPowerWing = false;
+  state.ball.isSilkyPullUp = false;
+  state.ball.isLeftyFaceUp = false;
   state.ball.lastPasserId = passer.id;
   recordCelticsPass(state, receiver);
 
@@ -1266,6 +1269,9 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef, options = {}) {
   state.ball.isZekeSplit = false;
   state.ball.isPumpFake = false;
   state.ball.isHumanHighlight = false;
+  state.ball.isPowerWing = false;
+  state.ball.isSilkyPullUp = false;
+  state.ball.isLeftyFaceUp = false;
 
   // Calculate make probability
   const d = dist(shooter, basket);
@@ -1313,12 +1319,39 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef, options = {}) {
     state.ball.humanHighlightVariant = humanHighlight.variant;
   }
 
+  // --- Power Wing Work: Aguirre's signature mid-post bully scoring ---
+  const powerWing = checkPowerWingWork(shooter, d, nearestDef, isFb, state.shotClock);
+  if (powerWing) {
+    contestLevel = improveContestLevel(contestLevel, powerWing.contestBoost);
+    state.ball.isPowerWing = true;
+    state.ball.powerWingVariant = powerWing.variant;
+  }
+
+  // --- Silky Pull-Up: Blackman's signature midrange scoring ---
+  const silkyPullUp = checkSilkyPullUp(shooter, d, nearestDef, isFb);
+  if (silkyPullUp) {
+    contestLevel = improveContestLevel(contestLevel, silkyPullUp.contestBoost);
+    state.ball.isSilkyPullUp = true;
+    state.ball.silkyPullUpVariant = silkyPullUp.variant;
+  }
+
+  // --- Lefty Face-Up: Perkins' signature face-up jumper ---
+  const leftyFaceUp = checkLeftyFaceUp(shooter, d, nearestDef, isFb);
+  if (leftyFaceUp) {
+    contestLevel = improveContestLevel(contestLevel, leftyFaceUp.contestBoost);
+    state.ball.isLeftyFaceUp = true;
+    state.ball.leftyFaceUpVariant = leftyFaceUp.variant;
+  }
+
   // --- Shot variation: pick a descriptive shot type from the player's package ---
   let sigVariant = null, sigFamily = 'dream';
   if (dreamShake) { sigVariant = dreamShake.variant; sigFamily = 'dream'; }
   else if (zekeSplit) { sigVariant = zekeSplit.variant; sigFamily = 'zeke'; }
   else if (pumpFake) { sigVariant = pumpFake.variant; sigFamily = 'pumpfake'; }
   else if (humanHighlight) { sigVariant = humanHighlight.variant; sigFamily = 'highlight'; }
+  else if (powerWing) { sigVariant = powerWing.variant; sigFamily = 'powerwing'; }
+  else if (silkyPullUp) { sigVariant = silkyPullUp.variant; sigFamily = 'silky'; }
+  else if (leftyFaceUp) { sigVariant = leftyFaceUp.variant; sigFamily = 'lefty'; }
   const variation = selectShotVariation(shooter, {
     distToBasket: d, isThree: threePtr, isFastBreak: isFb,
     isPutback: !!(options && options.isPutback), shotClock: state.shotClock, gameClock: state.gameClock,
@@ -1407,6 +1440,20 @@ function takeShot(state, shooter, isOpen, fouledBy, nearestDef, options = {}) {
   if (humanHighlight && !fouledBy && !blockedBy && nearestDef && nearestDef.player && !nearestDef.player.fouledOut) {
     const hhFoulChance = humanHighlight.defenderBit ? 0.30 : 0.16;
     if (Math.random() < hhFoulChance) {
+      fouledBy = nearestDef.player;
+    }
+  }
+  // Power Wing Work foul boost — Aguirre draws contact on power moves
+  if (powerWing && !fouledBy && !blockedBy && nearestDef && nearestDef.player && !nearestDef.player.fouledOut) {
+    const pwFoulChance = powerWing.defenderBit ? 0.32 : 0.18;
+    if (Math.random() < pwFoulChance) {
+      fouledBy = nearestDef.player;
+    }
+  }
+  // Silky Pull-Up foul boost — Blackman draws slight contact on the pull-up
+  if (silkyPullUp && !fouledBy && !blockedBy && nearestDef && nearestDef.player && !nearestDef.player.fouledOut) {
+    const spFoulChance = silkyPullUp.defenderBit ? 0.16 : 0.08;
+    if (Math.random() < spFoulChance) {
       fouledBy = nearestDef.player;
     }
   }
@@ -1680,6 +1727,7 @@ function resolveShot(state) {
     const varData = result.shotVariation;
     const isSigScore = !!(varData && (varData.isKareemSignature || varData.isMagicSignature))
       || state.ball.isDreamShake || state.ball.isZekeSplit || state.ball.isHumanHighlight
+      || state.ball.isPowerWing || state.ball.isSilkyPullUp || state.ball.isLeftyFaceUp
       || (result.shooter.name === 'Larry Bird' && result.type === 'three');
     if (isSigScore) rollTrashTalk(state, result.shooter, 'signature_score');
     else if (result.type === 'dunk') rollTrashTalk(state, result.shooter, 'poster_dunk');
@@ -1695,6 +1743,12 @@ function resolveShot(state) {
     state.ball.lastPasserId = null;
     if (state.ball.isHumanHighlight) {
       state.shotResultDisplay = `🔥 ${result.shooter.name} — HUMAN HIGHLIGHT FILM!`;
+    } else if (state.ball.isPowerWing) {
+      state.shotResultDisplay = `💪 ${result.shooter.name} — POWER WING WORK!`;
+    } else if (state.ball.isSilkyPullUp) {
+      state.shotResultDisplay = `🎯 ${result.shooter.name} — SILKY PULL-UP!`;
+    } else if (state.ball.isLeftyFaceUp) {
+      state.shotResultDisplay = `🤚 ${result.shooter.name} — LEFTY FACE-UP!`;
     } else if (varData && varData.family === 'DUNK' && Math.random() < 0.35) {
       const phrase = DUNK_PHRASES[Math.floor(Math.random() * DUNK_PHRASES.length)];
       state.shotResultDisplay = `💥 ${result.shooter.name} ${phrase.display}`;
@@ -1817,6 +1871,7 @@ function resolveFouledShot(state, result) {
     const varData = result.shotVariation;
     const isSigScore = !!(varData && (varData.isKareemSignature || varData.isMagicSignature))
       || state.ball.isDreamShake || state.ball.isZekeSplit || state.ball.isHumanHighlight
+      || state.ball.isPowerWing || state.ball.isSilkyPullUp || state.ball.isLeftyFaceUp
       || (shooter.name === 'Larry Bird' && result.type === 'three');
     if (isSigScore) rollTrashTalk(state, shooter, 'signature_score');
     else if (result.type === 'dunk') rollTrashTalk(state, shooter, 'poster_dunk');
@@ -1857,6 +1912,12 @@ function resolveFouledShot(state, result) {
   if (result.made) {
     if (state.ball.isHumanHighlight) {
       state.shotResultDisplay = `🔥 ${shooter.name} HUMAN HIGHLIGHT FILM + foul! AND1!`;
+    } else if (state.ball.isPowerWing) {
+      state.shotResultDisplay = `💪 ${shooter.name} POWER WING WORK + foul! AND1!`;
+    } else if (state.ball.isSilkyPullUp) {
+      state.shotResultDisplay = `🎯 ${shooter.name} SILKY PULL-UP + foul! AND1!`;
+    } else if (state.ball.isLeftyFaceUp) {
+      state.shotResultDisplay = `🤚 ${shooter.name} LEFTY FACE-UP + foul! AND1!`;
     } else {
       state.shotResultDisplay = `${shooter.name} ${varData ? varData.make : 'scores'} + foul! AND1!`;
     }
@@ -2321,51 +2382,6 @@ function updateFastBreak(state, offensePlayers, defensePlayers, dt) {
     } else {
       state.fastBreak = null;
     }
-  }
-}
-
-function checkTurnover(state, carrier, defenders) {
-  const defenseTeam = defenders[0] ? defenders[0].team : null;
-  const play = getActiveDefensePlay(state, defenseTeam);
-
-  // Primary on-ball defender from matchup assignments (fallback: nearest)
-  const primaryDef = getPrimaryDefender(state, carrier) ||
-    defenders.reduce((closest, d) => dist(carrier, d) < dist(carrier, closest) ? d : closest, defenders[0]);
-  if (!primaryDef) return;
-
-  const dd = dist(carrier, primaryDef);
-  const stealRange = play === 'aggressive_steal' ? 28 : 22;
-  if (dd > stealRange) return;
-
-  const stealChance = computeStealChance(state, carrier, primaryDef, defenders, play);
-  if (Math.random() < stealChance) {
-    carrier.hasBall = false;
-    primaryDef.hasBall = true;
-    state.ball.carrier = primaryDef.id;
-    carrier.stats.turnovers++;
-    primaryDef.stats.steals++;
-    state.momentum[primaryDef.team] += 2;
-    state.momentum[carrier.team] -= 1;
-    state.gameLog.unshift(`🏀 ${primaryDef.name} steals from ${carrier.name}!`);
-    state.turnoverCooldown = 2000;
-    switchPossession(state, primaryDef);
-    return;
-  }
-
-  // Aggressive steal gamble that misses can draw a reach-in foul
-  if (play === 'aggressive_steal' && dd < 22 && !primaryDef.fouledOut && Math.random() < 0.10) {
-    const rfo = commitPersonalFoul(state, primaryDef);
-    if (isInPenalty(state, primaryDef.team)) {
-      setupFreeThrows(state, carrier, primaryDef, 2, rfo);
-      state.gameLog.unshift(`🦵 Reach-in foul on ${primaryDef.name} (${primaryDef.fouls}) — ${carrier.name} to the line!`);
-      state.actionTimer = 1500;
-    } else {
-      state.gameLog.unshift(`🦵 Reach-in foul on ${primaryDef.name} (${primaryDef.fouls})`);
-      state.shotClock = 24;
-      state.turnoverCooldown = 1500;
-      state.actionTimer = 600;
-    }
-    if (state.gameLog.length > 15) state.gameLog.pop();
   }
 }
 

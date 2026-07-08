@@ -394,6 +394,53 @@ function drawBall(ctx, ball, tf) {
     ctx.fillText('🔥 HUMAN HIGHLIGHT FILM!', x, ballY - 22);
   }
 
+  // Power Wing Work — Aguirre's signature power scoring (Dallas blue/silver)
+  if (ball.isPowerWing && ball.inFlight) {
+    const ballY = y - arcOffset;
+    const time = Date.now() * 0.005;
+    const elapsed = Date.now() - ball.flightStart;
+    const t = Math.min(elapsed / ball.flightDuration, 1);
+    // Power trail behind the ball
+    for (let i = 1; i <= 6; i++) {
+      const trailT = Math.max(0, t - i * 0.05);
+      if (trailT <= 0) continue;
+      const tx = sx_of(tf, lerp(ball.startX, ball.targetX, trailT));
+      const ty = sy_of(tf, lerp(ball.startY, ball.targetY, trailT));
+      const alpha = (1 - i / 6) * 0.5;
+      const sz = 5 - i * 0.4;
+      ctx.fillStyle = `rgba(0, 83, 140, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(tx, ty, Math.max(1, sz), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(184, 196, 202, ${alpha * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(tx, ty, Math.max(0.5, sz * 0.5), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Orbiting power sparkles (blue/silver)
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + time;
+      const sr = 16 + Math.sin(time * 2 + i) * 5;
+      const px = x + Math.cos(angle) * sr;
+      const py = ballY + Math.sin(angle) * sr * 0.6;
+      const alpha = 0.5 + Math.sin(time * 2 + i) * 0.3;
+      ctx.fillStyle = `rgba(0, 83, 140, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(184, 196, 202, ${alpha * 0.5})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Label
+    ctx.fillStyle = 'rgba(0, 83, 140, 0.95)';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('💪 POWER WING WORK!', x, ballY - 22);
+  }
+
   // Dunk effect — motion trail + rim flash on impact
   if (ball.isDunk && ball.inFlight) {
     const elapsed = Date.now() - ball.flightStart;

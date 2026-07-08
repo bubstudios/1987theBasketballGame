@@ -1,8 +1,8 @@
 // 1986-87 Lakers and Celtics rosters with real attributes
 // Speed: 1-10 scale, Height in inches, Skills rated 1-10
 
-import { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH, PISTONS_BENCH, HAWKS_BENCH } from './benchData';
-export { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH, PISTONS_BENCH, HAWKS_BENCH };
+import { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH, PISTONS_BENCH, HAWKS_BENCH, DALLAS_BENCH } from './benchData';
+export { LAKERS_BENCH, CELTICS_BENCH, ROCKETS_BENCH, PISTONS_BENCH, HAWKS_BENCH, DALLAS_BENCH };
 
 export const LAKERS_ROSTER = [
   {
@@ -672,6 +672,141 @@ export const ATLANTA_HAWKS_ROSTER = [
   },
 ];
 
+// 1986-87 Dallas Mavericks (deep, balanced, high-scoring Western contender —
+// 55-27, No. 2 offense in the NBA by offensive rating, 100.5 pace)
+export const DALLAS_ROSTER = [
+  {
+    name: "Derek Harper",
+    number: 12,
+    position: "PG",
+    height: 76, // 6'4"
+    speed: 8,
+    driveTendency: 7, // two-way guard, attacks off PnR
+    dunkTendency: 2,
+    shooting: 7,
+    passing: 9,
+    defense: 8, // best Dallas perimeter defender
+    rebounding: 4,
+    insideScoring: 6,
+    threePoint: 6,
+    threeAttempts: 2.7,
+    threePct: 0.333,
+    twoAttempts: 9.7,
+    twoPct: 0.470,
+    offensiveRebRate: 0.015,
+    defensiveRebRate: 0.050,
+    stealRate: 0.030,
+    turnoverRate: 0.130,
+    ftAttempts: 4.2,
+    ftPct: 0.684,
+    blockRate: 0.005,
+  },
+  {
+    name: "Rolando Blackman",
+    number: 22,
+    position: "SG",
+    height: 78, // 6'6"
+    speed: 7,
+    driveTendency: 6, // smooth midrange scorer
+    dunkTendency: 2,
+    shooting: 9,
+    passing: 6,
+    defense: 6,
+    rebounding: 4,
+    insideScoring: 7,
+    threePoint: 3,
+    threeAttempts: 0.3,
+    threePct: 0.330,
+    twoAttempts: 16.0,
+    twoPct: 0.515, // elite efficiency
+    offensiveRebRate: 0.025,
+    defensiveRebRate: 0.060,
+    stealRate: 0.018,
+    turnoverRate: 0.090,
+    ftAttempts: 4.0,
+    ftPct: 0.884,
+    blockRate: 0.003,
+  },
+  {
+    name: "Mark Aguirre",
+    number: 24,
+    position: "SF",
+    height: 78, // 6'6"
+    speed: 7,
+    driveTendency: 8, // power wing bully, scores through contact
+    dunkTendency: 3,
+    shooting: 9,
+    passing: 7,
+    defense: 6, // offense-first but physical
+    rebounding: 5,
+    insideScoring: 9, // elite post/mid-post scorer
+    threePoint: 4,
+    threeAttempts: 0.8,
+    threePct: 0.300,
+    twoAttempts: 18.5,
+    twoPct: 0.476,
+    offensiveRebRate: 0.055,
+    defensiveRebRate: 0.090,
+    stealRate: 0.020,
+    turnoverRate: 0.100,
+    ftAttempts: 7.5, // elite foul drawer
+    ftPct: 0.770,
+    blockRate: 0.005,
+  },
+  {
+    name: "Sam Perkins",
+    number: 41,
+    position: "PF",
+    height: 81, // 6'9"
+    speed: 6,
+    driveTendency: 4, // face-up lefty big
+    dunkTendency: 4,
+    shooting: 8,
+    passing: 4,
+    defense: 7,
+    rebounding: 8,
+    insideScoring: 7,
+    threePoint: 4, // occasional stretch element
+    threeAttempts: 0.6,
+    threePct: 0.330,
+    twoAttempts: 12.1,
+    twoPct: 0.480,
+    offensiveRebRate: 0.075,
+    defensiveRebRate: 0.170,
+    stealRate: 0.015,
+    turnoverRate: 0.110,
+    ftAttempts: 2.9,
+    ftPct: 0.828,
+    blockRate: 0.020,
+  },
+  {
+    name: "James Donaldson",
+    number: 43,
+    position: "C",
+    height: 86, // 7'2"
+    speed: 5,
+    driveTendency: 2, // screen/rebound/finish center
+    dunkTendency: 4,
+    shooting: 5,
+    passing: 2,
+    defense: 7,
+    rebounding: 10, // elite glass anchor
+    insideScoring: 7,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 7.8,
+    twoPct: 0.564, // high-efficiency finisher
+    offensiveRebRate: 0.100,
+    defensiveRebRate: 0.250,
+    stealRate: 0.010,
+    turnoverRate: 0.110,
+    ftAttempts: 2.5,
+    ftPct: 0.812,
+    blockRate: 0.030,
+  },
+];
+
 // Court dimensions (scaled for canvas)
 export const COURT = {
   width: 940,   // 94 feet * 10
@@ -723,6 +858,13 @@ export const TEAM_COLORS = {
     name: "Hawks",
     abbr: "ATL",
   },
+  dallas: {
+    primary: "#00538C",
+    secondary: "#B8C4CA",
+    text: "#FFFFFF",
+    name: "Mavericks",
+    abbr: "DAL",
+  },
 };
 
 // Team-level fast break tendency (1-10 scale)
@@ -737,6 +879,7 @@ export const TEAM_FAST_BREAK = {
   rockets: 5,
   pistons: 7, // Isiah pushes tempo, but Dantley post-ups slow the half-court
   hawks: 6, // Slower than Lakers, but dangerous in transition with Dominique
+  dallas: 6, // High-scoring but half-court-oriented; Harper pushes tempo selectively
 };
 
 // Central team registry — the single source of truth for the team selection page.
@@ -773,6 +916,12 @@ export const TEAMS = {
     roster: ATLANTA_HAWKS_ROSTER,
     bench: HAWKS_BENCH,
   },
+  dallas: {
+    colors: TEAM_COLORS.dallas,
+    fastBreak: TEAM_FAST_BREAK.dallas,
+    roster: DALLAS_ROSTER,
+    bench: DALLAS_BENCH,
+  },
 };
 
 // Minutes per game (1986-87 regular season) — drives fatigue & stamina
@@ -802,6 +951,11 @@ export const PLAYER_MPG = {
   'Randy Wittman': 30, 'Tree Rollins': 24,
   'Spud Webb': 14, 'Mike McGee': 18, 'Cliff Levingston': 20,
   'Antoine Carr': 12, 'Jon Koncak': 17,
+  // Mavericks
+  'Mark Aguirre': 36, 'Rolando Blackman': 35, 'Derek Harper': 34,
+  'Sam Perkins': 34, 'James Donaldson': 35,
+  'Detlef Schrempf': 20, 'Brad Davis': 17, 'Roy Tarpley': 18,
+  'Bill Wennington': 8, 'Al Wood': 8,
 };
 
 // Franchise stars — tolerate more fatigue, stay on the floor longer
@@ -811,4 +965,5 @@ export const STAR_PLAYERS = new Set([
   'Akeem Olajuwon', 'Ralph Sampson', 'Rodney McCray',
   'Isiah Thomas', 'Adrian Dantley', 'Bill Laimbeer',
   'Dominique Wilkins', 'Doc Rivers', 'Kevin Willis',
+  'Mark Aguirre', 'Rolando Blackman', 'Derek Harper', 'Sam Perkins',
 ]);

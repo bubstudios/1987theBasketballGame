@@ -349,6 +349,75 @@ const PLAYER_ROLES = {
     creation: 12, offReb: 78,
     fgaTarget: 3.5, mpgExpected: 17,
   },
+  // --- Mavericks ---
+  // Dallas: Aguirre is the primary power-wing scorer, Blackman is the smooth
+  // secondary star, Harper is the two-way organizer, Perkins is the face-up
+  // lefty big, Donaldson is the glass anchor. Deep balanced scoring.
+  'Mark Aguirre': {
+    team: 'dallas', starRole: 'power_wing',
+    initiation: 78, finishing: 94, offBall: 86, transition: 50,
+    creation: 86, offReb: 78, clutchPriority: 95,
+    fgaTarget: 20.0, mpgExpected: 36,
+    shotWeight: 30,
+  },
+  'Rolando Blackman': {
+    team: 'dallas', starRole: 'smooth_scorer',
+    initiation: 76, finishing: 90, offBall: 88, transition: 72,
+    creation: 84, offReb: 40, clutchPriority: 90,
+    fgaTarget: 16.5, mpgExpected: 35,
+    shotWeight: 24,
+  },
+  'Derek Harper': {
+    team: 'dallas', starRole: 'organizer',
+    initiation: 96, finishing: 80, offBall: 78, transition: 84,
+    creation: 94, offReb: 36, clutchPriority: 88,
+    fgaTarget: 12.5, mpgExpected: 34,
+    shotWeight: 16,
+  },
+  'Sam Perkins': {
+    team: 'dallas', starRole: 'face_up_big',
+    initiation: 42, finishing: 82, offBall: 82, transition: 60,
+    creation: 54, offReb: 88, clutchPriority: 85,
+    fgaTarget: 12.5, mpgExpected: 34,
+    shotWeight: 18,
+  },
+  'James Donaldson': {
+    team: 'dallas', starRole: 'glass_anchor',
+    initiation: 10, finishing: 74, offBall: 70, transition: 35,
+    creation: 14, offReb: 96,
+    fgaTarget: 7.0, mpgExpected: 35,
+    shotWeight: 10,
+  },
+  'Brad Davis': {
+    team: 'dallas',
+    initiation: 90, finishing: 64, offBall: 78, transition: 72,
+    creation: 88, offReb: 18,
+    fgaTarget: 5.5, mpgExpected: 17,
+  },
+  'Detlef Schrempf': {
+    team: 'dallas',
+    initiation: 64, finishing: 76, offBall: 80, transition: 66,
+    creation: 74, offReb: 66,
+    fgaTarget: 7.5, mpgExpected: 20,
+  },
+  'Roy Tarpley': {
+    team: 'dallas',
+    initiation: 26, finishing: 86, offBall: 72, transition: 78,
+    creation: 38, offReb: 96,
+    fgaTarget: 7.5, mpgExpected: 18,
+  },
+  'Bill Wennington': {
+    team: 'dallas',
+    initiation: 12, finishing: 58, offBall: 60, transition: 40,
+    creation: 16, offReb: 72,
+    fgaTarget: 3.0, mpgExpected: 8,
+  },
+  'Al Wood': {
+    team: 'dallas',
+    initiation: 42, finishing: 74, offBall: 74, transition: 72,
+    creation: 52, offReb: 46,
+    fgaTarget: 3.5, mpgExpected: 8,
+  },
 };
 
 function getRole(player) {
@@ -471,6 +540,29 @@ function getAdjustedRole(state, player) {
     if (!dominiqueOn && player.name === 'Mike McGee') {
       adjusted.finishing = 88;
       adjusted.initiation = 60;
+    }
+  }
+
+  if (team === 'dallas') {
+    const harperOn = state.players.some(p => p.name === 'Derek Harper' && p.team === team && p.onCourt);
+    const davisOn = state.players.some(p => p.name === 'Brad Davis' && p.team === team && p.onCourt);
+    const aguirreOn = state.players.some(p => p.name === 'Mark Aguirre' && p.team === team && p.onCourt);
+    // When Harper rests, Brad Davis becomes the primary organizer
+    if (!harperOn && player.name === 'Brad Davis') {
+      adjusted.initiation = 94;
+      adjusted.creation = 90;
+    }
+    // Both Harper and Davis out — Blackman takes over creation
+    if (!harperOn && !davisOn && player.name === 'Rolando Blackman') {
+      adjusted.initiation = 82;
+      adjusted.creation = 86;
+    }
+    if (!harperOn && !davisOn && player.name === 'Mark Aguirre') {
+      adjusted.initiation = 85;
+    }
+    // When Aguirre rests, Blackman gets a scoring boost
+    if (!aguirreOn && player.name === 'Rolando Blackman') {
+      adjusted.finishing = 94;
     }
   }
 
@@ -623,6 +715,11 @@ export function getTouchWeight(state, player, openness) {
     w *= hawksClutchBoost(state, player);
     w *= opportunityModifier(player);
     w *= earlyGameProtection(state, player);
+  } else if (player.team === 'dallas') {
+    w *= dallasShotBias(state, player);
+    w *= dallasClutchBoost(state, player);
+    w *= opportunityModifier(player);
+    w *= earlyGameProtection(state, player);
   } else {
     w *= opportunityModifier(player);
     w *= earlyGameProtection(state, player);
@@ -651,6 +748,10 @@ export function getScoringWeight(state, player) {
     w *= earlyGameProtection(state, player);
   } else if (player.team === 'hawks') {
     w *= hawksClutchBoost(state, player);
+    w *= opportunityModifier(player);
+    w *= earlyGameProtection(state, player);
+  } else if (player.team === 'dallas') {
+    w *= dallasClutchBoost(state, player);
     w *= opportunityModifier(player);
     w *= earlyGameProtection(state, player);
   } else {
@@ -699,6 +800,46 @@ function hawksClutchBoost(state, player) {
   if (w != null) return w / 20;
   const domOn = state.players.some(p => p.name === 'Dominique Wilkins' && p.team === player.team && p.onCourt);
   if (domOn) return 0.5;
+  return 0.9;
+}
+
+// --- Mavericks offensive role system ---
+// Dallas: Aguirre is the primary scorer (Power Wing Work), Blackman is the
+// smooth secondary, Harper organizes and defends. Deep balanced scoring.
+const DALLAS_CLUTCH_WEIGHTS = {
+  'Mark Aguirre': 34,
+  'Rolando Blackman': 28,
+  'Derek Harper': 16,
+  'Sam Perkins': 14,
+  'James Donaldson': 8,
+  'Roy Tarpley': 12,
+};
+
+function dallasShotBias(state, player) {
+  const role = getAdjustedRole(state, player);
+  if (!role) return 1.0;
+  let m = 1.0;
+  if (role.shotWeight) m *= role.shotWeight / 20;
+  // After 10 Dallas FGA, if Aguirre has fewer than 3 FGA, boost his action weight
+  const teamFga = getTeamFGA(state, 'dallas');
+  if (teamFga >= 10 && player.name === 'Mark Aguirre') {
+    const aguirreFga = (player.stats && player.stats.fga) || 0;
+    if (aguirreFga < 3) m *= 1.25;
+  }
+  // After 20 Dallas FGA, if Aguirre has fewer than 5 FGA, strongly bias next to him
+  if (teamFga >= 20 && player.name === 'Mark Aguirre') {
+    const aguirreFga = (player.stats && player.stats.fga) || 0;
+    if (aguirreFga < 5) m *= 1.50;
+  }
+  return m;
+}
+
+function dallasClutchBoost(state, player) {
+  if (!isClutch(state)) return 1.0;
+  const w = DALLAS_CLUTCH_WEIGHTS[player.name];
+  if (w != null) return w / 20;
+  const aguirreOn = state.players.some(p => p.name === 'Mark Aguirre' && p.team === player.team && p.onCourt);
+  if (aguirreOn) return 0.5;
   return 0.9;
 }
 

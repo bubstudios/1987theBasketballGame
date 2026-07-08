@@ -180,4 +180,41 @@ export const TRASH_TALK_CLIPS = {
     { text: "Willis owns the glass!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/3cae63278_speech.mp3" },
     { text: "That's muscle!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/0b5652a39_speech.mp3" },
   ],
+  // === Dallas Mavericks ===
+  // Aguirre → "spark" (energetic, cocky) — Power Wing Work
+  aguirre: [
+    { text: "Aguirre goes to work!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/9caba4fa5_speech.mp3" },
+    { text: "Too strong on the wing!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/7ec7dc139_speech.mp3" },
+    { text: "That's power scoring.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/1eb1622a7_speech.mp3" },
+    { text: "He bullied his way there.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/adf278f46_speech.mp3" },
+    { text: "Mark wants the ball!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/80c9dee99_speech.mp3" },
+  ],
+  // Blackman → "storm" (authoritative, smooth) — Silky Pull-Up
+  blackman: [
+    { text: "Blackman is smooth!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/c66f112e6_speech.mp3" },
+    { text: "That jumper is pure.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/70004dfb1_speech.mp3" },
+    { text: "He got to his spot.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/901940062_speech.mp3" },
+    { text: "Nothing rushed from Rolando.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/1378c8bfc_speech.mp3" },
+  ],
+  // Harper → "storm" (authoritative) — Press and Punch
+  harper: [
+    { text: "Harper is all over him!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/d64812fc1_speech.mp3" },
+    { text: "That's two-way guard play.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/092df025b_speech.mp3" },
+    { text: "He picked his pocket!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/f7ce6e8ad_speech.mp3" },
+    { text: "Harper turns the corner!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/ac79095a3_speech.mp3" },
+  ],
+  // Tarpley → "spark" (energetic) — Rookie Board Storm
+  tarpley: [
+    { text: "Tarpley storms the glass!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/0106000f5_speech.mp3" },
+    { text: "The rookie is everywhere!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/60b8f0c26_speech.mp3" },
+    { text: "Second chance for Dallas!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/fbe2c745e_speech.mp3" },
+    { text: "That's energy off the bench.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/6a6db65cb_speech.mp3" },
+  ],
+  // Donaldson → "storm" (authoritative) — Glass and Seal
+  donaldson: [
+    { text: "Donaldson owns the glass!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/cd84fd67f_speech.mp3" },
+    { text: "Big rebound from James!", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/f6fc89152_speech.mp3" },
+    { text: "He sealed him underneath.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/7f42bc28b_speech.mp3" },
+    { text: "That's center work.", url: "https://media.base44.com/files/public/6a45ee827986ce647cf33148/6a3f39a21_speech.mp3" },
+  ],
 };

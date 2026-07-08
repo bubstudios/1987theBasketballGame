@@ -74,6 +74,18 @@ export const PERSONALITY_RATINGS = {
   'Cliff Levingston':   { trashTalk: 40, agitator: 58, intimidation: 68, composure: 70, retaliationRisk: 30, refRespect: 55, technicalRisk: 30, crowdFuel: 60, role: 'energy_forward' },
   'Antoine Carr':       { trashTalk: 44, agitator: 60, intimidation: 72, composure: 66, retaliationRisk: 34, refRespect: 50, technicalRisk: 34, crowdFuel: 58, role: 'big_dog' },
   'Jon Koncak':         { trashTalk: 24, agitator: 44, intimidation: 68, composure: 74, retaliationRisk: 26, refRespect: 55, technicalRisk: 26, crowdFuel: 32, role: 'backup_wall' },
+
+  // === Dallas Mavericks (deep, balanced Western contender) ===
+  'Mark Aguirre':       { trashTalk: 72, agitator: 64, intimidation: 76, composure: 60, retaliationRisk: 50, refRespect: 55, technicalRisk: 38, crowdFuel: 82, role: 'power_wing' },
+  'Rolando Blackman':   { trashTalk: 48, agitator: 34, intimidation: 58, composure: 78, retaliationRisk: 30, refRespect: 75, technicalRisk: 18, crowdFuel: 68, role: 'smooth_scorer' },
+  'Derek Harper':       { trashTalk: 68, agitator: 66, intimidation: 72, composure: 70, retaliationRisk: 45, refRespect: 62, technicalRisk: 34, crowdFuel: 70, role: 'press_punch' },
+  'Sam Perkins':        { trashTalk: 42, agitator: 42, intimidation: 76, composure: 82, retaliationRisk: 35, refRespect: 78, technicalRisk: 20, crowdFuel: 54, role: 'lefty_big' },
+  'James Donaldson':    { trashTalk: 24, agitator: 44, intimidation: 82, composure: 85, retaliationRisk: 25, refRespect: 82, technicalRisk: 18, crowdFuel: 42, role: 'glass_anchor' },
+  'Brad Davis':         { trashTalk: 26, agitator: 20, intimidation: 48, composure: 88, retaliationRisk: 15, refRespect: 85, technicalRisk: 8, crowdFuel: 40, role: 'steady_hand' },
+  'Detlef Schrempf':    { trashTalk: 38, agitator: 30, intimidation: 66, composure: 78, retaliationRisk: 25, refRespect: 72, technicalRisk: 14, crowdFuel: 52, role: 'versatile_forward' },
+  'Roy Tarpley':        { trashTalk: 52, agitator: 64, intimidation: 84, composure: 55, retaliationRisk: 50, refRespect: 48, technicalRisk: 42, crowdFuel: 70, role: 'board_storm' },
+  'Bill Wennington':    { trashTalk: 22, agitator: 36, intimidation: 76, composure: 74, retaliationRisk: 35, refRespect: 68, technicalRisk: 22, crowdFuel: 34, role: 'reserve_seal' },
+  'Al Wood':            { trashTalk: 40, agitator: 34, intimidation: 54, composure: 70, retaliationRisk: 25, refRespect: 65, technicalRisk: 20, crowdFuel: 50, role: 'bench_bucket' },
 };
 
 // On-screen bubble phrases per player (one chosen per trash-talk event)
@@ -133,6 +145,17 @@ export const TRASH_TALK_BUBBLES = {
   'Cliff Levingston':    ['Levingston keeps it alive!', 'Energy minutes!', 'He does the dirty work.'],
   'Antoine Carr':        ['Carr powers it in!', 'Strong move from the bench.', "That's a grown-man bucket."],
   'Jon Koncak':          ['Koncak gives them size.', 'Good backup big minutes.', 'He held his ground.'],
+  // Mavericks
+  'Mark Aguirre':        ['Aguirre goes to work!', 'Too strong on the wing!', "That's power scoring.", 'He bullied his way there.', 'Mark wants the ball!'],
+  'Rolando Blackman':    ['Blackman is smooth!', "That jumper is pure.", 'He got to his spot.', 'Nothing rushed from Rolando.'],
+  'Derek Harper':        ['Harper is all over him!', "That's two-way guard play.", "He picked his pocket!", 'Harper turns the corner!'],
+  'Sam Perkins':         ['Perkins faces up!', 'The lefty knocks it down.', 'That jumper pulls the big man out.', 'Nice read from Perkins.'],
+  'James Donaldson':     ['Donaldson owns the glass!', 'Big rebound from James!', 'He sealed him underneath.', "That's center work."],
+  'Brad Davis':          ['Davis settles them down.', 'Steady hand at the point.', 'Smart possession.'],
+  'Detlef Schrempf':     ['Schrempf makes the right read.', 'Young Detlef flashes the skill.', "That's versatile forward play."],
+  'Roy Tarpley':         ['Tarpley storms the glass!', 'The rookie is everywhere!', 'Second chance for Dallas!', "That's energy off the bench."],
+  'Bill Wennington':     ['Wennington gives them size.', 'Good reserve big minutes.', 'Simple and effective.'],
+  'Al Wood':             ['Wood gives them a bucket.', 'Bench scoring from Al Wood.', 'He was ready to shoot.'],
 };
 
 // Every player has a voice key — even if no audio clips exist yet (text-only fallback).
@@ -162,6 +185,11 @@ const PLAYER_AUDIO_KEY = {
   'Randy Wittman': 'wittman', 'Tree Rollins': 'tree_rollins', 'Spud Webb': 'spud_webb',
   'Mike McGee': 'mike_mcgee', 'Cliff Levingston': 'levingston', 'Antoine Carr': 'antoine_carr',
   'Jon Koncak': 'koncak',
+  // Mavericks
+  'Mark Aguirre': 'aguirre', 'Rolando Blackman': 'blackman', 'Derek Harper': 'harper',
+  'Sam Perkins': 'perkins', 'James Donaldson': 'donaldson', 'Brad Davis': 'brad_davis',
+  'Detlef Schrempf': 'schrempf', 'Roy Tarpley': 'tarpley', 'Bill Wennington': 'wennington',
+  'Al Wood': 'al_wood',
 };
 
 // Enforcer / agitator check — gates intimidation talk after hard fouls so
@@ -218,6 +246,11 @@ const ROLE_LABEL = {
   ready_jumper: 'READY', rim_protector: 'TREE', tiny_lightning: 'SPUD',
   bench_bucket: 'BENCH', energy_forward: 'ENERGY', big_dog: 'BIG DOG',
   backup_wall: 'WALL',
+  // Mavericks
+  power_wing: 'POWER WING', smooth_scorer: 'SILKY', press_punch: 'PRESS',
+  lefty_big: 'LEFTY', glass_anchor: 'GLASS', steady_hand: 'STEADY',
+  versatile_forward: 'VERSATILE', board_storm: 'STORM', reserve_seal: 'RESERVE',
+  bench_bucket: 'BENCH',
 };
 
 function gameElapsed(state) {

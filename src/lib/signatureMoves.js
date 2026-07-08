@@ -164,6 +164,93 @@ export function checkHumanHighlight(shooter, distToBasket, nearestDef, isFastBre
   return { contestBoost, variant, defenderBit, isHighlight: true };
 }
 
+// Mark Aguirre — "Power Wing Work"
+// Mid-post bully scoring package: shoulder fakes, turnaround jumpers, power
+// drives, and lean-in foul draws. Triggers on ~18% of Aguirre's wing/mid-post
+// actions (55-220px, half-court). Improves contest level (defender bites on
+// power moves), boosts foul-drawing significantly, slightly raises strip risk.
+export function checkPowerWingWork(shooter, distToBasket, nearestDef, isFastBreak, shotClock) {
+  if (shooter.name !== 'Mark Aguirre') return null;
+  if (isFastBreak) return null;
+  if (distToBasket < 55 || distToBasket > 220) return null;
+
+  const triggerChance = shotClock <= 10 ? 0.25 : 0.16;
+  if (Math.random() > triggerChance) return null;
+
+  const defRating = (nearestDef && nearestDef.player && (nearestDef.player.postDef || nearestDef.player.perimeterDef)) || 50;
+  let contestBoost;
+  let defenderBit;
+  if (defRating >= 85) {
+    contestBoost = 1;
+    defenderBit = false;
+  } else if (defRating < 65) {
+    contestBoost = 2;
+    defenderBit = true;
+  } else {
+    contestBoost = Math.random() < 0.5 ? 1 : 2;
+    defenderBit = contestBoost === 2;
+  }
+
+  const variants = ['mid_post_bully', 'shoulder_fake_jumper', 'turnaround', 'baseline_power', 'lean_in_foul'];
+  const variant = variants[Math.floor(Math.random() * variants.length)];
+
+  return { contestBoost, variant, defenderBit };
+}
+
+// Rolando Blackman — "Silky Pull-Up"
+// Smooth midrange scoring: one-dribble pull-ups, elbow/baseline jumpers.
+// Triggers on ~15% of Blackman's mid-range actions (120-220px, half-court).
+// Improves shot quality (1-2 levels), very low turnover risk.
+export function checkSilkyPullUp(shooter, distToBasket, nearestDef, isFastBreak) {
+  if (shooter.name !== 'Rolando Blackman') return null;
+  if (isFastBreak) return null;
+  if (distToBasket < 120 || distToBasket > 220) return null;
+  if (Math.random() > 0.15) return null;
+
+  const defRating = (nearestDef && nearestDef.player && nearestDef.player.perimeterDef) || 50;
+  let contestBoost;
+  let defenderBit;
+  if (defRating >= 90) {
+    contestBoost = 1;
+    defenderBit = false;
+  } else {
+    contestBoost = Math.random() < 0.6 ? 2 : 1;
+    defenderBit = contestBoost === 2;
+  }
+
+  const variants = ['one_dribble_pullup', 'elbow_jumper', 'baseline_jumper', 'catch_and_shoot', 'foul_line_jumper'];
+  const variant = variants[Math.floor(Math.random() * variants.length)];
+
+  return { contestBoost, variant, defenderBit };
+}
+
+// Sam Perkins — "Lefty Face-Up"
+// Face-up jumper and pick-and-pop from the lefty big. Triggers on ~15% of
+// Perkins' elbow/short-corner actions (120-220px, half-court). Improves shot
+// quality, pulls opposing bigs away from the rim.
+export function checkLeftyFaceUp(shooter, distToBasket, nearestDef, isFastBreak) {
+  if (shooter.name !== 'Sam Perkins') return null;
+  if (isFastBreak) return null;
+  if (distToBasket < 120 || distToBasket > 220) return null;
+  if (Math.random() > 0.15) return null;
+
+  const defRating = (nearestDef && nearestDef.player && (nearestDef.player.postDef || nearestDef.player.perimeterDef)) || 50;
+  let contestBoost;
+  let defenderBit;
+  if (defRating >= 85) {
+    contestBoost = 1;
+    defenderBit = false;
+  } else {
+    contestBoost = Math.random() < 0.5 ? 1 : 2;
+    defenderBit = contestBoost === 2;
+  }
+
+  const variants = ['lefty_jumper', 'pick_and_pop', 'one_dribble_drive', 'short_bank'];
+  const variant = variants[Math.floor(Math.random() * variants.length)];
+
+  return { contestBoost, variant, defenderBit };
+}
+
 // --- Vinnie Johnson — "Microwave Mode" ---
 // Vinnie heats up after consecutive makes. While active, his shot-selection
 // weight rises for a short stretch (~5 possessions). Missing cools him off.

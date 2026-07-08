@@ -76,6 +76,23 @@ export const HAWKS_DEFENSE = {
   'Jon Koncak':         { perimeterDef: 38, postDef: 82, helpDef: 78, screenNav: 42, stealDef: 42, blockDef: 84, dRebound: 82, discipline: 74, versatility: 58, transitionDef: 50 },
 };
 
+// 1986-87 Dallas Mavericks — good but not elite defense. Win with offense.
+// Harper is the perimeter stopper, Donaldson controls the glass, Perkins is
+// solid and versatile. Aguirre/Blackman are offense-first. Moderate pressure,
+// strong defensive rebounding, not as physical as Detroit.
+export const DALLAS_DEFENSE = {
+  'Derek Harper':       { perimeterDef: 92, postDef: 48, helpDef: 82, screenNav: 86, stealDef: 94, blockDef: 32, dRebound: 54, discipline: 86, versatility: 84, transitionDef: 82 },
+  'Rolando Blackman':   { perimeterDef: 74, postDef: 54, helpDef: 70, screenNav: 78, stealDef: 64, blockDef: 30, dRebound: 52, discipline: 78, versatility: 72, transitionDef: 72 },
+  'Mark Aguirre':       { perimeterDef: 66, postDef: 72, helpDef: 68, screenNav: 62, stealDef: 62, blockDef: 42, dRebound: 70, discipline: 64, versatility: 72, transitionDef: 76 },
+  'Sam Perkins':        { perimeterDef: 62, postDef: 82, helpDef: 82, screenNav: 72, stealDef: 72, blockDef: 76, dRebound: 88, discipline: 78, versatility: 82, transitionDef: 76 },
+  'James Donaldson':    { perimeterDef: 38, postDef: 86, helpDef: 84, screenNav: 50, stealDef: 50, blockDef: 86, dRebound: 98, discipline: 78, versatility: 58, transitionDef: 82 },
+  'Brad Davis':         { perimeterDef: 74, postDef: 34, helpDef: 70, screenNav: 74, stealDef: 70, blockDef: 18, dRebound: 32, discipline: 86, versatility: 66, transitionDef: 68 },
+  'Detlef Schrempf':    { perimeterDef: 68, postDef: 68, helpDef: 76, screenNav: 58, stealDef: 58, blockDef: 42, dRebound: 70, discipline: 70, versatility: 82, transitionDef: 66 },
+  'Roy Tarpley':        { perimeterDef: 56, postDef: 82, helpDef: 80, screenNav: 64, stealDef: 64, blockDef: 84, dRebound: 94, discipline: 58, versatility: 76, transitionDef: 84 },
+  'Bill Wennington':    { perimeterDef: 34, postDef: 74, helpDef: 70, screenNav: 68, stealDef: 38, blockDef: 68, dRebound: 76, discipline: 68, versatility: 52, transitionDef: 76 },
+  'Al Wood':            { perimeterDef: 64, postDef: 48, helpDef: 60, screenNav: 62, stealDef: 58, blockDef: 36, dRebound: 48, discipline: 62, versatility: 64, transitionDef: 54 },
+};
+
 // Team defensive tendency multipliers (1.0 = league baseline).
 // Lakers: active, opportunistic, gambling, fast-break-creating.
 // Celtics: structured, physical, disciplined, rim-protecting.
@@ -128,6 +145,19 @@ export const TEAM_DEFENSE_TENDENCIES = {
     foulAggression: 1.00,
     halfcourtDiscipline: 1.08,
   },
+  // Mavericks: moderate-high pressure, strong defensive rebounding, solid
+  // discipline. Not elite like Boston/Detroit, but Donaldson anchors the glass.
+  dallas: {
+    stealAttemptFreq: 1.05,
+    passingLaneDenial: 1.02,
+    hardDoubleFreq: 0.92,
+    helpAtRim: 1.05,
+    fullSwitching: 0.80,
+    dropCoverageCenter: 1.10,
+    defRebEmphasis: 1.12,
+    foulAggression: 0.98,
+    halfcourtDiscipline: 1.02,
+  },
   // Pistons: Bad Boys — high pressure, high physicality, high foul risk.
   // Isiah/Dumars pressure the ball; Laimbeer/Mahorn provide body contact.
   pistons: {
@@ -170,6 +200,12 @@ export const DEFAULT_MATCHUPS = {
     'Dominique Wilkins': 'Larry Bird',
     'Kevin Willis': 'Kevin McHale',
     'Tree Rollins': 'Robert Parish',
+    // vs Mavericks
+    'Derek Harper': 'Dennis Johnson',
+    'Rolando Blackman': 'Danny Ainge',
+    'Mark Aguirre': 'Larry Bird',
+    'Sam Perkins': 'Kevin McHale',
+    'James Donaldson': 'Robert Parish',
   },
   // Lakers defending Celtics
   lakers: {
@@ -196,6 +232,12 @@ export const DEFAULT_MATCHUPS = {
     'Dominique Wilkins': 'Michael Cooper',
     'Kevin Willis': 'A.C. Green',
     'Tree Rollins': 'Kareem Abdul-Jabbar',
+    // vs Mavericks
+    'Derek Harper': 'Magic Johnson',
+    'Rolando Blackman': 'Byron Scott',
+    'Mark Aguirre': 'Michael Cooper',
+    'Sam Perkins': 'A.C. Green',
+    'James Donaldson': 'Kareem Abdul-Jabbar',
   },
   // Rockets defending (covers both Lakers and Celtics offenses)
   rockets: {
@@ -223,6 +265,12 @@ export const DEFAULT_MATCHUPS = {
     'Dominique Wilkins': 'Rodney McCray',
     'Kevin Willis': 'Ralph Sampson',
     'Tree Rollins': 'Akeem Olajuwon',
+    // vs Mavericks
+    'Derek Harper': 'Dirk Minniefield',
+    'Rolando Blackman': 'Robert Reid',
+    'Mark Aguirre': 'Rodney McCray',
+    'Sam Perkins': 'Ralph Sampson',
+    'James Donaldson': 'Akeem Olajuwon',
   },
   // Pistons defending (covers Lakers, Celtics, Rockets offenses)
   pistons: {
@@ -250,6 +298,12 @@ export const DEFAULT_MATCHUPS = {
     'Dominique Wilkins': 'Adrian Dantley',
     'Kevin Willis': 'Rick Mahorn',
     'Tree Rollins': 'Bill Laimbeer',
+    // vs Mavericks
+    'Derek Harper': 'Isiah Thomas',
+    'Rolando Blackman': 'Joe Dumars',
+    'Mark Aguirre': 'Adrian Dantley',
+    'Sam Perkins': 'Rick Mahorn',
+    'James Donaldson': 'Bill Laimbeer',
   },
   // Hawks defending (covers Lakers, Celtics, Rockets, Pistons offenses)
   hawks: {
@@ -277,6 +331,45 @@ export const DEFAULT_MATCHUPS = {
     'Adrian Dantley': 'Dominique Wilkins',
     'Sidney Green': 'Kevin Willis',
     'Bill Laimbeer': 'Tree Rollins',
+    // vs Mavericks
+    'Derek Harper': 'Doc Rivers',
+    'Rolando Blackman': 'Randy Wittman',
+    'Mark Aguirre': 'Dominique Wilkins',
+    'Sam Perkins': 'Kevin Willis',
+    'James Donaldson': 'Tree Rollins',
+  },
+  // Mavericks defending (covers Lakers, Celtics, Rockets, Pistons, Hawks offenses)
+  dallas: {
+    // vs Lakers
+    'Magic Johnson': 'Derek Harper',
+    'Byron Scott': 'Rolando Blackman',
+    'James Worthy': 'Mark Aguirre',
+    'A.C. Green': 'Sam Perkins',
+    'Kareem Abdul-Jabbar': 'James Donaldson',
+    // vs Celtics
+    'Dennis Johnson': 'Derek Harper',
+    'Danny Ainge': 'Rolando Blackman',
+    'Larry Bird': 'Mark Aguirre',
+    'Kevin McHale': 'Sam Perkins',
+    'Robert Parish': 'James Donaldson',
+    // vs Rockets
+    'Dirk Minniefield': 'Derek Harper',
+    'Robert Reid': 'Rolando Blackman',
+    'Rodney McCray': 'Mark Aguirre',
+    'Ralph Sampson': 'Sam Perkins',
+    'Akeem Olajuwon': 'James Donaldson',
+    // vs Pistons
+    'Isiah Thomas': 'Derek Harper',
+    'Joe Dumars': 'Rolando Blackman',
+    'Adrian Dantley': 'Mark Aguirre',
+    'Sidney Green': 'Sam Perkins',
+    'Bill Laimbeer': 'James Donaldson',
+    // vs Hawks
+    'Doc Rivers': 'Derek Harper',
+    'Randy Wittman': 'Rolando Blackman',
+    'Dominique Wilkins': 'Mark Aguirre',
+    'Kevin Willis': 'Sam Perkins',
+    'Tree Rollins': 'James Donaldson',
   },
 };
 
@@ -296,4 +389,5 @@ export const TEAM_DEFENSE_MAP = {
   rockets: ROCKETS_DEFENSE,
   pistons: PISTONS_DEFENSE,
   hawks: HAWKS_DEFENSE,
+  dallas: DALLAS_DEFENSE,
 };

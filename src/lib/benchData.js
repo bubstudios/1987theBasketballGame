@@ -669,3 +669,137 @@ export const HAWKS_BENCH = [
     blockRate: 0.035,
   },
 ];
+
+// 1986-87 Dallas Mavericks bench (deep, balanced Western contender)
+export const DALLAS_BENCH = [
+  {
+    name: "Brad Davis",
+    number: 15,
+    position: "PG",
+    height: 72, // 6'0"
+    speed: 6,
+    driveTendency: 4, // steady organizer, low risk
+    dunkTendency: 1,
+    shooting: 7,
+    passing: 8,
+    defense: 6, // smart but not physically elite
+    rebounding: 3,
+    insideScoring: 5,
+    threePoint: 5,
+    threeAttempts: 0.9,
+    threePct: 0.330,
+    twoAttempts: 3.8,
+    twoPct: 0.440,
+    offensiveRebRate: 0.010,
+    defensiveRebRate: 0.030,
+    stealRate: 0.020,
+    turnoverRate: 0.110, // Steady Hand — low turnovers
+    ftAttempts: 1.1,
+    ftPct: 0.860,
+    blockRate: 0.003,
+  },
+  {
+    name: "Detlef Schrempf",
+    number: 11,
+    position: "SF",
+    height: 82, // 6'10"
+    speed: 7,
+    driveTendency: 5, // versatile forward
+    dunkTendency: 3,
+    shooting: 7,
+    passing: 6, // good passing for a forward
+    defense: 6, // versatile but not a stopper
+    rebounding: 5,
+    insideScoring: 6,
+    threePoint: 6,
+    threeAttempts: 0.6,
+    threePct: 0.330,
+    twoAttempts: 5.2,
+    twoPct: 0.430,
+    offensiveRebRate: 0.040,
+    defensiveRebRate: 0.080,
+    stealRate: 0.018,
+    turnoverRate: 0.120,
+    ftAttempts: 1.4,
+    ftPct: 0.742,
+    blockRate: 0.015,
+  },
+  {
+    name: "Roy Tarpley",
+    number: 42,
+    position: "PF",
+    height: 83, // 6'11"
+    speed: 7, // high motor rookie
+    driveTendency: 5, // energy interior scorer
+    dunkTendency: 5, // explosive putback dunker
+    shooting: 6,
+    passing: 3,
+    defense: 7, // active shot blocker, foul-prone
+    rebounding: 9, // Rookie Board Storm — elite bench rebounder
+    insideScoring: 8,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 6.1,
+    twoPct: 0.459,
+    offensiveRebRate: 0.110,
+    defensiveRebRate: 0.230,
+    stealRate: 0.020,
+    turnoverRate: 0.140, // mistake-prone
+    ftAttempts: 2.5,
+    ftPct: 0.676,
+    blockRate: 0.025,
+  },
+  {
+    name: "Bill Wennington",
+    number: 55,
+    position: "C",
+    height: 84, // 7'0"
+    speed: 5,
+    driveTendency: 2, // reserve big, simple finishes
+    dunkTendency: 3,
+    shooting: 4,
+    passing: 2,
+    defense: 5, // backup size
+    rebounding: 6,
+    insideScoring: 5,
+    threePoint: 1,
+    threeAttempts: 0,
+    threePct: 0,
+    twoAttempts: 2.0,
+    twoPct: 0.450,
+    offensiveRebRate: 0.070,
+    defensiveRebRate: 0.150,
+    stealRate: 0.010,
+    turnoverRate: 0.130,
+    ftAttempts: 0.8,
+    ftPct: 0.750,
+    blockRate: 0.020,
+  },
+  {
+    name: "Al Wood",
+    number: 32,
+    position: "SG",
+    height: 78, // 6'6"
+    speed: 6,
+    driveTendency: 5, // bench wing scorer
+    dunkTendency: 3,
+    shooting: 7,
+    passing: 4,
+    defense: 5, // reserve wing defense
+    rebounding: 3,
+    insideScoring: 6,
+    threePoint: 3,
+    threeAttempts: 0.3,
+    threePct: 0.250,
+    twoAttempts: 2.5,
+    twoPct: 0.450,
+    offensiveRebRate: 0.025,
+    defensiveRebRate: 0.050,
+    stealRate: 0.015,
+    turnoverRate: 0.130,
+    ftAttempts: 0.8,
+    ftPct: 0.784,
+    blockRate: 0.005,
+  },
+];

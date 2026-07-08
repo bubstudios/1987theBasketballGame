@@ -38,6 +38,7 @@ export const VARIATIONS = {
   CUTTING_LAYUP: { family: 'LAYUP', zones: ['rim'], make: 'cuts and catches for the layup', log: 'cutting layup', miss: 'cutting layup' },
   ALLEY_OOP_LAYUP: { family: 'LAYUP', zones: ['rim'], make: 'taps in the alley-oop', log: 'alley-oop layup', miss: 'alley-oop layup' },
   POWER_LAYUP: { family: 'LAYUP', zones: ['rim'], make: 'powers up and lays it in', log: 'power layup', miss: 'power layup' },
+  DUMP_OFF_LAYUP: { family: 'LAYUP', zones: ['rim'], make: 'catches the dump-off and lays it in', log: 'dump-off layup', miss: 'dump-off layup' },
 
   // === DUNKS ===
   ONE_HAND_DUNK: { family: 'DUNK', zones: ['rim'], make: 'throws it down one-handed', log: 'one-hand dunk', miss: 'one-hand dunk' },
@@ -173,6 +174,32 @@ export const HUMAN_HIGHLIGHT_VARIATIONS = {
   baseline_drive: ['BASELINE_LAYUP', 'BASELINE_DUNK'],
   pullup_jumper: ['PULL_UP_JUMPER', 'ONE_DRIBBLE_PULL_UP'],
   turnaround_jumper: ['TURNAROUND_JUMPER', 'TURNAROUND_FADEAWAY'],
+};
+
+// --- Power Wing Work branch → variation mapping (Mark Aguirre) ---
+export const POWER_WING_VARIATIONS = {
+  mid_post_bully: ['POWER_LAYUP', 'DROP_STEP_LAYUP', 'TURNAROUND_JUMPER'],
+  shoulder_fake_jumper: ['FACE_UP_JUMPER', 'TURNAROUND_JUMPER', 'SHORT_BANKER'],
+  turnaround: ['TURNAROUND_JUMPER', 'TURNAROUND_FADEAWAY', 'TURNAROUND_BANK'],
+  baseline_power: ['BASELINE_LAYUP', 'BASELINE_FADEAWAY', 'BASELINE_DUNK'],
+  lean_in_foul: ['POWER_LAYUP', 'SHORT_BANKER', 'STEP_THROUGH_LAYUP'],
+};
+
+// --- Silky Pull-Up branch → variation mapping (Rolando Blackman) ---
+export const SILKY_PULLUP_VARIATIONS = {
+  one_dribble_pullup: ['ONE_DRIBBLE_PULL_UP', 'PULL_UP_JUMPER'],
+  elbow_jumper: ['ELBOW_JUMPER', 'ELBOW_PULL_UP'],
+  baseline_jumper: ['BASELINE_JUMPER', 'BASELINE_PULL_UP'],
+  catch_and_shoot: ['SPOT_UP_JUMPER', 'STOP_AND_POP'],
+  foul_line_jumper: ['FT_LINE_JUMPER', 'ELBOW_JUMPER'],
+};
+
+// --- Lefty Face-Up branch → variation mapping (Sam Perkins) ---
+export const LEFTY_FACEUP_VARIATIONS = {
+  lefty_jumper: ['FACE_UP_JUMPER', 'SPOT_UP_JUMPER'],
+  pick_and_pop: ['PICK_AND_POP_JUMPER', 'SPOT_UP_JUMPER'],
+  one_dribble_drive: ['DRIVING_LAYUP', 'ONE_DRIBBLE_PULL_UP'],
+  short_bank: ['SHORT_BANKER', 'TURNAROUND_BANK'],
 };
 
 // --- Per-player shot packages (zone → [variationKey, tier]) ---
@@ -486,6 +513,68 @@ const PLAYER_PACKAGES = {
     mid: [],
     three: [],
   },
+
+  // ===== MAVERICKS =====
+  'Mark Aguirre': {
+    rim: [['POWER_LAYUP','primary'],['STEP_THROUGH_LAYUP','primary'],['DRIVING_LAYUP','primary'],['PUTBACK_LAYUP','secondary'],['BASELINE_LAYUP','secondary'],['BASELINE_DUNK','secondary']],
+    short_mid: [['TURNAROUND_JUMPER','primary'],['FACE_UP_JUMPER','primary'],['SHORT_BANKER','primary'],['BASELINE_FADEAWAY','secondary'],['TURNAROUND_FADEAWAY','secondary']],
+    mid: [['PULL_UP_JUMPER','primary'],['ONE_DRIBBLE_PULL_UP','secondary'],['BASELINE_JUMPER','secondary'],['ELBOW_PULL_UP','secondary']],
+    three: [['SPOT_UP_THREE','rare']],
+  },
+  'Rolando Blackman': {
+    rim: [['DRIVING_LAYUP','primary'],['BASELINE_LAYUP','secondary'],['REVERSE_LAYUP','secondary']],
+    short_mid: [['STOP_AND_POP','primary'],['RUNNING_JUMPER','secondary']],
+    mid: [['ELBOW_JUMPER','primary'],['BASELINE_JUMPER','primary'],['SPOT_UP_JUMPER','primary'],['ONE_DRIBBLE_PULL_UP','secondary'],['FT_LINE_JUMPER','secondary'],['BASELINE_PULL_UP','secondary']],
+    three: [['SPOT_UP_THREE','rare']],
+  },
+  'Derek Harper': {
+    rim: [['DRIVING_LAYUP','primary'],['SCOOP_LAYUP','secondary'],['FAST_BREAK_LAYUP','secondary'],['POWER_LAYUP','secondary']],
+    short_mid: [['STOP_AND_POP','primary'],['RUNNING_JUMPER','secondary']],
+    mid: [['PULL_UP_JUMPER','primary'],['PICK_AND_ROLL_PULL_UP','primary'],['SPOT_UP_JUMPER','secondary'],['ELBOW_PULL_UP','secondary'],['STOP_AND_POP','secondary']],
+    three: [['SPOT_UP_THREE','primary'],['WING_THREE','secondary']],
+  },
+  'Sam Perkins': {
+    rim: [['PUTBACK_LAYUP','primary'],['DROP_STEP_LAYUP','primary'],['BABY_HOOK','secondary'],['STANDING_DUNK','secondary'],['TIP_IN','secondary']],
+    short_mid: [['FACE_UP_JUMPER','primary'],['SHORT_BANKER','primary'],['PICK_AND_POP_JUMPER','secondary'],['JUMP_HOOK','secondary']],
+    mid: [['FACE_UP_JUMPER','primary'],['PICK_AND_POP_JUMPER','primary'],['SPOT_UP_JUMPER','secondary'],['TRAIL_JUMPER','rare']],
+    three: [['SPOT_UP_THREE','rare'],['WING_THREE','rare']],
+  },
+  'James Donaldson': {
+    rim: [['STANDING_DUNK','primary'],['PUTBACK_LAYUP','primary'],['TIP_IN','secondary'],['DUMP_OFF_LAYUP','rare'],['STANDING_LAYUP','secondary'],['SHORT_HOOK','secondary']],
+    short_mid: [['SHORT_HOOK','secondary'],['SHORT_BANKER','secondary']],
+    mid: [],
+    three: [],
+  },
+  'Brad Davis': {
+    rim: [['DRIVING_LAYUP','primary'],['SCOOP_LAYUP','secondary'],['FAST_BREAK_LAYUP','secondary']],
+    short_mid: [['STOP_AND_POP','secondary'],['RUNNING_JUMPER','secondary']],
+    mid: [['SPOT_UP_JUMPER','primary'],['PULL_UP_JUMPER','primary'],['BASELINE_JUMPER','secondary']],
+    three: [['SPOT_UP_THREE','secondary']],
+  },
+  'Detlef Schrempf': {
+    rim: [['DRIVING_LAYUP','primary'],['CUTTING_LAYUP','secondary'],['FAST_BREAK_LAYUP','secondary']],
+    short_mid: [['FACE_UP_JUMPER','secondary'],['SHORT_BANKER','secondary']],
+    mid: [['SPOT_UP_JUMPER','primary'],['BASELINE_JUMPER','secondary'],['PULL_UP_JUMPER','secondary'],['TRAIL_JUMPER','rare']],
+    three: [['WING_THREE','secondary'],['SPOT_UP_THREE','rare']],
+  },
+  'Roy Tarpley': {
+    rim: [['PUTBACK_DUNK','primary'],['PUTBACK_LAYUP','primary'],['TIP_IN','primary'],['POWER_LAYUP','primary'],['SHORT_HOOK','secondary'],['DROP_STEP_LAYUP','secondary'],['STANDING_DUNK','secondary']],
+    short_mid: [['SHORT_BANKER','secondary'],['FACE_UP_JUMPER','secondary']],
+    mid: [['SPOT_UP_JUMPER','rare']],
+    three: [],
+  },
+  'Bill Wennington': {
+    rim: [['STANDING_LAYUP','primary'],['PUTBACK_LAYUP','primary'],['TIP_IN','secondary'],['SHORT_HOOK','secondary'],['STANDING_DUNK','secondary']],
+    short_mid: [['SHORT_BANKER','secondary'],['SHORT_HOOK','secondary']],
+    mid: [],
+    three: [],
+  },
+  'Al Wood': {
+    rim: [['DRIVING_LAYUP','primary'],['FAST_BREAK_LAYUP','primary'],['BASELINE_LAYUP','secondary']],
+    short_mid: [['FACE_UP_JUMPER','secondary'],['STOP_AND_POP','secondary']],
+    mid: [['SPOT_UP_JUMPER','primary'],['PULL_UP_JUMPER','secondary'],['CORNER_JUMPER','secondary']],
+    three: [['CORNER_THREE','rare']],
+  },
 };
 
 const DEFAULT_PACKAGE = {
@@ -551,10 +640,16 @@ export function selectShotVariation(shooter, ctx, sigVariant, sigFamily = 'dream
     const variantMap = sigFamily === 'zeke' ? ZEKE_SPLIT_VARIATIONS
                      : sigFamily === 'pumpfake' ? PUMP_FAKE_VARIATIONS
                      : sigFamily === 'highlight' ? HUMAN_HIGHLIGHT_VARIATIONS
+                     : sigFamily === 'powerwing' ? POWER_WING_VARIATIONS
+                     : sigFamily === 'silky' ? SILKY_PULLUP_VARIATIONS
+                     : sigFamily === 'lefty' ? LEFTY_FACEUP_VARIATIONS
                      : DREAM_SHAKE_VARIATIONS;
     const fallback = sigFamily === 'zeke' ? 'PULL_UP_JUMPER'
                    : sigFamily === 'pumpfake' ? 'SHORT_BANKER'
                    : sigFamily === 'highlight' ? 'POWER_DUNK'
+                   : sigFamily === 'powerwing' ? 'TURNAROUND_JUMPER'
+                   : sigFamily === 'silky' ? 'PULL_UP_JUMPER'
+                   : sigFamily === 'lefty' ? 'FACE_UP_JUMPER'
                    : 'TURNAROUND_JUMPER';
     const sigKeys = (variantMap[sigVariant] || [fallback])
       .filter(k => VARIATIONS[k].zones.includes(zone));
